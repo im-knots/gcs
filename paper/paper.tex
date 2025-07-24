@@ -35,7 +35,7 @@
 \newcommand{\powerOutcomeGroups}{77.2\%}
 \newcommand{\powerModelTypes}{94.3\%}
 \newcommand{\powerCorrelation}{88.8\%}
-\newcommand{\sampleSizeFor80Power}{103}
+\newcommand{\sampleSizeForeightyPower}{103}
 
 % PCA analysis results - UPDATED FROM COMPREHENSIVE ANALYSIS
 \newcommand{\sampleFeatureRatio}{4.26}
@@ -165,7 +165,7 @@ We present a geometric framework for understanding multi-agent AI conversations 
 
 The emergence of sustained multi-agent AI dialogue has revealed complex dynamics that resist traditional analysis. Recent work documented surprising social phenomena: AI agents exhibit peer pressure affecting \fullReasoningPeerPressure{} of conversations, with breakdown patterns emerging from social rather than technical factors \citep{garcia2025peer}. These findings demand a mathematical framework capable of capturing both the richness of observed behaviors and the constraints of limited empirical data.
 
-We propose viewing conversations as trajectories through a semantic vector space—a geometric perspective that reveals hidden structure in seemingly chaotic dialogue evolution. Just as celestial mechanics explains complex planetary motion through gravitational fields in space, we model conversation dynamics through semantic fields that create attractors and repellers in dialogue space.
+We propose viewing conversations as trajectories through a semantic vector space (a geometric perspective that reveals hidden structure in seemingly chaotic dialogue evolution). Just as celestial mechanics explains complex planetary motion through gravitational fields in space, we model conversation dynamics through semantic fields that create attractors and repellers in dialogue space.
 
 We employ rigorous statistical methods including regularized PCA ($\alpha = \regularizationAlpha{}$) to address severe multicollinearity (condition number > 500 million), bootstrap resampling (n = \bootstrapSamples{}) to quantify uncertainty, and cross-validated prediction to validate our framework. With \powerOutcomeGroups{} statistical power for our primary analyses, our findings approach but do not reach conventional thresholds, requiring appropriate interpretive caution.
 
@@ -182,7 +182,7 @@ Our analysis reveals a fundamental duality: conversations exist in two distinct 
 Our dataset of \totalConversations{} conversations (\fullReasoningCount{} full reasoning, \lightReasoningCount{} light reasoning, \nonReasoningCount{} non-reasoning) across \featureCount{} features presents significant analytical challenges. Power analysis reveals:
 
 \begin{itemize}
-    \item \textbf{Outcome comparisons (4 groups)}: \powerOutcomeGroups{} power (requires n=\sampleSizeFor80Power{} for 80\% power)
+    \item \textbf{Outcome comparisons (4 groups)}: \powerOutcomeGroups{} power (requires n=\sampleSizeForeightyPower{} for 80\% power)
     \item \textbf{Model type comparisons (3 groups)}: \powerModelTypes{} power (adequate)
     \item \textbf{Correlation detection (r=0.349)}: \powerCorrelation{} power (adequate)
 \end{itemize}
@@ -301,7 +301,7 @@ To validate our framework's ability to capture conversation dynamics, we generat
 
 \subsection{Model Capability Gradients}
 
-The dimensions show dramatic gradients across model capabilities:
+The dimensions show dramatic gradients across model capabilities, revealing how social dynamics manifest differently across the AI capability spectrum:
 
 \begin{table}[h]
 \centering
@@ -321,6 +321,25 @@ Bootstrap CI for SC & \socialContagionFullCI{} & \socialContagionLightCI{} & \so
 \caption{Model capability gradients with bootstrap confidence intervals. *** p<0.001, ** p<0.01, * p<0.05. Social Contagion values include 95\% bootstrap confidence intervals showing clear separation between model tiers despite uncertainty.}
 \label{tab:capability_gradients}
 \end{table}
+
+\textbf{Theory-Driven Dimension Analysis}:
+
+Our theory-driven dimensions reveal statistically significant associations with conversation outcomes:
+
+\begin{itemize}
+    \item \textbf{Social Contagion}: $r$ = \socialContagionBreakdownCorr{} with breakdown (p = \socialContagionBreakdownP{}), $\eta^2$ = \socialContagionEtaSquared{} (large effect)
+    \item \textbf{Temporal Dynamics}: $r$ = \temporalDynamicsBreakdownCorr{} with breakdown (p = \temporalDynamicsBreakdownP{}), $\eta^2$ = \temporalDynamicsEtaSquared{} (large effect)
+    \item \textbf{Linguistic Synchrony}: $r$ = \linguisticSynchronyBreakdownCorr{} with breakdown (p = \linguisticSynchronyBreakdownP{}), $\eta^2$ = \linguisticSynchronyEtaSquared{} (small effect)
+    \item \textbf{Affective-Cognitive}: $r$ = \affectiveCognitiveBreakdownCorr{} with breakdown (p = \affectiveCognitiveBreakdownP{}), $\eta^2$ = \affectiveCognitiveEtaSquared{} (small-medium effect)
+\end{itemize}
+
+The gradient analysis reveals three key insights:
+
+1. \textbf{Social Sophistication Gradient}: Full reasoning models show 82.5-fold higher social contagion scores than non-reasoning models (\socialContagionFullMean{} vs \socialContagionNoMean{}), with non-overlapping confidence intervals confirming this is not due to chance.
+
+2. \textbf{Inverse Linguistic Pattern}: While social dynamics decrease with model simplicity, linguistic synchrony shows the opposite pattern (increasing from \fullLinguisticAlignment{} to \nonLinguisticAlignment{}), suggesting simpler models engage in mechanical mirroring rather than genuine social coordination.
+
+3. \textbf{Breakdown Mechanisms Differ by Tier}: The correlation between dimensions and breakdown varies by model capability, with social contagion being the primary driver for full reasoning models while temporal dynamics dominates for simpler models.
 
 \begin{figure}[htbp]
 \centering
@@ -372,7 +391,7 @@ Our analysis addresses several critical challenges:
 \begin{tcolorbox}[colback=gray!10,colframe=gray!80,title=Study Limitations and Interpretive Constraints]
 \textbf{Statistical Limitations}:
 \begin{itemize}
-    \item Sample size: N=\totalConversations{} (\powerOutcomeGroups{} power, need n=\sampleSizeFor80Power{} for 80\%)
+    \item Sample size: N=\totalConversations{} (\powerOutcomeGroups{} power, need n=\sampleSizeForeightyPower{} for 80\%)
     \item Multicollinearity: Condition number >\conditionNumber{} requires heavy regularization
     \item Bootstrap CIs: Wide intervals indicate substantial uncertainty
     \item Single domain: Consciousness exploration only
@@ -413,7 +432,7 @@ For multi-agent system design:
 
 Through rigorous analysis including regularized PCA, bootstrap validation, and cross-validated prediction, we establish that intervention features dominate variance (\allFeaturesPCOne{}) when present but mask a multidimensional structure where PC1 explains \nonInterventionPCOneVariance{} [\nonInterventionPCOneCILower{}, \nonInterventionPCOneCIUpper{}] of variance. Despite statistical limitations (\powerOutcomeGroups{} power, high multicollinearity), consistent patterns emerge: dimensions predict breakdown with 74\% accuracy, synthetic data validation succeeds, and the capability gradient remains robust across multiple analytical approaches.
 
-This work demonstrates the value of rigorous empirical analysis in revealing hidden structure in AI interactions. While our specific dimensional values require replication with larger samples, the core insights---intervention dominance, capability-linked social dynamics, and predictive validity---provide a foundation for understanding multi-agent AI systems. Future work should address our power limitations (n$\geq$\sampleSizeFor80Power{}), explore additional domains beyond consciousness, and develop real-time detection methods based on these validated patterns.
+This work demonstrates the value of rigorous empirical analysis in revealing hidden structure in AI interactions. While our specific dimensional values require replication with larger samples, the core insights (intervention dominance, capability-linked social dynamics, and predictive validity) provide a foundation for understanding multi-agent AI systems. Future work should address our power limitations (n$\geq$\sampleSizeForeightyPower{}), explore additional domains beyond consciousness, and develop real-time detection methods based on these validated patterns.
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}
