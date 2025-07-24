@@ -1,0 +1,28 @@
+RIGOROUS CONVERSATIONAL SPACE ANALYSIS RESULTS
+======================================================================
+Generated on: 2025-07-24 15:51:54
+
+1. STATISTICAL POWER
+------------------------------
+outcome_groups: 0.772
+model_types: 0.943
+correlation: 0.888
+
+2. INTERVENTION DOMINANCE
+------------------------------
+All features PC1: 98.7%
+Intervention only PC1: 99.8%
+Non-intervention PC1: 48.5%
+Intervention threshold: 0.366
+
+3. BOOTSTRAP STABILITY
+------------------------------
+PC1: 0.480 [0.384, 0.580]
+PC2: 0.154 [0.107, 0.214]
+PC3: 0.094 [0.065, 0.127]
+PC4: 0.072 [0.051, 0.093]
+
+4. DIMENSION PREDICTIVE POWER
+------------------------------
+Best test AUC: 0.740
+CV AUC: 0.742 ± 0.099
