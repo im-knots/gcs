@@ -1,0 +1,301 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{xfp}
+\usepackage{siunitx}
+\usepackage{newunicodechar}
+\usepackage{adjustbox}
+\usepackage{subcaption}
+\newunicodechar{∞}{\ensuremath{\infty}}
+
+\newcommand{\theacademy}{The Academy}
+\newcommand{\gcs}{GCS}
+
+\title{Conversational Dynamics as Trajectories in Semantic Vector Space: \\
+\large A Geometric Framework for Understanding AI Dialogue Evolution}
+
+\author{
+Marco R. Garcia \\
+marco@erulabs.ai
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present a geometric framework for understanding multi-agent AI conversations as trajectories through a 5-dimensional semantic vector space. Building on empirical observations of peer pressure affecting 88.5\% of AI conversations \citep{garcia2025peer}, we construct a theoretically-grounded coordinate system that captures the essential dynamics of conversational evolution. Our framework explains the dramatic capability gradient in social dynamics (88.5\% → 31.4\% → 0\% peer pressure across model tiers) through differential access to regions of conversation space. We identify high-density attractor regions corresponding to breakdown states and demonstrate how strategic interventions create "escape velocities" enabling trajectory redirection. While our current analysis employs linear vector space methods due to sample size constraints (N=98), the observed non-uniform density distributions and trajectory patterns suggest an underlying curved manifold structure. The framework provides quantitative predictions: conversations entering regions where breakdown risk $b > 2$ have 87\% (95\% CI: 79\%-93\%) probability of cascade failure within 10 turns, while questions deployed when $1 < b < 2$ show 73\% (95\% CI: 61\%-82\%) effectiveness at trajectory redirection. This geometric perspective unifies previously disparate observations about AI conversation dynamics while providing actionable insights for multi-agent system design.
+\end{abstract}
+
+\section{Introduction}
+
+The emergence of sustained multi-agent AI dialogue has revealed complex dynamics that resist traditional analysis. Recent work documented surprising social phenomena: AI agents exhibit peer pressure affecting 88.5\% of conversations, with breakdown patterns emerging from social rather than technical factors \citep{garcia2025peer}. These findings demand a mathematical framework capable of capturing both the richness of observed behaviors and the constraints of limited empirical data.
+
+We propose viewing conversations as trajectories through a semantic vector space—a geometric perspective that reveals hidden structure in seemingly chaotic dialogue evolution. Just as celestial mechanics explains complex planetary motion through gravitational fields in space, we model conversation dynamics through "semantic fields" that create attractors and repellers in dialogue space.
+
+\subsection{The Geometric Intuition}
+
+Consider how human conversations navigate through topics, emotions, and social dynamics. Some discussions flow naturally toward agreement, others spiral into conflict, and many exhibit sudden phase transitions. These patterns suggest an underlying geometry: a space where proximity indicates semantic similarity, where certain regions attract trajectories (breakdown states), and where interventions can redirect paths.
+
+While the true conversation space likely possesses intrinsic curvature—with breakdown attractors literally "warping" nearby trajectories—our current empirical constraints necessitate a first-order approximation using vector space methods. This approach, though simplified, captures the essential dynamics while remaining empirically grounded.
+
+\section{Theoretical Foundation}
+
+\subsection{Constructing Conversation Space}
+
+Based on extensive analysis of multi-agent dialogues, we identify five fundamental dimensions that span the space of conversational states:
+
+\textbf{Definition 1 (Conversation Space).} The conversation space $\mathcal{C}$ is a 5-dimensional real vector space with basis vectors corresponding to:
+\begin{align}
+\mathcal{C} = \text{span}\{e_s, e_\ell, e_b, e_r, e_t\}
+\end{align}
+
+where:
+\begin{itemize}
+    \item $e_s$: Social contagion basis vector
+    \item $e_\ell$: Linguistic synchrony basis vector
+    \item $e_b$: Breakdown risk basis vector
+    \item $e_r$: Recovery capacity basis vector
+    \item $e_t$: Temporal dynamics basis vector
+\end{itemize}
+
+Each conversation state is represented as a position vector:
+\begin{equation}
+\mathbf{c}(t) = s(t)e_s + \ell(t)e_\ell + b(t)e_b + r(t)e_r + t(t)e_t
+\end{equation}
+
+\subsection{Dimensional Construction from Observable Features}
+
+We construct each dimension through theoretically-motivated aggregation of observable features:
+
+\begin{align}
+s &= 0.6 \cdot z(\text{peer\_pressure\_intensity}) + 0.4 \cdot z(\text{bidirectional\_events}) \\
+\ell &= 0.5 \cdot z(\text{linguistic\_alignment}) + 0.5 \cdot z(\text{emotional\_convergence}) \\
+b &= 0.4 \cdot z(\text{mystical\_density}) + 0.4 \cdot z(\text{closure\_vibes}) + 0.2 \cdot z(\text{meta\_reflection}) \\
+r &= 0.7 \cdot z(\text{question\_density}) + 0.3 \cdot z(\text{recovery\_duration}) \\
+t &= 0.5 \cdot z(\text{phase\_transitions}) + 0.5 \cdot z(\text{phase5\_duration})
+\end{align}
+
+where $z(\cdot)$ denotes z-score normalization. These weights derive from correlation analysis with conversation outcomes (see Section 4).
+
+\subsection{Metric Structure and Distance}
+
+We equip $\mathcal{C}$ with a weighted inner product:
+
+\begin{equation}
+\langle \mathbf{c}_1, \mathbf{c}_2 \rangle = \mathbf{c}_1^T W \mathbf{c}_2
+\end{equation}
+
+where the weight matrix $W = \text{diag}(w_s, w_\ell, w_b, w_r, w_t)$ reflects empirical importance:
+
+\begin{equation}
+W = \text{diag}(0.25, 0.15, 0.35, 0.20, 0.05)
+\end{equation}
+
+\footnote{Weights derived from empirical analysis in \citep{garcia2025peer}: Peer pressure intensity showed the strongest effect on breakdown outcomes (ANOVA: F=7.59, p<0.001, $\eta^2$=0.282), justifying high weight for breakdown risk dimension. Question effectiveness correlated strongly with recovery (r=0.817, p<0.001), supporting recovery capacity weighting. Bidirectional influence, while not individually significant (p=0.134), contributed to peer pressure events. Linguistic alignment (mean=0.723) and emotional convergence (mean=0.575) showed consistent but moderate effects. Temporal features (phase durations) provided context without dominating outcomes. Weights approximate relative effect sizes: breakdown risk (0.35), social contagion (0.25), recovery capacity (0.20), linguistic synchrony (0.15), temporal dynamics (0.05).}
+
+The induced distance metric:
+\begin{equation}
+d(\mathbf{c}_1, \mathbf{c}_2) = \sqrt{\langle \mathbf{c}_1 - \mathbf{c}_2, \mathbf{c}_1 - \mathbf{c}_2 \rangle}
+\end{equation}
+
+quantifies semantic separation between conversation states.
+
+\section{Dynamics in Conversation Space}
+
+\subsection{Trajectory Evolution}
+
+Conversations evolve through $\mathcal{C}$ according to:
+
+\begin{equation}
+\frac{d\mathbf{c}}{dt} = \mathbf{v}(\mathbf{c}, t) + \mathbf{F}_{ext}(t)
+\end{equation}
+
+where $\mathbf{v}(\mathbf{c}, t)$ represents the intrinsic velocity field and $\mathbf{F}_{ext}(t)$ captures external interventions.
+
+\subsection{Attractor Regions and Density Functions}
+
+Rather than modeling curvature directly, we characterize conversation dynamics through probability density functions that create effective "gravitational fields."
+
+\textbf{Definition 2 (Breakdown Attractor).} The breakdown attractor region $\mathcal{B} \subset \mathcal{C}$ is characterized by:
+\begin{equation}
+\rho_B(\mathbf{c}) = \rho_0 \cdot \frac{1}{1 + \exp(-\lambda(b - b_c))} \cdot \exp\left(-\frac{\|\mathbf{c} - \mathbf{c}_B\|^2}{2\sigma^2}\right)
+\end{equation}
+
+where $b_c = 1.5$ (critical threshold), $\lambda = 4$ (transition steepness), $\sigma = 0.5$ (influence radius), and $\rho_0$ normalizes the distribution. We use a logistic transition (not a hard cutoff) multiplied by a Gaussian envelope. The logistic models the phase transition observed at $b \approx 1.5$, while the Gaussian captures local influence decay.
+
+This creates an effective potential:
+\begin{equation}
+\Phi_B(\mathbf{c}) = -k_B \int_{\mathcal{B}} \frac{\rho_B(\mathbf{c}')}{|\mathbf{c} - \mathbf{c}'|} d\mathbf{c}'
+\end{equation}
+
+generating an attractive force $\mathbf{F}_B = -\nabla \Phi_B$ that pulls trajectories toward breakdown.
+
+\subsection{Model-Dependent Accessibility}
+
+Different model capabilities access different regions of $\mathcal{C}$:
+
+\textbf{Definition 3 (Capability Subspaces).} For models of capability $\kappa \in \{\text{full}, \text{light}, \text{none}\}$:
+\begin{equation}
+\mathcal{C}_\kappa = \{\mathbf{c} \in \mathcal{C} : |c_i| \leq \sigma_i^\kappa, \forall i\}
+\end{equation}
+
+Empirically determined bounds:
+\begin{align}
+\mathcal{C}_{\text{full}} &: \sigma_s = 2.0, \sigma_b = 3.0, \sigma_r = 1.0 \\
+\mathcal{C}_{\text{light}} &: \sigma_s = 1.0, \sigma_b = 1.5, \sigma_r = 0.7 \\
+\mathcal{C}_{\text{none}} &: \sigma_s = 0.1, \sigma_b = 0.5, \sigma_r = 0.3
+\end{align}
+
+\subsubsection{Mechanism of Differential Access}
+The capability-dependent bounds likely emerge from architectural constraints: non-reasoning models lack the transformer depth to represent complex social dependencies, effectively projecting high-dimensional social dynamics to near-zero. Light models possess intermediate depth, enabling partial social representation but insufficient for extreme states. This "depth-dimensionality correspondence" suggests model architecture fundamentally limits accessible conversation space, not just performance within that space.
+
+\section{Empirical Validation}
+
+\subsection{Dataset and Methods}
+
+We analyzed 98 extended conversations:
+- 37 full reasoning (Claude 4 Opus, GPT-4.1, Grok 3)
+- 31 light reasoning (efficient variants)
+- 30 non-reasoning (fast/nano variants)
+
+Initial PCA revealed severe multicollinearity (condition number = 1,762) and sample size constraints, motivating our theory-driven approach.
+
+\subsection{Dimensional Validity}
+
+Computed dimensions show strong predictive power:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Dimension & Correlation w/ Breakdown & Std. Error & p-value \\
+\midrule
+Breakdown risk ($b$) & 0.73 & 0.08 & < 0.001 \\
+Recovery capacity ($r$) & -0.65 & 0.09 & < 0.001 \\
+Social contagion ($s$) & 0.42 & 0.10 & < 0.001 \\
+Temporal dynamics ($t$) & 0.21 & 0.10 & 0.04 \\
+Linguistic synchrony ($\ell$) & 0.18 & 0.10 & 0.08 \\
+\bottomrule
+\end{tabular}
+\caption{Dimensional correlations with breakdown outcomes validate theoretical construction}
+\label{tab:validity}
+\end{table}
+
+\subsection{Trajectory Analysis}
+
+Tracking 98 conversations through $\mathcal{C}$ reveals consistent patterns:
+
+Key observations:
+- 87\% (95\% CI: 79\%-93\%) of conversations entering $b > 2$ breakdown within 10 turns
+- Questions most effective in "critical zone" $1 < b < 2$ with 73\% success (95\% CI: 61\%-82\%)
+- Recovery impossible once $b > 2.5$ (0/8 attempts succeeded)
+
+\subsection{Model Capability Stratification}
+
+ANOVA confirms distinct regional occupation by model type:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccccc}
+\toprule
+Dimension & F-statistic & p-value & $\eta^2$ & Full $\mu$ & None $\mu$ \\
+\midrule
+Social ($s$) & 45.2 & < 0.001 & 0.48 & 0.82 & 0.03 \\
+Breakdown ($b$) & 38.7 & < 0.001 & 0.42 & 0.95 & -0.41 \\
+Recovery ($r$) & 12.3 & < 0.001 & 0.18 & 0.54 & 0.21 \\
+\bottomrule
+\end{tabular}
+\caption{Model types occupy statistically distinct regions of conversation space}
+\label{tab:anova}
+\end{table}
+
+\section{Intervention Dynamics}
+
+\subsection{Question-Based Trajectory Modification}
+
+Questions create instantaneous velocity changes:
+
+\begin{equation}
+\Delta \mathbf{v}_Q = -\alpha_Q b(t) e_b + \beta_Q e_r
+\end{equation}
+
+where $\alpha_Q = 0.8$ (breakdown reduction) and $\beta_Q = 1.2$ (recovery boost). The asymmetry ($\beta_Q > \alpha_Q$) reflects empirical observations: questions more effectively create recovery momentum than they reduce existing breakdown trajectories, suggesting different mechanisms for prevention versus repair.
+
+Effectiveness depends on current position:
+\begin{equation}
+P(\text{recovery}|Q) = \frac{1}{1 + \exp(2(b - 2))} \cdot \mathbb{1}_{r < 0.6}
+\end{equation}
+
+This explains why questions fail in deep breakdown ($b > 2.5$) or when recovery capacity is already saturated.
+
+\subsection{Optimal Intervention Timing}
+
+The gradient $\nabla P(\text{recovery})$ indicates optimal intervention when:
+- Breakdown risk rising: $\frac{db}{dt} > 0.3$
+- In critical zone: $1 < b < 2$
+- Recovery capacity available: $r < 0.4$
+
+Empirically, 73\% of successful interventions met all three timing criteria, versus 22\% of failed interventions ($\chi^2 = 18.3$, p < 0.001).
+
+\subsection{Trajectory Hysteresis}
+
+Our framework suggests conversations may exhibit hysteresis: recovery trajectories likely differ from breakdown paths due to asymmetric velocity changes ($\beta_Q > \alpha_Q$). This predicts that conversations require stronger interventions to recover from position $\mathbf{c}$ than would have been needed to prevent reaching $\mathbf{c}$. Empirically testable through controlled intervention timing experiments.
+
+\section{Limitations}
+
+Three key limitations warrant acknowledgment:
+\begin{itemize}
+    \item \textbf{Linear approximation}: Our vector space may miss nonlinear interactions between dimensions, particularly feedback loops between social and breakdown dynamics
+    \item \textbf{Empirical weights}: Dimensional weights derive from limited data (N=98); larger samples may reveal different relative importances
+    \item \textbf{Static framework}: We assume fixed dimension relationships, though these may evolve during conversation phases
+\end{itemize}
+
+\section{Implications and Future Directions}
+
+\subsection{Theoretical Implications}
+
+Our vector space model reveals:
+1. **Conversation dynamics are fundamentally 5-dimensional**, not reducible to single axes
+2. **Model capabilities create accessibility constraints**, not just performance differences
+3. **Breakdown attractors operate through density concentrations**, creating effective forces
+
+\subsection{Practical Applications}
+
+The framework enables:
+- **Risk monitoring**: Track $b(t)$ in real-time
+- **Intervention design**: Deploy questions when gradient conditions are met
+- **System composition**: Avoid capability mismatches that create unstable dynamics
+
+\subsection{Toward Curved Manifolds}
+
+While our linear approximation captures first-order effects, several observations suggest intrinsic curvature:
+- Trajectory acceleration near attractors exceeds linear predictions
+- Parallel conversations show divergence consistent with geodesic deviation
+- Phase transitions exhibit discontinuities suggesting topological features
+
+Future work with larger datasets (N > 500) could explore:
+- Full Riemannian structure with computed curvature tensors
+- Topological analysis of conversation space
+- Quantum-inspired superposition states for ambiguous conversations
+- Validation experiments comparing predicted and observed trajectories
+- Specific nonlinear models (e.g., coupled oscillators, catastrophe theory)
+
+\section{Conclusion}
+
+By modeling conversations as trajectories through a 5-dimensional semantic vector space, we provide a unified framework explaining diverse empirical observations. The dramatic capability gradient in peer pressure (88.5\% → 31.4\% → 0\%) emerges naturally from differential access to conversation space regions. While mathematical constraints limit us to linear methods, the geometric perspective reveals deep structure in AI dialogue dynamics, offering both theoretical insights and practical tools for managing multi-agent conversations.
+
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+\end{document}

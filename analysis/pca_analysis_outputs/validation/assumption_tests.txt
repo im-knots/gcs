@@ -1,0 +1,7 @@
+PCA ASSUMPTION TESTS
+Sample size: 98
+Number of features: 23
+Sample to feature ratio: 4.26
+KMO: 0.709
+Bartlett's p-value: 0.00e+00
+Condition number: 1762.46
