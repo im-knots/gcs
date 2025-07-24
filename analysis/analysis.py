@@ -1101,7 +1101,7 @@ if __name__ == "__main__":
     results = analyzer.run_complete_enhanced_analysis(
         phase1_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-1-premium/n37/conversation_analysis_enhanced.csv',
         phase2_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-2-efficient/n32/conversation_analysis_enhanced.csv',
-        phase3_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-3-no-reasoning/n30/conversation_analysis_enhanced.csv'
+        phase3_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-3-no-reasoning/n42/conversation_analysis_enhanced.csv'
     )
     
     print("\nEnhanced analysis complete! Check 'rigorous_analysis_outputs' for all results.")
