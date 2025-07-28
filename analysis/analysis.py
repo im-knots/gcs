@@ -44,7 +44,7 @@ except ImportError:
     print("Warning: UMAP not installed. Install with: pip install umap-learn")
     print("UMAP manifold learning will be skipped.")
 
-class RigorousConversationalAnalysis:
+class ConversationalAnalysis:
     """
     Enhanced analysis incorporating all critical suggestions:
     1. Regularized methods for high condition number
@@ -56,7 +56,7 @@ class RigorousConversationalAnalysis:
     7. Proper mathematical formalism
     """
     
-    def __init__(self, output_dir='rigorous_analysis_outputs'):
+    def __init__(self, output_dir='analysis_outputs'):
         self.output_dir = output_dir
         self.setup_directories()
         
@@ -64,7 +64,6 @@ class RigorousConversationalAnalysis:
         """Create output directory structure"""
         os.makedirs(self.output_dir, exist_ok=True)
         self.figures_dir = os.path.join(self.output_dir, 'figures')
-        self.data_dir = os.path.join(self.output_dir, 'data')
         self.validation_dir = os.path.join(self.output_dir, 'validation')
         self.bootstrap_dir = os.path.join(self.output_dir, 'bootstrap')
         self.power_dir = os.path.join(self.output_dir, 'power_analysis')
@@ -893,10 +892,10 @@ class RigorousConversationalAnalysis:
         plt.close()
     
     def run_complete_enhanced_analysis(self, phase1_path, phase2_path, phase3_path):
-        """Run the complete enhanced analysis with all rigorous methods"""
+        """Run the complete enhanced analysis with all methods"""
         
         print("\n" + "="*70)
-        print("RIGOROUS CONVERSATIONAL SPACE ANALYSIS")
+        print("CONVERSATIONAL SPACE ANALYSIS")
         print("="*70)
         print("Incorporating:")
         print("- Statistical power analysis")
@@ -1061,7 +1060,7 @@ class RigorousConversationalAnalysis:
         report_path = os.path.join(self.output_dir, 'comprehensive_analysis_report.txt')
         
         with open(report_path, 'w') as f:
-            f.write("RIGOROUS CONVERSATIONAL SPACE ANALYSIS RESULTS\n")
+            f.write("CONVERSATIONAL SPACE ANALYSIS RESULTS\n")
             f.write("="*70 + "\n")
             f.write(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             
@@ -1095,7 +1094,7 @@ class RigorousConversationalAnalysis:
 
 # Usage
 if __name__ == "__main__":
-    analyzer = RigorousConversationalAnalysis()
+    analyzer = ConversationalAnalysis()
     
     # Run enhanced analysis
     results = analyzer.run_complete_enhanced_analysis(
@@ -1104,4 +1103,4 @@ if __name__ == "__main__":
         phase3_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-3-no-reasoning/n42/conversation_analysis_enhanced.csv'
     )
     
-    print("\nEnhanced analysis complete! Check 'rigorous_analysis_outputs' for all results.")
+    print("\nEnhanced analysis complete! Check 'analysis_outputs' for all results.")
