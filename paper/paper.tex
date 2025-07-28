@@ -139,9 +139,9 @@
 \newcommand{\nonLinguisticAlignment}{0.757}
 
 % Updated figure paths 
-\newcommand{\figuresPath}{../analysis/rigorous_analysis_outputs/figures/}
-\newcommand{\bootstrapPath}{../analysis/rigorous_analysis_outputs/bootstrap/}
-\newcommand{\validationPath}{../analysis/rigorous_analysis_outputs/validation/}
+\newcommand{\figuresPath}{../analysis/analysis_outputs_n110/figures/}
+\newcommand{\bootstrapPath}{../analysis/analysis_outputs_n110/bootstrap/}
+\newcommand{\validationPath}{../analysis/analysis_outputs_n110/validation/}
 
 \title{Conversational Dynamics as Trajectories in Multi-Regime Semantic Space: \\
 \large A Geometric Framework for Understanding AI Dialogue Evolution}
@@ -174,6 +174,55 @@ We employ rigorous statistical methods including regularized PCA ($\alpha = \reg
 Consider how human conversations navigate through topics, emotions, and social dynamics. Some discussions flow naturally toward agreement, others spiral into conflict, and many exhibit sudden phase transitions. These patterns suggest an underlying geometry: a space where proximity indicates semantic similarity, where certain regions attract trajectories (breakdown states), and where interventions can redirect paths.
 
 Our analysis reveals a fundamental duality: conversations exist in two distinct geometric regimes. When evolving naturally, they navigate a rich 4-dimensional manifold. When heavily intervened upon, they collapse to movement along a 1-dimensional axis. This discovery transforms our understanding of AI dialogue dynamics and intervention strategies.
+
+\section{Related Work}
+
+Our geometric framework for understanding AI conversations as trajectories through multi-regime semantic space builds upon several research threads while addressing critical gaps in the literature. We survey relevant work in geometric approaches to dialogue, mathematical formalisms for conversation dynamics, and topological methods in natural language processing.
+
+\subsection{Geometric and Topological Approaches to Dialogue}
+
+Despite extensive development of geometric methods in machine learning, their application to dialogue modeling remains surprisingly limited. \citep{ballus2024topological} recently introduced topological dialogue semantics using simplicial complexes, where utterances correspond to open sets in discrete semantic spaces. While this provides provably correct algorithms for topological reasoning, it has not been implemented for AI-to-AI systems and lacks the trajectory-based perspective central to our approach.
+
+The state space grid framework by \citep{brinberg2024state} operationalizes conversation movement through geometric state spaces, quantifying behavioral contingencies and conversation attractors in human dyadic interactions. Though focused on human communication, their identification of attractor dynamics and flexibility parameters provides a foundation we extend to multi-agent AI systems. Similarly, \citep{sage2025steering} introduces State-Action Chain representations for dialogue, separating high-level planning from generation—a distinction that motivated our multi-regime formulation.
+
+Topological data analysis has found limited application in dialogue systems. \citep{vukovic2022dialogue} pioneered the use of persistent homology for analyzing word embedding topology in task-oriented dialogue, demonstrating how topological features can extract domain-specific information. However, their work focuses on static representations rather than the dynamic evolution we model. The application of persistent homology to topic networks \citep{hopp2024persistent} reveals how topological features capture information gaps, suggesting potential for analyzing conversation structure evolution, though this connection remains unexplored.
+
+\subsection{Mathematical Formalisms for Conversation Dynamics}
+
+The most significant recent development comes from \citep{wang2025attractor}, who discovered that large language models converge to stable 2-period attractor cycles during successive paraphrasing. Their dynamical systems approach treats text generation as $f: \mathcal{T} \rightarrow \mathcal{T}$ mapping text space to itself, revealing that AI systems settle into predictable patterns. This finding directly motivates our investigation of whether multi-agent conversations exhibit similar attractor dynamics or more complex trajectories through semantic space.
+
+State space models provide the most developed mathematical framework for sequential modeling. The HiPPO framework \citep{gu2020hippo} and its extensions (S4, Mamba) offer sophisticated approaches to maintaining continuous representations of time-dependent data through optimal polynomial approximation. These models implement linear state space equations:
+\begin{align}
+\frac{dx}{dt} &= Ax + Bu \\
+y &= Cx + Du
+\end{align}
+While powerful for sequence modeling, these approaches have not been adapted to model the semantic evolution of conversations or the regime transitions we observe.
+
+The DYMO project \citep{eshghi2017dymo} represents one of the few attempts at truly dynamic dialogue modeling, using Type Theory with Records and incremental semantic parsing. However, their focus on compositional semantics differs from our geometric perspective on conversation trajectories. Similarly, while \citep{chen2021conversations} argue that conversations are "not flat" and model information flow dynamics, they do not adopt the geometric trajectory view that enables our regime-based analysis.
+
+\subsection{Manifold Learning and Semantic Spaces}
+
+Manifold learning has shown promise for understanding linguistic representations. \citep{hasan2017manifold} demonstrated that word embeddings suffer from metric distortions when treated as Euclidean spaces, proposing manifold dimensionality retention to correct these issues. This insight extends naturally to dialogue embeddings—if individual words require manifold structure, entire conversations likely inhabit even more complex geometric spaces.
+
+Recent work on Riemannian manifold learning for multi-agent systems \citep{liu2025riemannian} maps joint action spaces to smooth manifolds using neural normalizing flows. While focused on game-theoretic settings, their framework for learning on curved spaces could naturally extend to conversational dynamics. However, this connection has not been explored, leaving a significant gap our work addresses.
+
+\subsection{Critical Gaps and Our Contribution}
+
+Our comprehensive literature review reveals several critical gaps:
+
+\textbf{Absence of Trajectory-Based Models}: No existing work explicitly models conversations as continuous trajectories through semantic vector spaces. While vector representations are ubiquitous, the dynamic path perspective remains unexplored.
+
+\textbf{Lack of Multi-Regime Frameworks}: The literature contains no frameworks for understanding how conversations transition between different geometric regimes. Our discovery that intervention density fundamentally alters the dimensional structure of conversation dynamics appears entirely novel.
+
+\textbf{Limited AI-to-AI Analysis}: Despite growing interest in multi-agent AI systems, geometric analysis focuses almost exclusively on human-human or human-AI interaction. The peer pressure dynamics and capability gradients we document have no precedent in the geometric dialogue literature.
+
+\textbf{Missing Phase Space Applications}: While phase space methods are well-established in physics and control theory, their application to dialogue remains theoretical. Our operational use of phase portraits for conversation analysis pioneers this connection.
+
+\textbf{No Intervention-Based Regime Switching}: The concept of intervention density causing geometric regime transitions appears completely absent from prior work. This represents a fundamental insight about how external steering affects conversation structure.
+
+Our framework addresses these gaps by providing the first comprehensive geometric model of AI dialogue evolution. By combining trajectory analysis with multi-regime dynamics, we reveal how conversations navigate semantic space under different conditions. The empirical validation across 110 conversations with multiple model tiers demonstrates that these geometric insights capture real phenomena in AI communication.
+
+The discovery that sophisticated models exhibit richer geometric behavior while simpler models collapse to lower-dimensional dynamics suggests that geometric complexity may be a fundamental characteristic of advanced AI communication—a finding with significant implications for designing and understanding multi-agent AI systems.
 
 \section{Methods}
 
