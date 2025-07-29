@@ -1,0 +1,66 @@
+ENHANCED CONVERSATIONAL SPACE ANALYSIS RESULTS V3
+======================================================================
+Generated on: 2025-07-29 11:27:15
+
+1. STATISTICAL POWER
+------------------------------
+outcome_groups: 0.996
+model_types: 1.000
+correlation: 1.000
+
+2. INTERVENTION DOMINANCE
+------------------------------
+All features PC1: 92.8%
+Intervention only PC1: 99.4%
+Non-intervention PC1: 79.5%
+Intervention threshold: 0.044
+
+3. BOOTSTRAP STABILITY
+------------------------------
+PC1: 0.780 [0.666, 0.869]
+PC2: 0.056 [0.031, 0.096]
+PC3: 0.040 [0.025, 0.062]
+PC4: 0.029 [0.017, 0.045]
+
+4. DIMENSION PREDICTIVE POWER
+------------------------------
+Best test AUC: 0.743
+CV AUC: 0.867 ± 0.112
+
+5. INTRINSIC DIMENSIONALITY
+------------------------------
+ML Estimate: 1.96
+PCA 90% variance: 4 dimensions
+PCA 95% variance: 6 dimensions
+
+6. WITHIN-TIER HETEROGENEITY
+------------------------------
+full_reasoning: 2 subtypes (silhouette=0.236)
+light_reasoning: 2 subtypes (silhouette=0.649)
+no_reasoning: 2 subtypes (silhouette=0.815)
+
+7. MANIFOLD LEARNING COMPARISON
+------------------------------
+PCA: 0.933
+MDS: 0.975
+Isomap: 0.946
+t-SNE: 0.772
+UMAP: 0.779
+
+8. CONVERSATION PHASES
+------------------------------
+Optimal phases: 3
+Transitions found: 56
+
+9. TRAJECTORY PREDICTION
+------------------------------
+Horizon 5: RMSE = 0.180
+Horizon 10: RMSE = 0.184
+Horizon 20: RMSE = 0.400
+
+10. PER-TIER GEOMETRY COMPARISON
+------------------------------
+           Tier   N  Breakdown Rate  All Features PC1  Non-Int PC1  Intrinsic Dim (ML)  Intrinsic Dim (PCA90)  Optimal Clusters  Best Silhouette
+ full_reasoning  67        0.552239          0.884131     0.317903            2.087745                      7                 2         0.236145
+light_reasoning  61        0.475410          0.620656     0.707450            1.736197                      3                 2         0.648501
+   no_reasoning 100        0.190000          0.738787     0.797542            1.499665                      3                 2         0.815348

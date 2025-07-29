@@ -1,0 +1,1961 @@
+
+======================================================================
+ENHANCED CONVERSATIONAL SPACE ANALYSIS V3
+======================================================================
+Incorporating:
+- Statistical power analysis
+- Regularized methods
+- Bootstrap confidence intervals
+- Cross-validated prediction
+- Intervention threshold analysis
+- Synthetic data validation
+- Intrinsic dimensionality estimation
+- Within-tier heterogeneity analysis
+- Topological data analysis
+- Manifold learning comparison
+- Phase detection and trajectory prediction
+- PER-TIER GEOMETRIC ANALYSIS
+
+Total conversations: 228
+Phase distribution:
+phase
+no_reasoning       100
+full_reasoning      67
+light_reasoning     61
+Name: count, dtype: int64
+
+Conversation outcome distribution:
+conversation_outcome
+no_breakdown    128
+breakdown        85
+recovered        10
+resisted          5
+Name: count, dtype: int64
+Overall breakdown rate: 0.373
+
+======================================================================
+STATISTICAL POWER ANALYSIS
+======================================================================
+Power for detecting outcome differences (4 groups): 0.996
+Power for detecting model type differences (3 groups): 1.000
+
+Sample size needed for 80% power: 103 total (25.8 per group)
+Current sample size: 228
+Adequacy: ADEQUATE
+
+Power for detecting correlations (r=0.349): 1.000
+
+======================================================================
+OVERALL ANALYSIS (ALL TIERS COMBINED)
+======================================================================
+
+--- Comparing All Features vs Separated ---
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 354209363.01
+Regularized condition number: 7960.99
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 81936.23
+Regularized condition number: 7245.51
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 19481111.20
+Regularized condition number: 464.45
+
+======================================================================
+BOOTSTRAP STABILITY ANALYSIS
+======================================================================
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 17876304.21
+Regularized condition number: 421.21
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 33124532.93
+Regularized condition number: 528.73
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 178680629.07
+Regularized condition number: 559.35
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 19615655.74
+Regularized condition number: 620.39
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 9108233.31
+Regularized condition number: 280.17
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 12335203.05
+Regularized condition number: 217.88
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 14390928.23
+Regularized condition number: 360.42
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 16919941.27
+Regularized condition number: 388.18
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 39488213.90
+Regularized condition number: 654.29
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 23197650.33
+Regularized condition number: 525.43
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 22257969.72
+Regularized condition number: 381.13
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 58413596.44
+Regularized condition number: 425.11
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 59450506.53
+Regularized condition number: 802.85
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 26273278.96
+Regularized condition number: 470.18
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 22539507.03
+Regularized condition number: 292.59
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 8404989.22
+Regularized condition number: 202.54
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 11261848.96
+Regularized condition number: 249.83
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 17980919.99
+Regularized condition number: 532.35
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 35780620.73
+Regularized condition number: 522.92
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 35835713.91
+Regularized condition number: 323.61
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 12293387.40
+Regularized condition number: 442.58
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 15259530.74
+Regularized condition number: 443.25
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 26957821.20
+Regularized condition number: 592.83
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 63206640.40
+Regularized condition number: 459.32
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 18804609.15
+Regularized condition number: 332.04
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 19343675.93
+Regularized condition number: 294.17
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 18267367.31
+Regularized condition number: 414.11
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 31698217.88
+Regularized condition number: 456.83
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 16359756.27
+Regularized condition number: 359.79
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 29322253.20
+Regularized condition number: 481.91
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 36194648.05
+Regularized condition number: 655.92
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 17369254.27
+Regularized condition number: 403.42
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 37156516.84
+Regularized condition number: 415.21
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 11587149.16
+Regularized condition number: 296.81
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 54018075.91
+Regularized condition number: 541.06
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 23417446.19
+Regularized condition number: 396.87
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 16330142.78
+Regularized condition number: 326.31
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 32664707.02
+Regularized condition number: 543.99
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 53981245.92
+Regularized condition number: 584.56
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 13267816.85
+Regularized condition number: 396.07
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 28016399.53
+Regularized condition number: 362.28
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 47707515.84
+Regularized condition number: 611.92
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 59914706.44
+Regularized condition number: 440.89
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 28408480.59
+Regularized condition number: 562.06
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 28530363.79
+Regularized condition number: 491.17
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 25452722.51
+Regularized condition number: 327.92
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 11339520.97
+Regularized condition number: 241.60
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 36392733.23
+Regularized condition number: 399.57
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 67407168.90
+Regularized condition number: 781.79
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 19441988.99
+Regularized condition number: 501.29
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 31233200.15
+Regularized condition number: 408.64
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 58662692.79
+Regularized condition number: 566.19
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 25921531.71
+Regularized condition number: 449.72
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 8927710.70
+Regularized condition number: 306.61
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 27461774.61
+Regularized condition number: 587.88
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 13690644.35
+Regularized condition number: 327.07
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 48025416.21
+Regularized condition number: 888.03
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 24709170.56
+Regularized condition number: 405.81
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 16391640.22
+Regularized condition number: 392.89
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 22459810.25
+Regularized condition number: 461.27
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 28644153.54
+Regularized condition number: 390.05
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 16742058.45
+Regularized condition number: 299.75
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 16576142.16
+Regularized condition number: 402.07
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 21655859.56
+Regularized condition number: 645.87
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 21871395.95
+Regularized condition number: 752.42
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 12967736.63
+Regularized condition number: 510.43
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 35586497.34
+Regularized condition number: 390.37
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 21997665.29
+Regularized condition number: 316.75
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 27303812.77
+Regularized condition number: 565.72
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 9729129.36
+Regularized condition number: 170.96
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 20797012.61
+Regularized condition number: 505.14
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 73247527.08
+Regularized condition number: 511.03
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 24633537.93
+Regularized condition number: 354.15
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 23866996.03
+Regularized condition number: 420.47
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 34492681.34
+Regularized condition number: 365.10
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 62639245.18
+Regularized condition number: 467.67
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 14210858.70
+Regularized condition number: 381.91
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 35084896.26
+Regularized condition number: 530.38
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 17612750.98
+Regularized condition number: 310.46
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 28574647.96
+Regularized condition number: 462.42
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 18512754.29
+Regularized condition number: 463.46
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 22928587.27
+Regularized condition number: 568.41
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 31760081.56
+Regularized condition number: 537.12
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 12652438.50
+Regularized condition number: 568.37
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 10089721.05
+Regularized condition number: 279.05
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 107552280.35
+Regularized condition number: 523.32
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 25479240.93
+Regularized condition number: 611.13
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 24057533.45
+Regularized condition number: 606.15
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 10016156.86
+Regularized condition number: 311.11
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 14229562.76
+Regularized condition number: 416.73
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 15229519.13
+Regularized condition number: 420.16
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 93262074.04
+Regularized condition number: 580.35
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 75181975.45
+Regularized condition number: 721.95
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 15462558.21
+Regularized condition number: 248.74
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 21569801.00
+Regularized condition number: 410.76
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 11949264.06
+Regularized condition number: 227.95
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 18434973.92
+Regularized condition number: 272.96
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 17867654.45
+Regularized condition number: 507.59
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 14901452.92
+Regularized condition number: 415.53
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 38300738.88
+Regularized condition number: 493.00
+
+Variance Explained (95% CI):
+PC1: 0.780 [0.666, 0.869]
+PC2: 0.056 [0.031, 0.096]
+PC3: 0.040 [0.025, 0.062]
+PC4: 0.029 [0.017, 0.045]
+
+======================================================================
+DIMENSION PREDICTIVE POWER (CROSS-VALIDATED)
+======================================================================
+
+C = 0.01:
+  CV AUC: 0.828 ± 0.098
+  Test AUC: 0.709
+
+C = 0.1:
+  CV AUC: 0.832 ± 0.102
+  Test AUC: 0.713
+
+C = 1.0:
+  CV AUC: 0.858 ± 0.108
+  Test AUC: 0.733
+
+C = 10.0:
+  CV AUC: 0.867 ± 0.112
+  Test AUC: 0.743
+
+Best Model (C = 10.0) Coefficients:
+  social_contagion: -0.047
+  linguistic_synchrony: 0.895
+  affective_cognitive: 4.314
+  temporal_dynamics: -0.083
+
+Classification Report (Test Set):
+              precision    recall  f1-score   support
+
+           0       0.80      0.86      0.83        43
+           1       0.74      0.65      0.69        26
+
+    accuracy                           0.78        69
+   macro avg       0.77      0.76      0.76        69
+weighted avg       0.78      0.78      0.78        69
+
+
+======================================================================
+INTERVENTION REGIME THRESHOLD ANALYSIS
+======================================================================
+
+Intervention Density by Outcome:
+no_breakdown: 0.376 ± 0.421
+resisted: 0.461 ± 0.489
+recovered: 0.426 ± 0.185
+breakdown: 0.313 ± 0.333
+
+ANOVA: F = 0.70, p = 0.5507
+
+======================================================================
+GENERATING SYNTHETIC CONVERSATIONS
+======================================================================
+Available dimensions: ['social_contagion', 'linguistic_synchrony', 'affective_cognitive', 'temporal_dynamics']
+
+Validating Synthetic Data:
+Dimension means (Real vs Synthetic):
+  social_contagion: 1.671 vs 2.089
+  linguistic_synchrony: 0.237 vs 0.179
+  affective_cognitive: 0.188 vs 0.203
+  temporal_dynamics: 0.435 vs 0.391
+
+Real vs Synthetic discrimination accuracy: 0.737
+(Lower is better - 0.5 means indistinguishable)
+
+======================================================================
+INTRINSIC DIMENSIONALITY ESTIMATION
+======================================================================
+ML Dimension Estimate: 1.96 ± 1.23
+Correlation Dimension: -1.13
+PCA Effective Dimension (90%): 4
+PCA Effective Dimension (95%): 6
+
+======================================================================
+WITHIN-TIER HETEROGENEITY ANALYSIS
+======================================================================
+
+--- Analyzing full_reasoning ---
+Optimal subtypes: 2
+Silhouette score: 0.236
+  Cluster 0: n=32, breakdown=75.00%
+  Cluster 1: n=35, breakdown=37.14%
+
+--- Analyzing light_reasoning ---
+Optimal subtypes: 2
+Silhouette score: 0.649
+  Cluster 0: n=55, breakdown=43.64%
+  Cluster 1: n=6, breakdown=83.33%
+
+--- Analyzing no_reasoning ---
+Optimal subtypes: 2
+Silhouette score: 0.815
+  Cluster 0: n=94, breakdown=19.15%
+  Cluster 1: n=6, breakdown=16.67%
+
+======================================================================
+TOPOLOGICAL DATA ANALYSIS
+======================================================================
+Topological Features Found:
+  Dimension 0: 23 significant features
+    Mean lifetime: 1.244
+  Dimension 1: 9 significant features
+    Mean lifetime: 0.140
+  Dimension 2: 2 significant features
+    Mean lifetime: 0.073
+
+======================================================================
+MANIFOLD LEARNING COMPARISON
+======================================================================
+Computing PCA...
+Computing MDS...
+Computing Isomap...
+Computing t-SNE...
+Computing UMAP...
+
+Distance Preservation Scores (Spearman correlation):
+  PCA: 0.933 (time: 0.00s)
+  MDS: 0.975 (time: 0.39s)
+  Isomap: 0.946 (time: 0.01s)
+  t-SNE: 0.772 (time: 0.33s)
+  UMAP: 0.779 (time: 5.81s)
+
+======================================================================
+CONVERSATION PHASE DETECTION
+======================================================================
+Optimal number of phases: 3
+Found 56 phase transitions
+  Phase 0: n=59, cov_trace=31.384
+  Phase 1: n=166, cov_trace=1.001
+  Phase 2: n=3, cov_trace=105.664
+
+======================================================================
+TRAJECTORY PREDICTION MODEL
+======================================================================
+Trajectory Prediction RMSE by Horizon:
+  Horizon 5: 0.180
+  Horizon 10: 0.184
+  Horizon 20: 0.400
+
+======================================================================
+PER-TIER GEOMETRIC ANALYSIS
+======================================================================
+
+======================================================================
+TIER-SPECIFIC ANALYSIS: full_reasoning
+======================================================================
+N = 67 conversations
+
+--- PCA Analysis for full_reasoning ---
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 64445782.50
+Regularized condition number: 1081.90
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1800433.65
+Regularized condition number: 34.25
+All features PC1: 88.4%
+Non-intervention PC1: 31.8%
+
+--- Intrinsic Dimensionality for full_reasoning ---
+
+======================================================================
+INTRINSIC DIMENSIONALITY ESTIMATION
+======================================================================
+ML Dimension Estimate: 2.09 ± 1.15
+Correlation Dimension: Could not be calculated
+PCA Effective Dimension (90%): 7
+PCA Effective Dimension (95%): 9
+
+--- Bootstrap Stability for full_reasoning ---
+
+======================================================================
+BOOTSTRAP STABILITY ANALYSIS
+======================================================================
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 7907453.25
+Regularized condition number: 39.39
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3008902.51
+Regularized condition number: 44.36
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2020653.48
+Regularized condition number: 41.39
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1731239.83
+Regularized condition number: 27.80
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3382054.06
+Regularized condition number: 31.13
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2338332.73
+Regularized condition number: 36.30
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2350023.80
+Regularized condition number: 38.25
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2620475.07
+Regularized condition number: 34.60
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3380373.60
+Regularized condition number: 43.85
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3342428.62
+Regularized condition number: 38.67
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3537255.97
+Regularized condition number: 34.29
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2480521.75
+Regularized condition number: 50.07
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3941674.24
+Regularized condition number: 41.12
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1619791.23
+Regularized condition number: 38.13
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3684507.53
+Regularized condition number: 45.36
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2714823.53
+Regularized condition number: 29.48
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1564897.38
+Regularized condition number: 28.08
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1372649.04
+Regularized condition number: 32.04
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 7220773.02
+Regularized condition number: 36.81
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2692323.17
+Regularized condition number: 29.97
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 16066081.87
+Regularized condition number: 35.47
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 8200589.56
+Regularized condition number: 51.46
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 4008082.68
+Regularized condition number: 35.79
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1468621.03
+Regularized condition number: 34.64
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3218332.55
+Regularized condition number: 42.44
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1163308.22
+Regularized condition number: 25.50
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2016220.81
+Regularized condition number: 29.63
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2034825.55
+Regularized condition number: 31.44
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3417501.38
+Regularized condition number: 31.85
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 5057242.06
+Regularized condition number: 26.06
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2011773.34
+Regularized condition number: 32.60
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 11710565.39
+Regularized condition number: 44.75
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3083070.56
+Regularized condition number: 40.78
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1832545.99
+Regularized condition number: 33.69
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2371198.57
+Regularized condition number: 32.78
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2266835.38
+Regularized condition number: 31.29
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2265083.07
+Regularized condition number: 39.06
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 9550730.85
+Regularized condition number: 38.65
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3160451.31
+Regularized condition number: 43.19
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1272674.96
+Regularized condition number: 36.97
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1552236.64
+Regularized condition number: 28.67
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1670637.89
+Regularized condition number: 33.98
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2133065.37
+Regularized condition number: 36.94
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2281786.92
+Regularized condition number: 29.65
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3788187.16
+Regularized condition number: 41.38
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2730453.17
+Regularized condition number: 41.18
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2521666.00
+Regularized condition number: 38.69
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 3400503.86
+Regularized condition number: 40.56
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2304084.28
+Regularized condition number: 33.76
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1972552.99
+Regularized condition number: 31.49
+
+Variance Explained (95% CI):
+PC1: 0.331 [0.272, 0.390]
+PC2: 0.156 [0.121, 0.187]
+PC3: 0.109 [0.095, 0.134]
+PC4: 0.089 [0.071, 0.106]
+
+--- Within-tier Structure for full_reasoning ---
+Optimal clusters: 2 (silhouette: 0.236)
+
+--- Manifold Learning for full_reasoning ---
+
+======================================================================
+MANIFOLD LEARNING COMPARISON
+======================================================================
+Computing PCA...
+Computing MDS...
+Computing Isomap...
+Computing t-SNE...
+Computing UMAP...
+
+Distance Preservation Scores (Spearman correlation):
+  PCA: 0.859 (time: 0.00s)
+  MDS: 0.888 (time: 0.07s)
+  Isomap: 0.808 (time: 0.00s)
+  t-SNE: 0.783 (time: 0.15s)
+  UMAP: 0.700 (time: 0.48s)
+
+======================================================================
+TIER-SPECIFIC ANALYSIS: light_reasoning
+======================================================================
+N = 61 conversations
+
+--- PCA Analysis for light_reasoning ---
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -81217596373828777279488.00
+Regularized condition number: 688.94
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 30417790.68
+Regularized condition number: 287.75
+All features PC1: 62.1%
+Non-intervention PC1: 70.7%
+
+--- Intrinsic Dimensionality for light_reasoning ---
+
+======================================================================
+INTRINSIC DIMENSIONALITY ESTIMATION
+======================================================================
+ML Dimension Estimate: 1.74 ± 0.87
+Correlation Dimension: inf
+PCA Effective Dimension (90%): 3
+PCA Effective Dimension (95%): 5
+
+--- Bootstrap Stability for light_reasoning ---
+
+======================================================================
+BOOTSTRAP STABILITY ANALYSIS
+======================================================================
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 59666666.62
+Regularized condition number: 308.34
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -136655627176598224.00
+Regularized condition number: 331.61
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 62175367.75
+Regularized condition number: 280.21
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 106454181.61
+Regularized condition number: 484.79
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -122332270241335168.00
+Regularized condition number: 188.21
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 65168228.40
+Regularized condition number: 374.30
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 23493074.60
+Regularized condition number: 221.14
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -692291259584876288.00
+Regularized condition number: 153.67
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 196465150817735776.00
+Regularized condition number: 414.12
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 49771622.52
+Regularized condition number: 391.16
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -2513307545768330752.00
+Regularized condition number: 204.49
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 18877967.67
+Regularized condition number: 162.20
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 24528944.77
+Regularized condition number: 148.01
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 75182849378014896.00
+Regularized condition number: 230.84
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -274024480011533696.00
+Regularized condition number: 712.45
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 31907934.15
+Regularized condition number: 198.40
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 154052970623110848.00
+Regularized condition number: 141.27
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 13393494.03
+Regularized condition number: 86.23
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -20865729835108581376.00
+Regularized condition number: 360.49
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 53429231.49
+Regularized condition number: 222.93
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 203332163402426944.00
+Regularized condition number: 680.16
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 33501246303768404.00
+Regularized condition number: 101.01
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 43399323.57
+Regularized condition number: 340.41
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 51867327.27
+Regularized condition number: 484.64
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -70115694578656568.00
+Regularized condition number: 77.40
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -93616186311231088.00
+Regularized condition number: 297.34
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 42716893.59
+Regularized condition number: 296.36
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -68487842395284240.00
+Regularized condition number: 107.34
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 60885290.50
+Regularized condition number: 263.44
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 44394861772156704.00
+Regularized condition number: 176.37
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -74313517857797072.00
+Regularized condition number: 416.37
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 21844391.29
+Regularized condition number: 239.90
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 54047675.53
+Regularized condition number: 544.48
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -382411273529124096.00
+Regularized condition number: 216.08
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 66888867036111264.00
+Regularized condition number: 149.12
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 641560584158139264.00
+Regularized condition number: 304.62
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 139540251704503840.00
+Regularized condition number: 113.18
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 79305742.89
+Regularized condition number: 282.39
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 87226760.51
+Regularized condition number: 444.83
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 12479105.07
+Regularized condition number: 79.84
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 62129219.09
+Regularized condition number: 380.09
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -96220997558685280.00
+Regularized condition number: 238.73
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 77435807754193856.00
+Regularized condition number: 338.24
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -433169020085669120.00
+Regularized condition number: 255.62
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -1206940069755058944.00
+Regularized condition number: 222.99
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 1160797909797432320.00
+Regularized condition number: 259.54
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 22440818.97
+Regularized condition number: 181.18
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 19476477.03
+Regularized condition number: 132.48
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 37848522.11
+Regularized condition number: 369.03
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 64813918949944424.00
+Regularized condition number: 53.37
+
+Variance Explained (95% CI):
+PC1: 0.664 [0.462, 0.851]
+PC2: 0.137 [0.058, 0.237]
+PC3: 0.062 [0.024, 0.112]
+PC4: 0.038 [0.015, 0.078]
+
+--- Within-tier Structure for light_reasoning ---
+Optimal clusters: 2 (silhouette: 0.649)
+
+--- Manifold Learning for light_reasoning ---
+
+======================================================================
+MANIFOLD LEARNING COMPARISON
+======================================================================
+Computing PCA...
+Computing MDS...
+Computing Isomap...
+Computing t-SNE...
+Computing UMAP...
+
+Distance Preservation Scores (Spearman correlation):
+  PCA: 0.891 (time: 0.00s)
+  MDS: 0.972 (time: 0.08s)
+  Isomap: 0.934 (time: 0.00s)
+  t-SNE: 0.799 (time: 0.10s)
+  UMAP: 0.629 (time: 0.36s)
+
+======================================================================
+TIER-SPECIFIC ANALYSIS: no_reasoning
+======================================================================
+N = 100 conversations
+
+--- PCA Analysis for no_reasoning ---
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -900576612668253696.00
+Regularized condition number: 767.67
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -542349976018793857024.00
+Regularized condition number: 765.76
+All features PC1: 73.9%
+Non-intervention PC1: 79.8%
+
+--- Intrinsic Dimensionality for no_reasoning ---
+
+======================================================================
+INTRINSIC DIMENSIONALITY ESTIMATION
+======================================================================
+ML Dimension Estimate: 1.50 ± 0.89
+Correlation Dimension: -1.43
+PCA Effective Dimension (90%): 3
+PCA Effective Dimension (95%): 5
+
+--- Bootstrap Stability for no_reasoning ---
+
+======================================================================
+BOOTSTRAP STABILITY ANALYSIS
+======================================================================
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -21939578846994427904.00
+Regularized condition number: 680.44
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -86727836642942496.00
+Regularized condition number: 192.02
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -375111073755838414848.00
+Regularized condition number: 789.46
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 363295771907941269504.00
+Regularized condition number: 1218.22
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -45812311209569712.00
+Regularized condition number: 597.20
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -196432205119351816192.00
+Regularized condition number: 1008.50
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -128496300885421998080.00
+Regularized condition number: 649.05
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -899402755945666576384.00
+Regularized condition number: 486.57
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -130909979705854459904.00
+Regularized condition number: 879.73
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -2958675125538747580416.00
+Regularized condition number: 721.04
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -144679932494138592.00
+Regularized condition number: 1269.94
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -7021452720161648640.00
+Regularized condition number: 925.29
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -870944890397098752.00
+Regularized condition number: 921.02
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 142334398727250165760.00
+Regularized condition number: 534.62
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -3608899733396736000.00
+Regularized condition number: 904.81
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -1285474661824802304.00
+Regularized condition number: 918.70
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -1286234730296780544.00
+Regularized condition number: 554.44
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -862826153722585600.00
+Regularized condition number: 1123.29
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -184536365013934374912.00
+Regularized condition number: 754.36
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 588164594922475618304.00
+Regularized condition number: 1444.17
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -2455353138715743232.00
+Regularized condition number: 603.84
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -9942450069784696832.00
+Regularized condition number: 407.93
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -71639288791389856.00
+Regularized condition number: 420.38
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 156179249173219999744.00
+Regularized condition number: 908.20
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 211332899579043840000.00
+Regularized condition number: 779.28
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -119506730914138304.00
+Regularized condition number: 1115.71
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -118371469332851008.00
+Regularized condition number: 731.18
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -282630933172921856.00
+Regularized condition number: 640.08
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -1085065565177245952.00
+Regularized condition number: 550.98
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -2621728247322634240.00
+Regularized condition number: 475.79
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -5624051847561096192.00
+Regularized condition number: 890.49
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 541365672954602586112.00
+Regularized condition number: 944.57
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -877090708397657948160.00
+Regularized condition number: 800.79
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -443224827610317760.00
+Regularized condition number: 795.82
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -463970171099686240256.00
+Regularized condition number: 1206.76
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 268758358005728608256.00
+Regularized condition number: 304.20
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -193181590149750208.00
+Regularized condition number: 762.42
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -196455868835227172864.00
+Regularized condition number: 1145.14
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 144111743848495054848.00
+Regularized condition number: 316.12
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -77326136586465472.00
+Regularized condition number: 364.32
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -446255566242935680.00
+Regularized condition number: 735.33
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -1246698629509768448.00
+Regularized condition number: 794.69
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -1420081439095518720.00
+Regularized condition number: 452.50
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -140731512535106781184.00
+Regularized condition number: 736.62
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -996664290744276992.00
+Regularized condition number: 727.34
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -858698799129360896.00
+Regularized condition number: 65.56
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -58685153954197168.00
+Regularized condition number: 432.04
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: -66552390292978736.00
+Regularized condition number: 618.98
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 435387747155281182720.00
+Regularized condition number: 606.21
+
+======================================================================
+REGULARIZED PCA ANALYSIS
+======================================================================
+Original condition number: 2826813338902630236160.00
+Regularized condition number: 657.43
+
+Variance Explained (95% CI):
+PC1: 0.771 [0.551, 0.870]
+PC2: 0.086 [0.037, 0.169]
+PC3: 0.046 [0.025, 0.092]
+PC4: 0.033 [0.016, 0.069]
+
+--- Within-tier Structure for no_reasoning ---
+Optimal clusters: 2 (silhouette: 0.815)
+
+--- Manifold Learning for no_reasoning ---
+
+======================================================================
+MANIFOLD LEARNING COMPARISON
+======================================================================
+Computing PCA...
+Computing MDS...
+Computing Isomap...
+Computing t-SNE...
+Computing UMAP...
+
+Distance Preservation Scores (Spearman correlation):
+  PCA: 0.872 (time: 0.00s)
+  MDS: 0.952 (time: 0.12s)
+  Isomap: 0.894 (time: 0.00s)
+  t-SNE: 0.744 (time: 0.18s)
+  UMAP: 0.593 (time: 0.38s)
+
+======================================================================
+CROSS-TIER GEOMETRIC COMPARISON
+======================================================================
+
+Tier Comparison Summary:
+           Tier   N  Breakdown Rate  All Features PC1  Non-Int PC1  Intrinsic Dim (ML)  Intrinsic Dim (PCA90)  Optimal Clusters  Best Silhouette
+ full_reasoning  67        0.552239          0.884131     0.317903            2.087745                      7                 2         0.236145
+light_reasoning  61        0.475410          0.620656     0.707450            1.736197                      3                 2         0.648501
+   no_reasoning 100        0.190000          0.738787     0.797542            1.499665                      3                 2         0.815348
+
+--- Statistical Tests Across Tiers ---
+PC1 variance differences (Kruskal-Wallis): H=2.000, p=0.3679
+
+======================================================================
+CREATING REGIME COMPARISON FIGURE
+======================================================================
+Regime comparison figure saved.
+
+======================================================================
+CREATING PHASE SPACE PORTRAITS
+======================================================================
+
+Comprehensive report saved to: analysis_outputs/comprehensive_analysis_report.txt
+
+======================================================================
+ANALYSIS COMPLETE!
+======================================================================
+
+All results saved to: analysis_outputs
+
+Key findings:
+- Statistical power for main effects: 0.996
+- Intervention dominance: 92.8%
+- Non-intervention PC1: 79.5%
+- Intervention threshold: 0.044
+- Predictive AUC: 0.743
+- Intrinsic dimension: 1.96
+- Optimal conversation phases: 3
+
+Per-Tier Geometry Summary:
+           Tier   N  Breakdown Rate  All Features PC1  Non-Int PC1  Intrinsic Dim (ML)  Intrinsic Dim (PCA90)  Optimal Clusters  Best Silhouette
+ full_reasoning  67        0.552239          0.884131     0.317903            2.087745                      7                 2         0.236145
+light_reasoning  61        0.475410          0.620656     0.707450            1.736197                      3                 2         0.648501
+   no_reasoning 100        0.190000          0.738787     0.797542            1.499665                      3                 2         0.815348
+
+Enhanced analysis V3 complete! Check 'analysis_outputs' for all results.

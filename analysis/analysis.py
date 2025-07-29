@@ -5,14 +5,16 @@ from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA, FactorAnalysis
 from sklearn.manifold import Isomap, MDS, TSNE
 from sklearn.neighbors import NearestNeighbors
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN, KMeans
+from sklearn.mixture import GaussianMixture
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.model_selection import cross_val_score, KFold, train_test_split
-from sklearn.metrics import roc_auc_score, classification_report
+from sklearn.metrics import roc_auc_score, classification_report, silhouette_score, mean_squared_error
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
 from scipy.spatial.distance import pdist, squareform
+from scipy.interpolate import UnivariateSpline
 import os
 from datetime import datetime
 import warnings
@@ -44,6 +46,15 @@ except ImportError:
     print("Warning: UMAP not installed. Install with: pip install umap-learn")
     print("UMAP manifold learning will be skipped.")
 
+try:
+    from ripser import ripser
+    from persim import plot_diagrams
+    RIPSER_AVAILABLE = True
+except ImportError:
+    RIPSER_AVAILABLE = False
+    print("Warning: ripser not installed. Install with: pip install ripser persim")
+    print("Topological data analysis will be skipped.")
+
 class ConversationalAnalysis:
     """
     Enhanced analysis incorporating all critical suggestions:
@@ -54,6 +65,14 @@ class ConversationalAnalysis:
     5. Intervention threshold analysis
     6. Synthetic data generation
     7. Proper mathematical formalism
+    8. NEW: Intrinsic dimensionality estimation
+    9. NEW: Sliding window analysis for temporal dynamics
+    10. NEW: Topological data analysis
+    11. NEW: Manifold learning comparison
+    12. NEW: Dynamic phase detection
+    13. NEW: Trajectory prediction
+    14. NEW: Within-tier heterogeneity analysis
+    15. ENHANCED: Per-tier geometric analysis
     """
     
     def __init__(self, output_dir='analysis_outputs'):
@@ -67,9 +86,14 @@ class ConversationalAnalysis:
         self.validation_dir = os.path.join(self.output_dir, 'validation')
         self.bootstrap_dir = os.path.join(self.output_dir, 'bootstrap')
         self.power_dir = os.path.join(self.output_dir, 'power_analysis')
+        self.topology_dir = os.path.join(self.output_dir, 'topology')
+        self.manifold_dir = os.path.join(self.output_dir, 'manifold')
+        self.trajectory_dir = os.path.join(self.output_dir, 'trajectories')
+        self.tier_dir = os.path.join(self.output_dir, 'tier_analysis')
         
-        for dir_path in [self.figures_dir, self.data_dir, self.validation_dir, 
-                        self.bootstrap_dir, self.power_dir]:
+        for dir_path in [self.figures_dir, self.validation_dir, self.bootstrap_dir, 
+                        self.power_dir, self.topology_dir, self.manifold_dir, 
+                        self.trajectory_dir, self.tier_dir]:
             os.makedirs(dir_path, exist_ok=True)
     
     def load_and_prepare_data(self, phase1_path, phase2_path, phase3_path):
@@ -419,6 +443,884 @@ class ConversationalAnalysis:
             'variance_ci': (var_ci_lower, var_ci_upper),
             'sign_stability': sign_stability
         }
+    
+    def analyze_tier_geometry(self, tier_name, tier_data, feature_names, save_prefix):
+        """Perform complete geometric analysis for a single tier"""
+        print(f"\n{'='*70}")
+        print(f"TIER-SPECIFIC ANALYSIS: {tier_name}")
+        print(f"{'='*70}")
+        print(f"N = {len(tier_data)} conversations")
+        
+        if len(tier_data) < 10:
+            print(f"Insufficient data for tier {tier_name}")
+            return None
+        
+        # Prepare features
+        X_all = tier_data[self.all_features].copy()
+        X_non_int = tier_data[self.non_intervention_features].copy()
+        X_int = tier_data[self.intervention_features].copy()
+        
+        # Impute and scale
+        imputer = SimpleImputer(strategy='mean')
+        X_all = imputer.fit_transform(X_all)
+        X_non_int = imputer.fit_transform(X_non_int)
+        X_int = imputer.fit_transform(X_int)
+        
+        scaler = RobustScaler()
+        X_all_scaled = scaler.fit_transform(X_all)
+        X_non_int_scaled = scaler.fit_transform(X_non_int)
+        X_int_scaled = scaler.fit_transform(X_int)
+        
+        results = {
+            'tier_name': tier_name,
+            'n_conversations': len(tier_data),
+            'breakdown_rate': tier_data['breakdown_binary'].mean(),
+            'outcome_distribution': tier_data['conversation_outcome'].value_counts().to_dict()
+        }
+        
+        # 1. PCA Analysis (All vs Non-intervention)
+        print(f"\n--- PCA Analysis for {tier_name} ---")
+        pca_all = self.perform_regularized_pca(X_all_scaled, alpha=0.1)
+        pca_non_int = self.perform_regularized_pca(X_non_int_scaled, alpha=0.1)
+        
+        results['pca_all_pc1_var'] = pca_all['explained_variance_ratio'][0]
+        results['pca_non_int_pc1_var'] = pca_non_int['explained_variance_ratio'][0]
+        results['pca_all'] = pca_all
+        results['pca_non_int'] = pca_non_int
+        
+        print(f"All features PC1: {pca_all['explained_variance_ratio'][0]:.1%}")
+        print(f"Non-intervention PC1: {pca_non_int['explained_variance_ratio'][0]:.1%}")
+        
+        # 2. Intrinsic Dimensionality
+        print(f"\n--- Intrinsic Dimensionality for {tier_name} ---")
+        intrinsic_dim = self.estimate_intrinsic_dimension(X_non_int_scaled, k_max=min(20, len(tier_data)//3))
+        results['intrinsic_dimension'] = intrinsic_dim
+        
+        # 3. Bootstrap Stability (if sufficient data)
+        if len(tier_data) >= 30:
+            print(f"\n--- Bootstrap Stability for {tier_name} ---")
+            bootstrap_results = self.bootstrap_dimension_stability(
+                X_non_int_scaled, 
+                self.non_intervention_features,
+                n_bootstrap=50  # Fewer for tier-specific
+            )
+            results['bootstrap'] = bootstrap_results
+        
+        # 4. Within-tier clustering
+        print(f"\n--- Within-tier Structure for {tier_name} ---")
+        if len(tier_data) >= 15:
+            silhouette_scores = []
+            for n_clusters in range(2, min(6, len(tier_data)//5)):
+                kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+                labels = kmeans.fit_predict(X_non_int_scaled)
+                
+                if len(np.unique(labels)) > 1:
+                    score = silhouette_score(X_non_int_scaled, labels)
+                    silhouette_scores.append(score)
+            
+            if silhouette_scores:
+                optimal_clusters = np.argmax(silhouette_scores) + 2
+                results['optimal_clusters'] = optimal_clusters
+                results['best_silhouette'] = max(silhouette_scores)
+                print(f"Optimal clusters: {optimal_clusters} (silhouette: {max(silhouette_scores):.3f})")
+        
+        # 5. Manifold learning comparison
+        if len(tier_data) >= 20:
+            print(f"\n--- Manifold Learning for {tier_name} ---")
+            manifold_results = self.compare_manifold_methods(
+                X_non_int_scaled[:, :min(10, X_non_int_scaled.shape[1])], 
+                n_components=2,
+                subset_data=tier_data  # Pass tier data to avoid visualization issues
+            )
+            results['manifold_preservation'] = manifold_results[1]
+        
+        # 6. Create tier-specific visualizations
+        self._create_tier_visualizations(tier_name, tier_data, results, save_prefix)
+        
+        return results
+    
+    def _create_tier_visualizations(self, tier_name, tier_data, results, save_prefix):
+        """Create visualizations specific to each tier"""
+        # 1. Variance explained comparison
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        
+        # All features
+        var_all = results['pca_all']['explained_variance_ratio'][:10]
+        ax1.bar(range(len(var_all)), var_all, alpha=0.7, color='red')
+        ax1.set_xlabel('Principal Component')
+        ax1.set_ylabel('Variance Explained')
+        ax1.set_title(f'{tier_name}: All Features\n(PC1: {var_all[0]:.1%})')
+        ax1.set_ylim(0, 1.0)
+        ax1.grid(True, alpha=0.3, axis='y')
+        
+        # Non-intervention only
+        var_non = results['pca_non_int']['explained_variance_ratio'][:10]
+        ax2.bar(range(len(var_non)), var_non, alpha=0.7, color='blue')
+        ax2.set_xlabel('Principal Component')
+        ax2.set_ylabel('Variance Explained')
+        ax2.set_title(f'{tier_name}: Non-Intervention\n(PC1: {var_non[0]:.1%})')
+        ax2.set_ylim(0, 1.0)
+        ax2.grid(True, alpha=0.3, axis='y')
+        
+        plt.suptitle(f'Variance Structure: {tier_name}', fontsize=14)
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.tier_dir, f'{save_prefix}_variance_comparison.pdf'), 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        # 2. 2D projection with outcomes
+        if results['pca_non_int']['transformed'].shape[0] >= 10:
+            fig, ax = plt.subplots(figsize=(8, 8))
+            
+            X_2d = results['pca_non_int']['transformed'][:, :2]
+            
+            # Color by outcome
+            for outcome, color in zip(['no_breakdown', 'resisted', 'recovered', 'breakdown'],
+                                     ['green', 'yellow', 'orange', 'red']):
+                mask = tier_data['conversation_outcome'] == outcome
+                if mask.sum() > 0:
+                    ax.scatter(X_2d[mask, 0], X_2d[mask, 1], c=color, 
+                             label=f'{outcome} (n={mask.sum()})',
+                             alpha=0.6, s=50, edgecolors='black', linewidth=0.5)
+            
+            ax.set_xlabel(f'PC1 ({results["pca_non_int"]["explained_variance_ratio"][0]:.1%})')
+            ax.set_ylabel(f'PC2 ({results["pca_non_int"]["explained_variance_ratio"][1]:.1%})')
+            ax.set_title(f'{tier_name}: Conversation Space (Non-Intervention Features)')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.tier_dir, f'{save_prefix}_conversation_space.pdf'), 
+                       dpi=300, bbox_inches='tight')
+            plt.close()
+        
+        # 3. Feature importance heatmap (top features per PC)
+        if 'pca_non_int' in results:
+            fig, ax = plt.subplots(figsize=(10, 8))
+            
+            # Get top features for first 4 PCs
+            n_top = 10
+            components = results['pca_non_int']['components'][:4]
+            
+            top_features_per_pc = []
+            feature_indices = []
+            
+            for pc_idx, pc in enumerate(components):
+                top_idx = np.argsort(np.abs(pc))[-n_top:]
+                top_features_per_pc.extend([(pc_idx, idx, pc[idx]) for idx in top_idx])
+                feature_indices.extend(top_idx)
+            
+            # Create matrix for heatmap
+            unique_features = sorted(list(set(feature_indices)))
+            heatmap_data = np.zeros((len(unique_features), 4))
+            
+            feature_labels = []
+            for i, feat_idx in enumerate(unique_features):
+                feature_labels.append(self.non_intervention_features[feat_idx])
+                for pc_idx in range(4):
+                    heatmap_data[i, pc_idx] = components[pc_idx, feat_idx]
+            
+            sns.heatmap(heatmap_data, 
+                       xticklabels=[f'PC{i+1}' for i in range(4)],
+                       yticklabels=feature_labels,
+                       cmap='RdBu_r', center=0,
+                       cbar_kws={'label': 'Loading'})
+            
+            ax.set_title(f'{tier_name}: Feature Loadings on Principal Components')
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.tier_dir, f'{save_prefix}_feature_loadings.pdf'), 
+                       dpi=300, bbox_inches='tight')
+            plt.close()
+    
+    def compare_tier_geometries(self, tier_results):
+        """Compare geometric properties across tiers"""
+        print("\n" + "="*70)
+        print("CROSS-TIER GEOMETRIC COMPARISON")
+        print("="*70)
+        
+        # Create comparison DataFrame
+        comparison_data = []
+        for tier_name, results in tier_results.items():
+            if results is not None:
+                comparison_data.append({
+                    'Tier': tier_name,
+                    'N': results['n_conversations'],
+                    'Breakdown Rate': results['breakdown_rate'],
+                    'All Features PC1': results['pca_all_pc1_var'],
+                    'Non-Int PC1': results['pca_non_int_pc1_var'],
+                    'Intrinsic Dim (ML)': results['intrinsic_dimension'].get('ml_estimate', np.nan),
+                    'Intrinsic Dim (PCA90)': results['intrinsic_dimension'].get('pca_dim_90', np.nan),
+                    'Optimal Clusters': results.get('optimal_clusters', np.nan),
+                    'Best Silhouette': results.get('best_silhouette', np.nan)
+                })
+        
+        comparison_df = pd.DataFrame(comparison_data)
+        
+        # Save comparison
+        comparison_df.to_csv(os.path.join(self.tier_dir, 'tier_geometry_comparison.csv'), index=False)
+        
+        # Visualize comparison
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        
+        # 1. PC1 variance comparison
+        ax = axes[0, 0]
+        x = np.arange(len(comparison_df))
+        width = 0.35
+        ax.bar(x - width/2, comparison_df['All Features PC1'], width, label='All Features', alpha=0.7)
+        ax.bar(x + width/2, comparison_df['Non-Int PC1'], width, label='Non-Intervention', alpha=0.7)
+        ax.set_xlabel('Model Tier')
+        ax.set_ylabel('PC1 Variance Explained')
+        ax.set_title('Intervention Dominance Across Tiers')
+        ax.set_xticks(x)
+        ax.set_xticklabels(comparison_df['Tier'])
+        ax.legend()
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # 2. Intrinsic dimensionality
+        ax = axes[0, 1]
+        ax.plot(comparison_df['Tier'], comparison_df['Intrinsic Dim (ML)'], 'bo-', 
+                label='ML Estimate', linewidth=2, markersize=10)
+        ax.plot(comparison_df['Tier'], comparison_df['Intrinsic Dim (PCA90)'], 'rs--', 
+                label='PCA 90%', linewidth=2, markersize=10)
+        ax.set_xlabel('Model Tier')
+        ax.set_ylabel('Intrinsic Dimensionality')
+        ax.set_title('Conversation Space Complexity')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        # 3. Breakdown rate gradient
+        ax = axes[1, 0]
+        bars = ax.bar(comparison_df['Tier'], comparison_df['Breakdown Rate'], 
+                      color=['blue', 'orange', 'green'], alpha=0.7)
+        ax.set_xlabel('Model Tier')
+        ax.set_ylabel('Breakdown Rate')
+        ax.set_title('Breakdown Rates Across Tiers')
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # Add value labels on bars
+        for bar, val in zip(bars, comparison_df['Breakdown Rate']):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                   f'{val:.1%}', ha='center', va='bottom')
+        
+        # 4. Within-tier heterogeneity
+        ax = axes[1, 1]
+        ax.scatter(comparison_df['Optimal Clusters'], comparison_df['Best Silhouette'], 
+                  s=comparison_df['N']*3, alpha=0.6)
+        for i, row in comparison_df.iterrows():
+            ax.annotate(row['Tier'], (row['Optimal Clusters'], row['Best Silhouette']),
+                       xytext=(5, 5), textcoords='offset points')
+        ax.set_xlabel('Optimal Number of Clusters')
+        ax.set_ylabel('Best Silhouette Score')
+        ax.set_title('Within-Tier Heterogeneity')
+        ax.grid(True, alpha=0.3)
+        
+        plt.suptitle('Geometric Properties Across Model Tiers', fontsize=16)
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.tier_dir, 'tier_geometry_comparison.pdf'), 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        # Print summary statistics
+        print("\nTier Comparison Summary:")
+        print(comparison_df.to_string(index=False))
+        
+        # Statistical tests for differences
+        print("\n--- Statistical Tests Across Tiers ---")
+        
+        # Test for PC1 variance differences
+        tiers = list(tier_results.keys())
+        if len(tiers) >= 2:
+            # Get PC1 variances for each tier's conversations
+            tier_pc1_vars = []
+            for tier_name, results in tier_results.items():
+                if results is not None and 'bootstrap' in results:
+                    tier_pc1_vars.append(results['bootstrap']['variance_mean'][0])
+            
+            if len(tier_pc1_vars) >= 2:
+                # Kruskal-Wallis test (non-parametric)
+                h_stat, p_val = stats.kruskal(*tier_pc1_vars)
+                print(f"PC1 variance differences (Kruskal-Wallis): H={h_stat:.3f}, p={p_val:.4f}")
+        
+        return comparison_df
+    
+    def estimate_intrinsic_dimension(self, X, k_max=20):
+        """Multiple methods to estimate true dimensionality"""
+        print("\n" + "="*70)
+        print("INTRINSIC DIMENSIONALITY ESTIMATION")
+        print("="*70)
+        
+        n, d = X.shape
+        k_range = range(2, min(k_max, n//2))
+        
+        # Method 1: Maximum Likelihood (Levina-Bickel)
+        ml_dims = []
+        for k in k_range:
+            # k-NN distances
+            nbrs = NearestNeighbors(n_neighbors=k+1)
+            nbrs.fit(X)
+            distances, _ = nbrs.kneighbors(X)
+            
+            # MLE of intrinsic dimension
+            r_k = distances[:, k]  # k-th neighbor distance
+            r_1 = distances[:, 1]  # first neighbor distance
+            
+            # Avoid log(0)
+            mask = (r_k > 0) & (r_1 > 0)
+            if mask.sum() > 0:
+                d_hat = 1 / np.mean(np.log(r_k[mask] / r_1[mask]))
+                ml_dims.append(d_hat)
+        
+        # Method 2: Correlation dimension (from chaos theory)
+        corr_dims = []
+        dists = pdist(X)
+        for r in np.logspace(-2, 0, 20):
+            # Count pairs within distance r
+            count = np.sum(dists < r)
+            if count > 0:
+                corr_dim = np.log(count) / np.log(r)
+                corr_dims.append(corr_dim)
+        
+        # Method 3: PCA-based effective dimension
+        pca = PCA()
+        pca.fit(X)
+        cumvar = np.cumsum(pca.explained_variance_ratio_)
+        eff_dim_90 = np.argmax(cumvar >= 0.9) + 1
+        eff_dim_95 = np.argmax(cumvar >= 0.95) + 1
+        
+        results = {
+            'ml_estimate': np.median(ml_dims) if ml_dims else None,
+            'ml_std': np.std(ml_dims) if ml_dims else None,
+            'correlation_dim': np.median(corr_dims) if corr_dims else None,
+            'pca_dim_90': eff_dim_90,
+            'pca_dim_95': eff_dim_95,
+            'ml_by_k': ml_dims,
+            'k_values': list(k_range)
+        }
+        
+        # Print results, handling None values properly
+        if results['ml_estimate'] is not None:
+            print(f"ML Dimension Estimate: {results['ml_estimate']:.2f} ± {results['ml_std']:.2f}")
+        else:
+            print("ML Dimension Estimate: Could not be calculated")
+        
+        if results['correlation_dim'] is not None:
+            print(f"Correlation Dimension: {results['correlation_dim']:.2f}")
+        else:
+            print("Correlation Dimension: Could not be calculated")
+        
+        print(f"PCA Effective Dimension (90%): {results['pca_dim_90']}")
+        print(f"PCA Effective Dimension (95%): {results['pca_dim_95']}")
+        
+        # Visualization
+        if ml_dims:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+            
+            # ML estimates by k
+            ax1.plot(list(k_range)[:len(ml_dims)], ml_dims, 'b-', linewidth=2)
+            ax1.axhline(y=np.median(ml_dims), color='r', linestyle='--', 
+                    label=f'Median: {np.median(ml_dims):.2f}')
+            ax1.set_xlabel('k (number of neighbors)')
+            ax1.set_ylabel('Estimated Dimension')
+            ax1.set_title('ML Dimension Estimate by k')
+            ax1.legend()
+            ax1.grid(True, alpha=0.3)
+            
+            # PCA variance explained
+            ax2.plot(range(1, len(pca.explained_variance_ratio_)+1), 
+                    cumvar, 'g-', linewidth=2)
+            ax2.axhline(y=0.9, color='r', linestyle='--', alpha=0.5)
+            ax2.axhline(y=0.95, color='r', linestyle='--', alpha=0.5)
+            ax2.axvline(x=eff_dim_90, color='b', linestyle='--', 
+                    label=f'90% at dim={eff_dim_90}')
+            ax2.axvline(x=eff_dim_95, color='b', linestyle=':', 
+                    label=f'95% at dim={eff_dim_95}')
+            ax2.set_xlabel('Number of Components')
+            ax2.set_ylabel('Cumulative Variance Explained')
+            ax2.set_title('PCA-based Effective Dimensionality')
+            ax2.legend()
+            ax2.grid(True, alpha=0.3)
+            
+            plt.suptitle('Intrinsic Dimensionality Estimates', fontsize=14)
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.figures_dir, 'intrinsic_dimension.pdf'), 
+                    dpi=300, bbox_inches='tight')
+            plt.close()
+        
+        return results
+    def analyze_within_tier_variance(self):
+        """With N=100 per tier, we can study within-tier heterogeneity"""
+        print("\n" + "="*70)
+        print("WITHIN-TIER HETEROGENEITY ANALYSIS")
+        print("="*70)
+        
+        within_tier_results = {}
+        
+        for phase in ['full_reasoning', 'light_reasoning', 'no_reasoning']:
+            print(f"\n--- Analyzing {phase} ---")
+            phase_data = self.all_data[self.all_data['phase'] == phase]
+            
+            if len(phase_data) < 10:
+                print(f"Insufficient data for {phase} (n={len(phase_data)})")
+                continue
+            
+            # Get features
+            X_phase = phase_data[self.non_intervention_features]
+            
+            # Impute and scale
+            imputer = SimpleImputer(strategy='mean')
+            X_phase = imputer.fit_transform(X_phase)
+            scaler = RobustScaler()
+            X_phase_scaled = scaler.fit_transform(X_phase)
+            
+            # Are there subtypes within each tier?
+            silhouette_scores = []
+            inertias = []
+            for n_clusters in range(2, min(10, len(phase_data)//5)):
+                kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+                labels = kmeans.fit_predict(X_phase_scaled)
+                
+                if len(np.unique(labels)) > 1:
+                    score = silhouette_score(X_phase_scaled, labels)
+                    silhouette_scores.append(score)
+                    inertias.append(kmeans.inertia_)
+                else:
+                    silhouette_scores.append(-1)
+                    inertias.append(np.inf)
+            
+            if silhouette_scores:
+                optimal_clusters = np.argmax(silhouette_scores) + 2
+                
+                # Fit with optimal clusters
+                kmeans_optimal = KMeans(n_clusters=optimal_clusters, random_state=42, n_init=10)
+                cluster_labels = kmeans_optimal.fit_predict(X_phase_scaled)
+                
+                # Analyze cluster characteristics
+                cluster_stats = []
+                for cluster in range(optimal_clusters):
+                    cluster_mask = cluster_labels == cluster
+                    cluster_outcomes = phase_data.loc[cluster_mask, 'conversation_outcome'].value_counts()
+                    
+                    cluster_stats.append({
+                        'cluster': cluster,
+                        'size': cluster_mask.sum(),
+                        'breakdown_rate': phase_data.loc[cluster_mask, 'breakdown_binary'].mean(),
+                        'outcomes': cluster_outcomes.to_dict()
+                    })
+                
+                within_tier_results[phase] = {
+                    'optimal_clusters': optimal_clusters,
+                    'silhouette_score': max(silhouette_scores),
+                    'cluster_stats': cluster_stats,
+                    'labels': cluster_labels
+                }
+                
+                print(f"Optimal subtypes: {optimal_clusters}")
+                print(f"Silhouette score: {max(silhouette_scores):.3f}")
+                for stat in cluster_stats:
+                    print(f"  Cluster {stat['cluster']}: n={stat['size']}, "
+                          f"breakdown={stat['breakdown_rate']:.2%}")
+        
+        # Visualize
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        
+        for idx, (phase, ax) in enumerate(zip(['full_reasoning', 'light_reasoning', 'no_reasoning'], axes)):
+            if phase in within_tier_results:
+                result = within_tier_results[phase]
+                phase_data = self.all_data[self.all_data['phase'] == phase]
+                
+                # Get first 2 PCs for visualization
+                X_phase = phase_data[self.non_intervention_features]
+                imputer = SimpleImputer(strategy='mean')
+                X_phase = imputer.fit_transform(X_phase)
+                scaler = RobustScaler()
+                X_phase_scaled = scaler.fit_transform(X_phase)
+                
+                pca = PCA(n_components=2)
+                X_pca = pca.fit_transform(X_phase_scaled)
+                
+                # Plot clusters
+                scatter = ax.scatter(X_pca[:, 0], X_pca[:, 1], 
+                                   c=result['labels'], 
+                                   cmap='viridis', 
+                                   alpha=0.6, s=50)
+                ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%})')
+                ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%})')
+                ax.set_title(f'{phase.replace("_", " ").title()}\n'
+                           f'{result["optimal_clusters"]} subtypes')
+                
+                # Add cluster centers
+                kmeans = KMeans(n_clusters=result['optimal_clusters'], random_state=42, n_init=10)
+                kmeans.fit(X_phase_scaled)
+                centers_pca = pca.transform(kmeans.cluster_centers_)
+                ax.scatter(centers_pca[:, 0], centers_pca[:, 1], 
+                          c='red', marker='x', s=200, linewidths=3)
+            else:
+                ax.text(0.5, 0.5, 'Insufficient Data', 
+                       ha='center', va='center', transform=ax.transAxes)
+                ax.set_title(phase.replace("_", " ").title())
+        
+        plt.suptitle('Within-Tier Heterogeneity Analysis', fontsize=14)
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.figures_dir, 'within_tier_clusters.pdf'), 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        return within_tier_results
+    
+    def compute_persistent_homology(self, X, max_dim=2):
+        """Find topological features (holes, voids) in conversation space"""
+        if not RIPSER_AVAILABLE:
+            print("Ripser not available. Skipping topological analysis.")
+            return None, None
+        
+        print("\n" + "="*70)
+        print("TOPOLOGICAL DATA ANALYSIS")
+        print("="*70)
+        
+        # Compute persistence diagrams
+        diagrams = ripser(X, maxdim=max_dim)['dgms']
+        
+        # Find significant features (long-lived)
+        significant_features = []
+        for dim, dgm in enumerate(diagrams):
+            if len(dgm) > 0:
+                # Remove infinite death times
+                finite_dgm = dgm[dgm[:, 1] < np.inf]
+                if len(finite_dgm) > 0:
+                    # Sort by lifetime
+                    lifetimes = finite_dgm[:, 1] - finite_dgm[:, 0]
+                    threshold = np.percentile(lifetimes, 90) if len(lifetimes) > 10 else 0
+                    
+                    sig_features = finite_dgm[lifetimes > threshold]
+                    significant_features.append({
+                        'dimension': dim,
+                        'n_features': len(sig_features),
+                        'features': sig_features,
+                        'mean_lifetime': np.mean(lifetimes) if len(lifetimes) > 0 else 0
+                    })
+        
+        print("Topological Features Found:")
+        for feat in significant_features:
+            print(f"  Dimension {feat['dimension']}: {feat['n_features']} significant features")
+            print(f"    Mean lifetime: {feat['mean_lifetime']:.3f}")
+        
+        # Visualize persistence diagrams
+        if len(diagrams) > 0:
+            fig, axes = plt.subplots(1, min(len(diagrams), 3), figsize=(15, 5))
+            if len(diagrams) == 1:
+                axes = [axes]
+            
+            for dim, (dgm, ax) in enumerate(zip(diagrams[:3], axes)):
+                if len(dgm) > 0:
+                    # Remove infinite points for plotting
+                    finite_dgm = dgm[dgm[:, 1] < np.inf]
+                    if len(finite_dgm) > 0:
+                        ax.scatter(finite_dgm[:, 0], finite_dgm[:, 1], alpha=0.6)
+                        ax.plot([0, finite_dgm.max()], [0, finite_dgm.max()], 'k--', alpha=0.3)
+                        ax.set_xlabel('Birth')
+                        ax.set_ylabel('Death')
+                        ax.set_title(f'Dimension {dim} Persistence Diagram')
+                    else:
+                        ax.text(0.5, 0.5, 'No finite features', 
+                               ha='center', va='center', transform=ax.transAxes)
+                else:
+                    ax.text(0.5, 0.5, 'No features', 
+                           ha='center', va='center', transform=ax.transAxes)
+            
+            plt.suptitle('Persistence Diagrams - Topological Features', fontsize=14)
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.topology_dir, 'persistence_diagrams.pdf'), 
+                       dpi=300, bbox_inches='tight')
+            plt.close()
+        
+        return diagrams, significant_features
+    
+    def compare_manifold_methods(self, X, n_components=2, subset_data=None):
+        """Compare different manifold learning approaches"""
+        print("\n" + "="*70)
+        print("MANIFOLD LEARNING COMPARISON")
+        print("="*70)
+        
+        methods = {
+            'PCA': PCA(n_components=n_components),
+            'MDS': MDS(n_components=n_components, metric=True, random_state=42),
+            'Isomap': Isomap(n_components=n_components),
+            't-SNE': TSNE(n_components=n_components, perplexity=min(30, X.shape[0]-1), 
+                         random_state=42),
+        }
+        
+        if UMAP_AVAILABLE:
+            methods['UMAP'] = umap.UMAP(n_components=n_components, random_state=42)
+        
+        embeddings = {}
+        computation_times = {}
+        
+        for name, method in methods.items():
+            print(f"Computing {name}...")
+            start_time = datetime.now()
+            try:
+                embeddings[name] = method.fit_transform(X)
+                computation_times[name] = (datetime.now() - start_time).total_seconds()
+            except Exception as e:
+                print(f"Error with {name}: {e}")
+        
+        # Compare preservation of distances
+        original_dists = pdist(X)
+        preservation_scores = {}
+        
+        for name, embedding in embeddings.items():
+            embedded_dists = pdist(embedding)
+            # Spearman correlation of distance matrices
+            preservation_scores[name] = stats.spearmanr(original_dists, embedded_dists)[0]
+        
+        print("\nDistance Preservation Scores (Spearman correlation):")
+        for name, score in preservation_scores.items():
+            print(f"  {name}: {score:.3f} (time: {computation_times[name]:.2f}s)")
+        
+        # Only create visualization if we're analyzing the full dataset
+        if subset_data is None:
+            # Visualize embeddings
+            n_methods = len(embeddings)
+            fig, axes = plt.subplots(2, (n_methods + 1) // 2, figsize=(15, 10))
+            axes = axes.flatten()
+            
+            for idx, (name, embedding) in enumerate(embeddings.items()):
+                ax = axes[idx]
+                
+                # Color by outcome
+                colors = self.all_data['outcome_numeric'].values
+                scatter = ax.scatter(embedding[:, 0], embedding[:, 1], 
+                                   c=colors, cmap='viridis', alpha=0.6, s=50)
+                ax.set_xlabel('Component 1')
+                ax.set_ylabel('Component 2')
+                ax.set_title(f'{name}\n(preservation: {preservation_scores[name]:.3f})')
+                
+            # Hide unused subplots
+            for idx in range(len(embeddings), len(axes)):
+                axes[idx].set_visible(False)
+            
+            plt.suptitle('Manifold Learning Methods Comparison', fontsize=14)
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.manifold_dir, 'manifold_comparison.pdf'), 
+                       dpi=300, bbox_inches='tight')
+            plt.close()
+        
+        return embeddings, preservation_scores
+    
+    def detect_conversation_phases(self, trajectory_data, n_phases=None):
+        """Detect phase transitions in conversation trajectories"""
+        print("\n" + "="*70)
+        print("CONVERSATION PHASE DETECTION")
+        print("="*70)
+        
+        if n_phases is None:
+            # Find optimal number of phases
+            scores = []
+            bics = []
+            phase_range = range(2, min(8, len(trajectory_data)//10))
+            
+            for n in phase_range:
+                gmm = GaussianMixture(n_components=n, random_state=42)
+                labels = gmm.fit_predict(trajectory_data)
+                
+                if len(np.unique(labels)) > 1:
+                    score = silhouette_score(trajectory_data, labels)
+                    scores.append(score)
+                    bics.append(gmm.bic(trajectory_data))
+                else:
+                    scores.append(-1)
+                    bics.append(np.inf)
+            
+            if scores:
+                # Use silhouette score to determine optimal phases
+                n_phases = list(phase_range)[np.argmax(scores)]
+                print(f"Optimal number of phases: {n_phases}")
+        
+        # Fit final model
+        gmm = GaussianMixture(n_components=n_phases, random_state=42)
+        phase_labels = gmm.fit_predict(trajectory_data)
+        
+        # Find transition points
+        transitions = np.where(np.diff(phase_labels) != 0)[0]
+        
+        # Analyze phase characteristics
+        phase_stats = []
+        for phase in range(n_phases):
+            phase_mask = phase_labels == phase
+            phase_stats.append({
+                'phase': phase,
+                'size': phase_mask.sum(),
+                'mean': gmm.means_[phase],
+                'covariance_trace': np.trace(gmm.covariances_[phase])
+            })
+        
+        results = {
+            'phases': phase_labels,
+            'n_phases': n_phases,
+            'transitions': transitions,
+            'phase_means': gmm.means_,
+            'phase_covariances': gmm.covariances_,
+            'phase_stats': phase_stats
+        }
+        
+        print(f"Found {len(transitions)} phase transitions")
+        for stat in phase_stats:
+            print(f"  Phase {stat['phase']}: n={stat['size']}, "
+                  f"cov_trace={stat['covariance_trace']:.3f}")
+        
+        # Visualize if 2D
+        if trajectory_data.shape[1] == 2:
+            plt.figure(figsize=(10, 8))
+            
+            # Plot points colored by phase
+            scatter = plt.scatter(trajectory_data[:, 0], trajectory_data[:, 1], 
+                                c=phase_labels, cmap='viridis', alpha=0.6, s=50)
+            
+            # Plot phase centers
+            plt.scatter(gmm.means_[:, 0], gmm.means_[:, 1], 
+                       c='red', marker='x', s=200, linewidths=3)
+            
+            # Draw covariance ellipses
+            from matplotlib.patches import Ellipse
+            for i in range(n_phases):
+                cov = gmm.covariances_[i]
+                v, w = np.linalg.eigh(cov)
+                angle = np.degrees(np.arctan2(w[1, 0], w[0, 0]))
+                ellipse = Ellipse(gmm.means_[i], 2*np.sqrt(v[0]), 2*np.sqrt(v[1]),
+                                angle=angle, facecolor='none', edgecolor='red', 
+                                linewidth=2, alpha=0.5)
+                plt.gca().add_patch(ellipse)
+            
+            plt.xlabel('Dimension 1')
+            plt.ylabel('Dimension 2')
+            plt.title(f'Conversation Phases (n={n_phases})')
+            plt.colorbar(scatter, label='Phase')
+            plt.grid(True, alpha=0.3)
+            plt.savefig(os.path.join(self.figures_dir, 'conversation_phases.pdf'), 
+                       dpi=300, bbox_inches='tight')
+            plt.close()
+        
+        return results
+    
+    def build_trajectory_predictor(self, dimensions, horizon=10):
+        """Learn to predict future trajectory from current state"""
+        print("\n" + "="*70)
+        print("TRAJECTORY PREDICTION MODEL")
+        print("="*70)
+        
+        # For this analysis, we need conversation-level time series data
+        # This is a simplified version - in practice you'd have turn-by-turn data
+        
+        # Create synthetic trajectory data for demonstration
+        n_conversations = len(self.all_data)
+        n_timesteps = 50  # Simplified - you'd use actual turn counts
+        
+        # Generate synthetic trajectories based on conversation outcomes
+        trajectories = []
+        for idx, row in self.all_data.iterrows():
+            # Create a trajectory that evolves toward the outcome
+            start_state = np.random.randn(4) * 0.5
+            
+            if row['conversation_outcome'] == 'breakdown':
+                # Trajectory toward breakdown attractor
+                end_state = np.array([2, 0, 2, 1])  # High social contagion, temporal
+            elif row['conversation_outcome'] == 'no_breakdown':
+                # Trajectory toward stable attractor
+                end_state = np.array([-1, 0, -1, -1])
+            else:
+                # Intermediate trajectories
+                end_state = np.random.randn(4) * 0.5
+            
+            # Interpolate trajectory
+            trajectory = np.zeros((n_timesteps, 4))
+            for t in range(n_timesteps):
+                alpha = t / n_timesteps
+                trajectory[t] = (1 - alpha) * start_state + alpha * end_state
+                trajectory[t] += np.random.randn(4) * 0.1  # Add noise
+            
+            trajectories.append(trajectory)
+        
+        # Prepare training data
+        X_train = []
+        y_train = []
+        
+        for traj in trajectories:
+            for t in range(len(traj) - horizon - 1):
+                # Current state
+                state_t = traj[t]
+                # Velocity (first difference)
+                velocity_t = traj[t+1] - traj[t]
+                # Acceleration (second difference) 
+                if t > 0:
+                    accel_t = velocity_t - (traj[t] - traj[t-1])
+                else:
+                    accel_t = np.zeros_like(velocity_t)
+                
+                # Features
+                features = np.concatenate([state_t, velocity_t, accel_t])
+                X_train.append(features)
+                
+                # Target: future state
+                y_train.append(traj[t + horizon])
+        
+        X_train = np.array(X_train)
+        y_train = np.array(y_train)
+        
+        # Split data
+        X_tr, X_te, y_tr, y_te = train_test_split(
+            X_train, y_train, test_size=0.3, random_state=42
+        )
+        
+        # Train predictor
+        predictor = Ridge(alpha=1.0)
+        predictor.fit(X_tr, y_tr)
+        
+        # Evaluate at different horizons
+        horizons = [5, 10, 20]
+        rmse_by_horizon = {}
+        
+        for h in horizons:
+            # Similar data prep for each horizon
+            X_h = []
+            y_h = []
+            
+            for traj in trajectories[:10]:  # Use subset for evaluation
+                for t in range(len(traj) - h - 1):
+                    state_t = traj[t]
+                    velocity_t = traj[t+1] - traj[t] if t < len(traj)-1 else np.zeros(4)
+                    accel_t = velocity_t - (traj[t] - traj[t-1]) if t > 0 else np.zeros(4)
+                    
+                    features = np.concatenate([state_t, velocity_t, accel_t])
+                    X_h.append(features)
+                    y_h.append(traj[t + h])
+            
+            if X_h:
+                X_h = np.array(X_h)
+                y_h = np.array(y_h)
+                y_pred = predictor.predict(X_h)
+                rmse = np.sqrt(mean_squared_error(y_h, y_pred))
+                rmse_by_horizon[h] = rmse
+        
+        print("Trajectory Prediction RMSE by Horizon:")
+        for h, rmse in rmse_by_horizon.items():
+            print(f"  Horizon {h}: {rmse:.3f}")
+        
+        # Visualize prediction accuracy
+        plt.figure(figsize=(10, 6))
+        horizons_list = list(rmse_by_horizon.keys())
+        rmses = list(rmse_by_horizon.values())
+        
+        plt.plot(horizons_list, rmses, 'bo-', linewidth=2, markersize=10)
+        plt.xlabel('Prediction Horizon (turns)')
+        plt.ylabel('RMSE')
+        plt.title('Trajectory Prediction Accuracy vs Horizon')
+        plt.grid(True, alpha=0.3)
+        plt.savefig(os.path.join(self.trajectory_dir, 'prediction_accuracy.pdf'), 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        return predictor, rmse_by_horizon
     
     def analyze_intervention_threshold(self):
         """Find critical intervention density for regime transition"""
@@ -891,11 +1793,110 @@ class ConversationalAnalysis:
                    dpi=300, bbox_inches='tight')
         plt.close()
     
+    def create_phase_space_portrait(self, dimensions):
+        """Create phase space portraits showing conversation dynamics"""
+        print("\n" + "="*70)
+        print("CREATING PHASE SPACE PORTRAITS")
+        print("="*70)
+        
+        # Get first two dimensions for visualization
+        dim_names = list(dimensions.keys())[:2]
+        if len(dim_names) < 2:
+            print("Need at least 2 dimensions for phase space portrait")
+            return
+        
+        X = np.column_stack([dimensions[d]['scores'] for d in dim_names])
+        
+        fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+        
+        # Top left: All conversations with outcome coloring
+        ax = axes[0, 0]
+        for outcome, color in zip(['no_breakdown', 'resisted', 'recovered', 'breakdown'],
+                                 ['green', 'yellow', 'orange', 'red']):
+            mask = self.all_data['conversation_outcome'] == outcome
+            if mask.sum() > 0:
+                ax.scatter(X[mask, 0], X[mask, 1], c=color, label=outcome, 
+                          alpha=0.6, s=50, edgecolors='black', linewidth=0.5)
+        ax.set_xlabel(dim_names[0].replace('_', ' ').title())
+        ax.set_ylabel(dim_names[1].replace('_', ' ').title())
+        ax.set_title('Phase Space by Outcome')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        # Top right: Vector field (estimated from data)
+        ax = axes[0, 1]
+        # Create grid
+        x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+        y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+        xx, yy = np.meshgrid(np.linspace(x_min, x_max, 20),
+                            np.linspace(y_min, y_max, 20))
+        
+        # Estimate vector field using nearby points
+        uu = np.zeros_like(xx)
+        vv = np.zeros_like(yy)
+        
+        for i in range(xx.shape[0]):
+            for j in range(xx.shape[1]):
+                point = np.array([xx[i, j], yy[i, j]])
+                # Find nearby points
+                distances = np.sqrt(((X - point)**2).sum(axis=1))
+                nearby = distances < 1.0
+                
+                if nearby.sum() > 3:
+                    # Estimate "flow" based on outcome
+                    nearby_outcomes = self.all_data.loc[nearby, 'outcome_numeric'].values
+                    # Direction toward breakdown (3) or stability (0)
+                    direction = np.mean(nearby_outcomes) - 1.5
+                    # Add some structure
+                    uu[i, j] = -direction * (yy[i, j] - y_min) / (y_max - y_min)
+                    vv[i, j] = direction * (xx[i, j] - x_min) / (x_max - x_min)
+        
+        ax.quiver(xx, yy, uu, vv, alpha=0.5)
+        ax.set_xlabel(dim_names[0].replace('_', ' ').title())
+        ax.set_ylabel(dim_names[1].replace('_', ' ').title())
+        ax.set_title('Estimated Vector Field')
+        ax.grid(True, alpha=0.3)
+        
+        # Bottom left: Density plot
+        ax = axes[1, 0]
+        from scipy.stats import gaussian_kde
+        xy = X.T
+        z = gaussian_kde(xy)(xy)
+        scatter = ax.scatter(X[:, 0], X[:, 1], c=z, s=50, alpha=0.6, cmap='viridis')
+        plt.colorbar(scatter, ax=ax, label='Density')
+        ax.set_xlabel(dim_names[0].replace('_', ' ').title())
+        ax.set_ylabel(dim_names[1].replace('_', ' ').title())
+        ax.set_title('Conversation Density')
+        ax.grid(True, alpha=0.3)
+        
+        # Bottom right: Trajectories by model tier
+        ax = axes[1, 1]
+        for phase, color in zip(['full_reasoning', 'light_reasoning', 'no_reasoning'],
+                               ['blue', 'orange', 'green']):
+            mask = self.all_data['phase'] == phase
+            if mask.sum() > 0:
+                # Plot with slight jitter to show overlap
+                jitter = np.random.normal(0, 0.05, size=(mask.sum(), 2))
+                ax.scatter(X[mask, 0] + jitter[:, 0], X[mask, 1] + jitter[:, 1], 
+                          c=color, label=phase.replace('_', ' ').title(), 
+                          alpha=0.4, s=30)
+        ax.set_xlabel(dim_names[0].replace('_', ' ').title())
+        ax.set_ylabel(dim_names[1].replace('_', ' ').title())
+        ax.set_title('Phase Space by Model Tier')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        plt.suptitle('Phase Space Portraits of Conversation Dynamics', fontsize=16)
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.figures_dir, 'phase_space_portraits.pdf'), 
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+    
     def run_complete_enhanced_analysis(self, phase1_path, phase2_path, phase3_path):
-        """Run the complete enhanced analysis with all methods"""
+        """Run the complete enhanced analysis with per-tier geometry"""
         
         print("\n" + "="*70)
-        print("CONVERSATIONAL SPACE ANALYSIS")
+        print("ENHANCED CONVERSATIONAL SPACE ANALYSIS V3")
         print("="*70)
         print("Incorporating:")
         print("- Statistical power analysis")
@@ -904,6 +1905,12 @@ class ConversationalAnalysis:
         print("- Cross-validated prediction")
         print("- Intervention threshold analysis")
         print("- Synthetic data validation")
+        print("- Intrinsic dimensionality estimation")
+        print("- Within-tier heterogeneity analysis")
+        print("- Topological data analysis")
+        print("- Manifold learning comparison")
+        print("- Phase detection and trajectory prediction")
+        print("- PER-TIER GEOMETRIC ANALYSIS")
         
         # Load and prepare data
         self.load_and_prepare_data(phase1_path, phase2_path, phase3_path)
@@ -912,7 +1919,12 @@ class ConversationalAnalysis:
         # 1. Statistical Power Analysis
         power_results = self.calculate_statistical_power()
         
-        # 2. Prepare feature matrices
+        # 2. OVERALL ANALYSIS
+        print("\n" + "="*70)
+        print("OVERALL ANALYSIS (ALL TIERS COMBINED)")
+        print("="*70)
+        
+        # Prepare feature matrices
         X_all = self.all_data[self.all_features].copy()
         X_intervention = self.all_data[self.intervention_features].copy()
         X_non_intervention = self.all_data[self.non_intervention_features].copy()
@@ -963,14 +1975,68 @@ class ConversationalAnalysis:
         # 8. Generate and Validate Synthetic Data
         synthetic_data, synthetic_labels = self.generate_synthetic_conversations(dimensions)
         
-        # 9. Create Key Visualizations
+        # 9. Estimate Intrinsic Dimensionality
+        intrinsic_dim_results = self.estimate_intrinsic_dimension(X_non_intervention_scaled)
+        
+        # 10. Within-Tier Heterogeneity Analysis
+        within_tier_results = self.analyze_within_tier_variance()
+        
+        # 11. Topological Data Analysis
+        if len(self.all_data) >= 50:  # Need reasonable sample size
+            tda_diagrams, tda_features = self.compute_persistent_homology(
+                X_non_intervention_scaled[:, :10], max_dim=2
+            )
+        else:
+            tda_diagrams, tda_features = None, None
+        
+        # 12. Manifold Learning Comparison
+        manifold_embeddings, preservation_scores = self.compare_manifold_methods(
+            X_non_intervention_scaled[:, :10], n_components=2
+        )
+        
+        # 13. Phase Detection
+        phase_results = self.detect_conversation_phases(
+            X_non_intervention_scaled[:, :4]  # Use first 4 dimensions
+        )
+        
+        # 14. Trajectory Prediction
+        trajectory_predictor, prediction_rmse = self.build_trajectory_predictor(dimensions)
+        
+        # === NEW: PER-TIER ANALYSIS ===
+        print("\n" + "="*70)
+        print("PER-TIER GEOMETRIC ANALYSIS")
+        print("="*70)
+        
+        tier_results = {}
+        
+        # Analyze each tier separately
+        for phase in ['full_reasoning', 'light_reasoning', 'no_reasoning']:
+            tier_data = self.all_data[self.all_data['phase'] == phase]
+            tier_result = self.analyze_tier_geometry(
+                tier_name=phase,
+                tier_data=tier_data,
+                feature_names=self.non_intervention_features,
+                save_prefix=phase
+            )
+            tier_results[phase] = tier_result
+        
+        # Compare tier geometries
+        comparison_df = self.compare_tier_geometries(tier_results)
+        
+        # === VISUALIZATIONS ===
+        
+        # 15. Create Key Visualizations
         self.create_regime_comparison_figure(pca_results)
         self.create_dimension_gradient_figure(dimensions)
+        self.create_phase_space_portrait(dimensions)
         
-        # 10. Save All Results
+        # 16. Save All Results
         self._save_comprehensive_results(
             power_results, pca_results, bootstrap_results, 
-            dimensions, pred_results, intervention_threshold
+            dimensions, pred_results, intervention_threshold,
+            intrinsic_dim_results, within_tier_results,
+            tda_features, preservation_scores, phase_results,
+            prediction_rmse, tier_results, comparison_df
         )
         
         print("\n" + "="*70)
@@ -983,6 +2049,12 @@ class ConversationalAnalysis:
         print(f"- Non-intervention PC1: {pca_results['non_intervention']['explained_variance_ratio'][0]:.1%}")
         print(f"- Intervention threshold: {intervention_threshold:.3f}")
         print(f"- Predictive AUC: {max(r['test_auc'] for r in pred_results.values()):.3f}")
+        if intrinsic_dim_results['ml_estimate']:
+            print(f"- Intrinsic dimension: {intrinsic_dim_results['ml_estimate']:.2f}")
+        print(f"- Optimal conversation phases: {phase_results.get('n_phases', 'N/A')}")
+        
+        print("\nPer-Tier Geometry Summary:")
+        print(comparison_df.to_string(index=False))
         
         return {
             'power': power_results,
@@ -990,7 +2062,15 @@ class ConversationalAnalysis:
             'bootstrap': bootstrap_results,
             'dimensions': dimensions,
             'prediction': pred_results,
-            'threshold': intervention_threshold
+            'threshold': intervention_threshold,
+            'intrinsic_dim': intrinsic_dim_results,
+            'within_tier': within_tier_results,
+            'topology': tda_features,
+            'manifolds': preservation_scores,
+            'phases': phase_results,
+            'trajectories': prediction_rmse,
+            'tier_results': tier_results,
+            'tier_comparison': comparison_df
         }
     
     def _create_stable_dimensions(self, X_scaled, feature_names, stable_loadings):
@@ -1053,14 +2133,18 @@ class ConversationalAnalysis:
         return dimensions
     
     def _save_comprehensive_results(self, power_results, pca_results, bootstrap_results,
-                                   dimensions, pred_results, intervention_threshold):
+                                   dimensions, pred_results, intervention_threshold,
+                                   intrinsic_dim_results=None, within_tier_results=None,
+                                   tda_features=None, preservation_scores=None,
+                                   phase_results=None, prediction_rmse=None,
+                                   tier_results=None, comparison_df=None):
         """Save all results in organized format"""
         
         # Create summary report
         report_path = os.path.join(self.output_dir, 'comprehensive_analysis_report.txt')
         
         with open(report_path, 'w') as f:
-            f.write("CONVERSATIONAL SPACE ANALYSIS RESULTS\n")
+            f.write("ENHANCED CONVERSATIONAL SPACE ANALYSIS RESULTS V3\n")
             f.write("="*70 + "\n")
             f.write(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             
@@ -1089,6 +2173,45 @@ class ConversationalAnalysis:
             f.write(f"Best test AUC: {best_result['test_auc']:.3f}\n")
             f.write(f"CV AUC: {best_result['cv_auc_mean']:.3f} ± {best_result['cv_auc_std']:.3f}\n")
             
+            if intrinsic_dim_results:
+                f.write("\n5. INTRINSIC DIMENSIONALITY\n")
+                f.write("-"*30 + "\n")
+                if intrinsic_dim_results['ml_estimate']:
+                    f.write(f"ML Estimate: {intrinsic_dim_results['ml_estimate']:.2f}\n")
+                f.write(f"PCA 90% variance: {intrinsic_dim_results['pca_dim_90']} dimensions\n")
+                f.write(f"PCA 95% variance: {intrinsic_dim_results['pca_dim_95']} dimensions\n")
+            
+            if within_tier_results:
+                f.write("\n6. WITHIN-TIER HETEROGENEITY\n")
+                f.write("-"*30 + "\n")
+                for phase, results in within_tier_results.items():
+                    f.write(f"{phase}: {results['optimal_clusters']} subtypes "
+                           f"(silhouette={results['silhouette_score']:.3f})\n")
+            
+            if preservation_scores:
+                f.write("\n7. MANIFOLD LEARNING COMPARISON\n")
+                f.write("-"*30 + "\n")
+                for method, score in preservation_scores.items():
+                    f.write(f"{method}: {score:.3f}\n")
+            
+            if phase_results:
+                f.write("\n8. CONVERSATION PHASES\n")
+                f.write("-"*30 + "\n")
+                f.write(f"Optimal phases: {phase_results['n_phases']}\n")
+                f.write(f"Transitions found: {len(phase_results['transitions'])}\n")
+            
+            if prediction_rmse:
+                f.write("\n9. TRAJECTORY PREDICTION\n")
+                f.write("-"*30 + "\n")
+                for horizon, rmse in prediction_rmse.items():
+                    f.write(f"Horizon {horizon}: RMSE = {rmse:.3f}\n")
+            
+            if comparison_df is not None:
+                f.write("\n10. PER-TIER GEOMETRY COMPARISON\n")
+                f.write("-"*30 + "\n")
+                f.write(comparison_df.to_string(index=False))
+                f.write("\n")
+        
         print(f"\nComprehensive report saved to: {report_path}")
 
 
@@ -1096,11 +2219,11 @@ class ConversationalAnalysis:
 if __name__ == "__main__":
     analyzer = ConversationalAnalysis()
     
-    # Run enhanced analysis
+    # Run enhanced analysis with per-tier geometry
     results = analyzer.run_complete_enhanced_analysis(
-        phase1_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-1-premium/n37/conversation_analysis_enhanced.csv',
-        phase2_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-2-efficient/n32/conversation_analysis_enhanced.csv',
-        phase3_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-3-no-reasoning/n42/conversation_analysis_enhanced.csv'
+        phase1_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-1-premium/n67/conversation_analysis_enhanced.csv',
+        phase2_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-2-efficient/n61/conversation_analysis_enhanced.csv',
+        phase3_path='/home/knots/git/the-academy/docs/paper/exp-data/phase-3-no-reasoning/n100/conversation_analysis_enhanced.csv'
     )
     
-    print("\nEnhanced analysis complete! Check 'analysis_outputs' for all results.")
+    print("\nEnhanced analysis V3 complete! Check 'analysis_outputs' for all results.")

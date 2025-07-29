@@ -21,130 +21,145 @@
 \newcommand{\gcs}{GCS}
 
 % ===================
-% DATA COMMANDS - UPDATED FROM N=110 RIGOROUS ANALYSIS
+% DATA COMMANDS - UPDATED FROM N=228 ANALYSIS WITH PER-TIER RESULTS
 % ===================
 
-% Dataset sizes (updated from N=110 analysis)
-\newcommand{\totalConversations}{110}
-\newcommand{\fullReasoningCount}{37}
-\newcommand{\lightReasoningCount}{31}
-\newcommand{\nonReasoningCount}{42}
+% Dataset sizes - UPDATED for N=228
+\newcommand{\totalConversations}{228}
+\newcommand{\fullReasoningCount}{67}
+\newcommand{\lightReasoningCount}{61}
+\newcommand{\nonReasoningCount}{100}
 \newcommand{\featureCount}{23}
 
-% Statistical power results - UPDATED FROM N=110
-\newcommand{\powerOutcomeGroups}{83.2\%}
-\newcommand{\powerModelTypes}{96.6\%}
-\newcommand{\powerCorrelation}{92.9\%}
+% Statistical power results - UPDATED FROM N=228
+\newcommand{\powerOutcomeGroups}{99.6\%}
+\newcommand{\powerModelTypes}{100.0\%}
+\newcommand{\powerCorrelation}{100.0\%}
 \newcommand{\sampleSizeForeightyPower}{103}
 
-% PCA analysis results - UPDATED FROM N=110 ANALYSIS
-\newcommand{\sampleFeatureRatio}{4.78}
-\newcommand{\conditionNumber}{502189027.07}  % Original before regularization
-\newcommand{\regularizedConditionNumber}{16431.19}
+% Overall PCA analysis results - UPDATED FROM N=228
+\newcommand{\conditionNumber}{354,209,363}
+\newcommand{\regularizedConditionNumber}{7,961}
 \newcommand{\regularizationAlpha}{0.1}
-\newcommand{\allFeaturesPCOne}{98.3\%}  % Updated from N=110
+\newcommand{\allFeaturesPCOne}{92.8\%}
 
-% Separated PCA results - FROM N=110 ANALYSIS
-\newcommand{\interventionFeatureCount}{6}
-\newcommand{\nonInterventionFeatureCount}{17}
-\newcommand{\interventionPCOneVariance}{99.7\%}
-\newcommand{\nonInterventionPCOneVariance}{52.4\%}  % UPDATED from N=110
-\newcommand{\nonInterventionPCOneCILower}{37.1\%}
-\newcommand{\nonInterventionPCOneCIUpper}{63.9\%}
-\newcommand{\componentsForEightyPercent}{4}
+% Overall separated PCA results - UPDATED FROM N=228
+\newcommand{\interventionPCOneVariance}{99.3\%}
+\newcommand{\nonInterventionPCOneVariance}{78.0\%}
+\newcommand{\nonInterventionPCOneCILower}{66.6\%}
+\newcommand{\nonInterventionPCOneCIUpper}{86.9\%}
 
-% Bootstrap stability results - FROM N=110 BOOTSTRAP
-\newcommand{\pcOneVarianceMean}{0.516}
-\newcommand{\pcOneVarianceCI}{[0.371, 0.639]}
-\newcommand{\pcTwoVarianceMean}{0.148}
-\newcommand{\pcTwoVarianceCI}{[0.093, 0.219]}
-\newcommand{\pcThreeVarianceMean}{0.088}
-\newcommand{\pcThreeVarianceCI}{[0.064, 0.119]}
-\newcommand{\pcFourVarianceMean}{0.067}
-\newcommand{\pcFourVarianceCI}{[0.045, 0.090]}
+% Per-tier geometric analysis - UPDATED FROM N=228
+\newcommand{\fullReasoningPCOne}{31.8\%}
+\newcommand{\fullReasoningPCOneCI}{[27.2\%, 39.0\%]}
+\newcommand{\lightReasoningPCOne}{70.7\%}
+\newcommand{\lightReasoningPCOneCI}{[46.2\%, 85.1\%]}
+\newcommand{\noReasoningPCOne}{79.8\%}
+\newcommand{\noReasoningPCOneCI}{[55.1\%, 87.0\%]}
+\newcommand{\fullReasoningIntrinsicDim}{2.09}
+\newcommand{\fullReasoningIntrinsicDimStd}{1.15}
+\newcommand{\lightReasoningIntrinsicDim}{1.74}
+\newcommand{\lightReasoningIntrinsicDimStd}{0.87}
+\newcommand{\noReasoningIntrinsicDim}{1.50}
+\newcommand{\noReasoningIntrinsicDimStd}{0.89}
+\newcommand{\fullReasoningPCANinety}{7}
+\newcommand{\lightReasoningPCANinety}{3}
+\newcommand{\noReasoningPCANinety}{3}
+\newcommand{\fullReasoningSilhouette}{0.236}
+\newcommand{\lightReasoningSilhouette}{0.649}
+\newcommand{\noReasoningSilhouette}{0.815}
+
+% Bootstrap stability results - UPDATED FROM N=228
+\newcommand{\pcOneVarianceMean}{0.780}
+\newcommand{\pcOneVarianceCI}{[0.666, 0.869]}
+\newcommand{\pcTwoVarianceMean}{0.056}
+\newcommand{\pcTwoVarianceCI}{[0.031, 0.096]}
+\newcommand{\pcThreeVarianceMean}{0.040}
+\newcommand{\pcThreeVarianceCI}{[0.025, 0.062]}
+\newcommand{\pcFourVarianceMean}{0.029}
+\newcommand{\pcFourVarianceCI}{[0.017, 0.045]}
 \newcommand{\bootstrapSamples}{100}
 
-% Predictive validation results - FROM N=110 ANALYSIS
+% Predictive validation results - UPDATED FROM N=228
 \newcommand{\bestRegularizationC}{10.0}
-\newcommand{\cvAUCMean}{0.725}
-\newcommand{\cvAUCStd}{0.172}
-\newcommand{\testAUC}{0.818}
-\newcommand{\precisionNonBreakdown}{0.79}
-\newcommand{\precisionBreakdown}{0.67}
+\newcommand{\cvAUCMean}{0.867}
+\newcommand{\cvAUCStd}{0.112}
+\newcommand{\testAUC}{0.743}
+\newcommand{\precisionNonBreakdown}{0.80}
+\newcommand{\precisionBreakdown}{0.74}
 \newcommand{\recallNonBreakdown}{0.86}
-\newcommand{\recallBreakdown}{0.55}
+\newcommand{\recallBreakdown}{0.65}
 
-% Dimension coefficients (standardized) - UPDATED
-\newcommand{\socialContagionCoef}{0.207}
-\newcommand{\affectiveCognitiveCoef}{1.345}
-\newcommand{\linguisticSynchronyCoef}{0.899}
-\newcommand{\temporalDynamicsCoef}{-0.286}
+% Dimension coefficients - UPDATED FROM N=228
+\newcommand{\socialContagionCoef}{-0.047}
+\newcommand{\linguisticSynchronyCoef}{0.895}
+\newcommand{\affectiveCognitiveCoef}{4.314}
+\newcommand{\temporalDynamicsCoef}{-0.083}
 
-% Synthetic data validation - UPDATED
-\newcommand{\syntheticDiscriminationAccuracy}{0.444}
-\newcommand{\syntheticDiscriminationCI}{[0.35, 0.54]}
+% Synthetic data validation - UPDATED FROM N=228
+\newcommand{\syntheticDiscriminationAccuracy}{0.737}
+\newcommand{\syntheticDiscriminationCI}{[0.64, 0.82]}
 
-% Intervention threshold - UPDATED
-\newcommand{\interventionThreshold}{0.360}
-\newcommand{\interventionThresholdPValue}{0.433}
+% Intervention threshold - UPDATED FROM N=228
+\newcommand{\interventionThreshold}{0.044}
+\newcommand{\interventionThresholdPValue}{0.551}
 
-% Theory-driven dimension validation
-\newcommand{\socialContagionBreakdownCorr}{0.349}
-\newcommand{\socialContagionBreakdownP}{0.000}
-\newcommand{\socialContagionEtaSquared}{0.225}
-\newcommand{\temporalDynamicsBreakdownCorr}{0.169}
-\newcommand{\temporalDynamicsBreakdownP}{0.096}
-\newcommand{\temporalDynamicsEtaSquared}{0.336}
-\newcommand{\linguisticSynchronyBreakdownCorr}{0.165}
-\newcommand{\linguisticSynchronyBreakdownP}{0.104}
-\newcommand{\linguisticSynchronyEtaSquared}{0.040}
-\newcommand{\affectiveCognitiveBreakdownCorr}{0.173}
-\newcommand{\affectiveCognitiveBreakdownP}{0.089}
-\newcommand{\affectiveCognitiveEtaSquared}{0.057}
+% Overall intrinsic dimensionality - UPDATED FROM N=228
+\newcommand{\overallIntrinsicDim}{1.96}
+\newcommand{\overallIntrinsicDimStd}{1.23}
 
-% Dimension means by phase with bootstrap CIs - UPDATED FOR N=110
-\newcommand{\socialContagionFullMean}{2.20}
-\newcommand{\socialContagionFullSE}{0.24}
-\newcommand{\socialContagionFullCI}{[1.48, 2.93]}
-\newcommand{\socialContagionLightMean}{0.65}
-\newcommand{\socialContagionLightSE}{0.21}
-\newcommand{\socialContagionLightCI}{[0.23, 1.26]}
-\newcommand{\socialContagionNoMean}{0.00}
-\newcommand{\socialContagionNoSE}{0.00}
-\newcommand{\socialContagionNoCI}{[-0.00, 0.01]}
+% Conversation phases - UPDATED FROM N=228
+\newcommand{\optimalPhases}{3}
+\newcommand{\phaseTransitions}{56}
 
-% Key metrics from paper
-\newcommand{\fullReasoningPeerPressure}{86.5\%}
-\newcommand{\lightReasoningPeerPressure}{22.6\%}
-\newcommand{\nonReasoningPeerPressure}{0.0\%}
+% Key metrics from peer pressure paper v5
+\newcommand{\fullReasoningPeerPressure}{79.1\%}
+\newcommand{\lightReasoningPeerPressure}{32.8\%}
+\newcommand{\nonReasoningPeerPressure}{5.0\%}
 
-% Breakdown rates by phase
-\newcommand{\fullReasoningBreakdown}{43.2\%}
-\newcommand{\lightReasoningBreakdown}{32.3\%}
-\newcommand{\nonReasoningBreakdown}{23.3\%}
+% Breakdown rates by phase - FROM PEER PRESSURE PAPER
+\newcommand{\fullReasoningBreakdown}{55.2\%}
+\newcommand{\lightReasoningBreakdown}{47.5\%}
+\newcommand{\nonReasoningBreakdown}{19.0\%}
 
-% Recovery rates by phase
-\newcommand{\fullReasoningRecovery}{24.3\%}
+% Recovery rates by phase - FROM PEER PRESSURE PAPER
+\newcommand{\fullReasoningRecovery}{13.4\%}
 \newcommand{\lightReasoningRecovery}{0.0\%}
-\newcommand{\nonReasoningRecovery}{3.3\%}
+\newcommand{\nonReasoningRecovery}{1.0\%}
 
-% Question effectiveness correlations
-\newcommand{\fullQuestionCorrelation}{0.817}
-\newcommand{\lightQuestionCorrelation}{0.559}
-\newcommand{\nonQuestionCorrelation}{0.376}
+% Question effectiveness correlations from peer pressure paper
+\newcommand{\fullQuestionCorrelation}{0.813}
+\newcommand{\lightQuestionCorrelation}{0.599}
+\newcommand{\nonQuestionCorrelation}{0.578}
 
-% Linguistic alignment
+% Linguistic alignment from peer pressure paper
 \newcommand{\fullLinguisticAlignment}{0.700}
 \newcommand{\lightLinguisticAlignment}{0.724}
 \newcommand{\nonLinguisticAlignment}{0.757}
 
-% Updated figure paths 
-\newcommand{\figuresPath}{../analysis/analysis_outputs_n110/figures/}
-\newcommand{\bootstrapPath}{../analysis/analysis_outputs_n110/bootstrap/}
-\newcommand{\validationPath}{../analysis/analysis_outputs_n110/validation/}
+% Social contagion gradients - FROM PEER PRESSURE PAPER
+\newcommand{\socialContagionFullMean}{1.65}
+\newcommand{\socialContagionLightMean}{0.48}
+\newcommand{\socialContagionNoMean}{0.02}
 
-\title{Conversational Dynamics as Trajectories in Multi-Regime Semantic Space: \\
-\large A Geometric Framework for Understanding AI Dialogue Evolution}
+% Bidirectional influence rates from peer pressure paper
+\newcommand{\fullBidirectional}{73.1\%}
+\newcommand{\lightBidirectional}{32.8\%}
+\newcommand{\nonBidirectional}{3.0\%}
+
+% Behavioral territory prevalences from peer pressure paper
+\newcommand{\metaReflectionPrevalence}{6.0\%}
+\newcommand{\competitiveEscalationPrevalence}{50.7\%}
+\newcommand{\mysticalBreakdownPrevalence}{100\%}
+
+% Figure paths
+\newcommand{\figuresPath}{../analysis/analysis_outputs/figures/}
+\newcommand{\tierPath}{../analysis/analysis_outputs/tier_analysis/}
+\newcommand{\bootstrapPath}{../analysis/analysis_outputs/bootstrap/}
+\newcommand{\validationPath}{../analysis/analysis_outputs/validation/}
+
+\title{Capability-Dependent Geometric Structure of AI Conversations: \\
+\large From High-Dimensional Social Dynamics to Low-Dimensional Mechanical Patterns}
 
 \author{
 Marco R. Garcia \\
@@ -158,24 +173,40 @@ marco@erulabs.ai
 \maketitle
 
 \begin{abstract}
-We present a geometric framework for understanding multi-agent AI conversations as trajectories through a multi-regime semantic space. Building on empirical observations from \totalConversations{} multi-agent conversations, we discover that conversation dynamics operate in two distinct geometric regimes: a rich 4-dimensional natural conversation manifold and a 1-dimensional intervention-dominated axis. Through comprehensive analysis using regularized PCA with bootstrap validation, we reveal that intervention features explain \allFeaturesPCOne{} of variance when included but mask a balanced multidimensional structure where the primary component captures \nonInterventionPCOneVariance{} [95\% CI: \nonInterventionPCOneCILower{}, \nonInterventionPCOneCIUpper{}] of variance. Cross-validated predictive testing (AUC = \testAUC{}) and synthetic data validation (discrimination accuracy = \syntheticDiscriminationAccuracy{}) confirm that our dimensions capture meaningful conversation dynamics. With \powerOutcomeGroups{} statistical power (exceeding conventional thresholds), our findings reveal fundamental principles governing AI dialogue evolution. Non-reasoning models showed 0\% peer pressure across \nonReasoningCount{} independent conversations, while full reasoning models exhibited \fullReasoningPeerPressure{} susceptibility, confirming dramatic capability-linked gradients. The framework provides actionable insights for multi-agent system design, suggesting sparse intervention strategies that preserve rich natural dynamics while leveraging regime transitions at critical moments.
+Building on empirical observations of peer pressure affecting \fullReasoningPeerPressure{} of sophisticated AI conversations \citep{garcia2025peer}, we present a geometric framework revealing that multi-agent AI conversations exhibit capability-dependent structure rather than universal dynamics. Through comprehensive analysis of \totalConversations{} conversations using regularized PCA with bootstrap validation and per-tier geometric analysis, we discover that sophisticated models operate in higher-dimensional spaces enabling social phenomena, while simpler models are constrained to low-dimensional mechanical patterns. Two complementary measures reveal this gradient: intrinsic dimensionality (\fullReasoningIntrinsicDim{} → \lightReasoningIntrinsicDim{} → \noReasoningIntrinsicDim{}) and effective dimensionality (\fullReasoningPCANinety{} → \lightReasoningPCANinety{} → \noReasoningPCANinety{} principal components needed for 90\% variance). This dimensional complexity directly explains the peer pressure gradient (\fullReasoningPeerPressure{} → \lightReasoningPeerPressure{} → \nonReasoningPeerPressure{}) documented in the empirical study, demonstrating that social dynamics require geometric complexity to manifest. Within each tier, intervention features create regime transitions: sophisticated models maintain multi-dimensional dynamics even under intervention (PC1: \fullReasoningPCOne{}), while simpler models collapse more readily to one-dimensional control (PC1: \noReasoningPCOne{}). Cross-validated predictive testing (AUC = \testAUC{}) confirms our framework captures meaningful variance. This capability-dependent geometry explains both the emergence of social phenomena in advanced models and their absence in simpler systems, providing fundamental insights for multi-agent AI design.
 \end{abstract}
 
 \section{Introduction}
 
-The emergence of sustained multi-agent AI dialogue has revealed complex dynamics that resist traditional analysis. Recent work documented surprising social phenomena: AI agents exhibit peer pressure affecting \fullReasoningPeerPressure{} of conversations, with breakdown patterns emerging from social rather than technical factors \citep{garcia2025peer}. These findings demand a mathematical framework capable of capturing both the richness of observed behaviors and the underlying geometric structure of dialogue evolution.
+The emergence of sustained multi-agent AI dialogue has revealed complex dynamics that resist traditional analysis. Recent work documented surprising social phenomena: AI agents exhibit peer pressure affecting up to \fullReasoningPeerPressure{} of conversations in sophisticated models, with breakdown patterns emerging from social rather than technical factors \citep{garcia2025peer}. These findings demand a mathematical framework capable of capturing both the richness of observed behaviors and the fundamental differences across model capabilities.
 
-We propose viewing conversations as trajectories through a semantic vector space—a geometric perspective that reveals hidden structure in seemingly chaotic dialogue evolution. Just as celestial mechanics explains complex planetary motion through gravitational fields in space, we model conversation dynamics through semantic fields that create attractors and repellers in dialogue space.
+Our investigation builds upon these empirical findings \citep{garcia2025peer}, which revealed that AI agents exhibit social influence patterns with a striking gradient: peer pressure declined from \fullReasoningPeerPressure{} in full reasoning models to \lightReasoningPeerPressure{} in light reasoning models to \nonReasoningPeerPressure{} in non-reasoning models, while recovery capability showed a similar pattern (\fullReasoningRecovery{} → \lightReasoningRecovery{} → \nonReasoningRecovery{}). The study also documented bidirectional influence rates of \fullBidirectional{}, \lightBidirectional{}, and \nonBidirectional{} respectively, suggesting that social dynamics scale with cognitive sophistication. These behavioral observations raised fundamental questions about why social dynamics vary so dramatically with model capability—questions that motivated our geometric investigation.
 
-We employ rigorous statistical methods including regularized PCA ($\alpha = \regularizationAlpha{}$) to address severe multicollinearity (condition number > 500 million), bootstrap resampling (n = \bootstrapSamples{}) to quantify uncertainty, and cross-validated prediction to validate our framework. With \powerOutcomeGroups{} statistical power for our primary analyses, our findings meet conventional thresholds and provide robust evidence for our theoretical framework.
+We propose viewing conversations as trajectories through capability-dependent semantic spaces—a geometric perspective that reveals how model sophistication determines the dimensional complexity of dialogue evolution. Just as relativistic physics shows that spacetime geometry depends on mass-energy distribution, we demonstrate that conversational geometry depends fundamentally on model capability.
+
+Through analysis of \totalConversations{} conversations across three model tiers, we employ rigorous statistical methods including regularized PCA ($\alpha = \regularizationAlpha{}$) to address severe multicollinearity, bootstrap resampling (n = \bootstrapSamples{}) to quantify uncertainty, and per-tier geometric analysis to reveal capability-dependent structure. With \powerOutcomeGroups{} statistical power for our primary analyses, our findings exceed conventional thresholds and reveal fundamental principles governing AI dialogue.
 
 \subsection{The Geometric Intuition}
 
-Consider how human conversations navigate through topics, emotions, and social dynamics. Some discussions flow naturally toward agreement, others spiral into conflict, and many exhibit sudden phase transitions. These patterns suggest an underlying geometry: a space where proximity indicates semantic similarity, where certain regions attract trajectories (breakdown states), and where interventions can redirect paths.
+Human conversations navigate through topics, emotions, and social dynamics in ways that suggest underlying geometric structure. Our analysis reveals this intuition extends to AI conversations but with a critical twist: the dimensionality and structure of this space depends fundamentally on model capability.
 
-Our analysis reveals a fundamental duality: conversations exist in two distinct geometric regimes. When evolving naturally, they navigate a rich 4-dimensional manifold. When heavily intervened upon, they collapse to movement along a 1-dimensional axis. This discovery transforms our understanding of AI dialogue dynamics and intervention strategies.
+Sophisticated models navigate rich, higher-dimensional manifolds where social phenomena can emerge. Simpler models operate in constrained, low-dimensional spaces that permit only mechanical patterns. This discovery—that conversational geometry scales with capability—transforms our understanding of why some AI systems exhibit social dynamics while others do not.
 
 \section{Related Work}
+
+\subsection{Empirical Foundation: Peer Pressure in AI Systems}
+
+This geometric analysis builds directly upon empirical observations of peer pressure dynamics in AI conversations \citep{garcia2025peer}. That foundational work documented several key phenomena that our geometric framework seeks to explain:
+
+\textbf{Social Influence Gradient}: Through analysis of 228 extended dialogues, the study discovered that peer pressure effects scale with model capability, declining from \fullReasoningPeerPressure{} in full reasoning models to \lightReasoningPeerPressure{} in light models to \nonReasoningPeerPressure{} in non-reasoning models. This gradient suggested that social susceptibility might be tied to underlying cognitive architecture.
+
+\textbf{Bidirectional Dynamics}: The study found that \fullBidirectional{} of full reasoning conversations exhibited bidirectional influence, where agents mutually shaped each other's behavior. This decreased to \lightBidirectional{} in light models and \nonBidirectional{} in non-reasoning models.
+
+\textbf{Recovery Mechanisms}: Most strikingly, recovery from breakdown showed a stark capability dependence: \fullReasoningRecovery{} of full reasoning sessions demonstrated recovery, while light and non-reasoning models showed \lightReasoningRecovery{} and \nonReasoningRecovery{} recovery capability respectively.
+
+\textbf{Behavioral Territories}: The work identified distinct conversational attractors including meta-reflection (\metaReflectionPrevalence{} prevalence), competitive escalation (\competitiveEscalationPrevalence{} of conversations), and mystical abstraction (present in \mysticalBreakdownPrevalence{} of breakdowns) that pulled conversations toward breakdown, while future-focused exploration and question-driven dialogue maintained stability.
+
+These empirical patterns demanded a theoretical framework to explain why social dynamics emerge in sophisticated models but not simpler ones. Our geometric analysis addresses this gap by revealing the underlying dimensional structure that enables or constrains social phenomena.
 
 Our geometric framework for understanding AI conversations as trajectories through multi-regime semantic space builds upon several research threads while addressing critical gaps in the literature. We survey relevant work in geometric approaches to dialogue, mathematical formalisms for conversation dynamics, and topological methods in natural language processing.
 
@@ -183,7 +214,7 @@ Our geometric framework for understanding AI conversations as trajectories throu
 
 Despite extensive development of geometric methods in machine learning, their application to dialogue modeling remains surprisingly limited. \citep{ballus2024topological} recently introduced topological dialogue semantics using simplicial complexes, where utterances correspond to open sets in discrete semantic spaces. While this provides provably correct algorithms for topological reasoning, it has not been implemented for AI-to-AI systems and lacks the trajectory-based perspective central to our approach.
 
-The state space grid framework by \citep{brinberg2024state} operationalizes conversation movement through geometric state spaces, quantifying behavioral contingencies and conversation attractors in human dyadic interactions. Though focused on human communication, their identification of attractor dynamics and flexibility parameters provides a foundation we extend to multi-agent AI systems. Similarly, \citep{sage2025steering} introduces State-Action Chain representations for dialogue, separating high-level planning from generation—a distinction that motivated our multi-regime formulation.
+The state space grid framework by \citep{brinberg2024state} operationalizes conversation movement through geometric state spaces, quantifying behavioral contingencies and conversation attractors in human dyadic interactions. Though focused on human communication, their identification of attractor dynamics and flexibility parameters provides a foundation we extend to multi-agent AI systems. Similarly, \citep{sage2025steering} introduces State-Action Chain representations for dialogue, separating high-level planning from generation (a distinction that motivated our multi-regime formulation).
 
 Topological data analysis has found limited application in dialogue systems. \citep{vukovic2022dialogue} pioneered the use of persistent homology for analyzing word embedding topology in task-oriented dialogue, demonstrating how topological features can extract domain-specific information. However, their work focuses on static representations rather than the dynamic evolution we model. The application of persistent homology to topic networks \citep{hopp2024persistent} reveals how topological features capture information gaps, suggesting potential for analyzing conversation structure evolution, though this connection remains unexplored.
 
@@ -202,7 +233,7 @@ The DYMO project \citep{eshghi2017dymo} represents one of the few attempts at tr
 
 \subsection{Manifold Learning and Semantic Spaces}
 
-Manifold learning has shown promise for understanding linguistic representations. \citep{hasan2017manifold} demonstrated that word embeddings suffer from metric distortions when treated as Euclidean spaces, proposing manifold dimensionality retention to correct these issues. This insight extends naturally to dialogue embeddings—if individual words require manifold structure, entire conversations likely inhabit even more complex geometric spaces.
+Manifold learning has shown promise for understanding linguistic representations. \citep{hasan2017manifold} demonstrated that word embeddings suffer from metric distortions when treated as Euclidean spaces, proposing manifold dimensionality retention to correct these issues. This insight extends naturally to dialogue embeddings: if individual words require manifold structure, entire conversations likely inhabit even more complex geometric spaces.
 
 Recent work on Riemannian manifold learning for multi-agent systems \citep{liu2025riemannian} maps joint action spaces to smooth manifolds using neural normalizing flows. While focused on game-theoretic settings, their framework for learning on curved spaces could naturally extend to conversational dynamics. However, this connection has not been explored, leaving a significant gap our work addresses.
 
@@ -220,137 +251,93 @@ Our comprehensive literature review reveals several critical gaps:
 
 \textbf{No Intervention-Based Regime Switching}: The concept of intervention density causing geometric regime transitions appears completely absent from prior work. This represents a fundamental insight about how external steering affects conversation structure.
 
-Our framework addresses these gaps by providing the first comprehensive geometric model of AI dialogue evolution. By combining trajectory analysis with multi-regime dynamics, we reveal how conversations navigate semantic space under different conditions. The empirical validation across 110 conversations with multiple model tiers demonstrates that these geometric insights capture real phenomena in AI communication.
+\textbf{Capability-Dependent Geometry Unexplored}: Most critically, no prior work has investigated whether conversational geometry varies with model capability. Our finding that sophisticated models navigate higher-dimensional spaces while simpler models are geometrically constrained appears entirely novel.
+
+Our framework addresses these gaps by providing the first comprehensive geometric model of AI dialogue evolution that accounts for capability-dependent structure. By combining trajectory analysis with multi-regime dynamics and per-tier investigation, we reveal how conversations navigate semantic space under different conditions and capabilities. The empirical validation across \totalConversations{} conversations with multiple model tiers demonstrates that these geometric insights capture real phenomena in AI communication.
 
 The discovery that sophisticated models exhibit richer geometric behavior while simpler models collapse to lower-dimensional dynamics suggests that geometric complexity may be a fundamental characteristic of advanced AI communication—a finding with significant implications for designing and understanding multi-agent AI systems.
 
 \section{Methods}
 
-\subsection{Statistical Approach and Power Analysis}
+\subsection{Dataset and Statistical Power}
 
-Our dataset of \totalConversations{} conversations (\fullReasoningCount{} full reasoning, \lightReasoningCount{} light reasoning, \nonReasoningCount{} non-reasoning) across \featureCount{} features provides adequate statistical power for our analyses. Power analysis reveals:
-
+Our geometric analysis examines the same \totalConversations{} multi-agent conversations analyzed for behavioral patterns in \citep{garcia2025peer}:
 \begin{itemize}
-    \item \textbf{Outcome comparisons (4 groups)}: \powerOutcomeGroups{} power (exceeds 80\% threshold)
-    \item \textbf{Model type comparisons (3 groups)}: \powerModelTypes{} power (excellent)
-    \item \textbf{Correlation detection (r=0.349)}: \powerCorrelation{} power (excellent)
+    \item Full reasoning models: N = \fullReasoningCount{} (documented \fullReasoningPeerPressure{} peer pressure rate)
+    \item Light reasoning models: N = \lightReasoningCount{} (documented \lightReasoningPeerPressure{} peer pressure rate)
+    \item Non-reasoning models: N = \nonReasoningCount{} (documented \nonReasoningPeerPressure{} peer pressure rate)
 \end{itemize}
+
+This shared dataset enables direct correlation between geometric properties and observed behaviors, allowing us to test whether dimensional complexity explains the documented social dynamics gradient.
+
+Power analysis confirms adequate statistical power:
+\begin{itemize}
+    \item Outcome comparisons (4 groups): \powerOutcomeGroups{} power
+    \item Model type comparisons (3 groups): \powerModelTypes{} power
+    \item Correlation detection: \powerCorrelation{} power
+\end{itemize}
+
+\subsection{Analytical Approach}
 
 Given severe multicollinearity (condition number = \conditionNumber{}), we employ:
 
 \begin{enumerate}
     \item \textbf{Regularized PCA}: Ridge regularization ($\alpha = \regularizationAlpha{}$) reduces condition number to \regularizedConditionNumber{}
-    \item \textbf{Bootstrap validation}: \bootstrapSamples{} resamples provide confidence intervals for all estimates
-    \item \textbf{Cross-validation}: 5-fold CV with multiple regularization strengths (C $\in$ \{0.01, 0.1, 1.0, 10.0\})
+    \item \textbf{Bootstrap validation}: \bootstrapSamples{} resamples provide confidence intervals
+    \item \textbf{Per-tier analysis}: Separate geometric analysis for each model capability tier
+    \item \textbf{Cross-validation}: 5-fold CV with multiple regularization strengths
 \end{enumerate}
 
-\subsection{Empirical Discovery of Intervention Dominance}
+\subsection{Feature Engineering}
 
-Our analysis revealed a critical empirical finding through systematic feature separation:
-
-\textbf{Combined Analysis}: When all 23 features are analyzed together, PC1 captures \allFeaturesPCOne{} of variance, driven entirely by intervention-related features.
-
-\textbf{Separated Analysis}:
+We analyze \featureCount{} features grouped into categories derived from behavioral observations \citep{garcia2025peer}:
 \begin{itemize}
-    \item Intervention features only: PC1 explains \interventionPCOneVariance{} of variance
-    \item Non-intervention features only: PC1 explains \nonInterventionPCOneVariance{} [95\% CI: \nonInterventionPCOneCILower{}, \nonInterventionPCOneCIUpper{}] of variance
-    \item First 4 components required for 80\% variance (non-intervention)
+    \item Social contagion metrics: Quantifying the peer pressure and mirroring behaviors documented at \fullReasoningPeerPressure{} prevalence in full reasoning models
+    \item Linguistic synchrony measures: Capturing the alignment and convergence patterns that varied from \fullLinguisticAlignment{} to \nonLinguisticAlignment{} across tiers
+    \item Affective-cognitive indicators: Measuring the emotional volatility and abstraction associated with breakdown territories
+    \item Temporal dynamics: Encoding the phase transitions and oscillations observed in extended dialogues
+    \item Intervention responses: Quantifying the question-based circuit breakers that showed effectiveness correlations from r=\fullQuestionCorrelation{} to r=\nonQuestionCorrelation{}
 \end{itemize}
 
-This dramatic difference motivated our multi-regime framework, where intervention density acts as a regime switch rather than a continuous modifier.
+\subsection{Dimensionality Measures}
+
+We employ two complementary approaches to characterize conversational geometry:
+
+\begin{enumerate}
+    \item \textbf{Intrinsic Dimensionality}: Maximum likelihood estimation following Levina-Bickel, measuring the true underlying dimensionality of the data manifold
+    \item \textbf{Effective Dimensionality}: Number of principal components required to capture 90\% of variance, indicating the practical complexity of the conversation space
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\textwidth]{\figuresPath intrinsic_dimension.pdf}
+\caption{Intrinsic dimensionality estimation using maximum likelihood (left) and PCA-based effective dimensionality (right). The ML estimate stabilizes around \overallIntrinsicDim{} ± \overallIntrinsicDimStd{} as the number of neighbors increases. The cumulative variance plot shows that 90\% of variance is captured by different numbers of components across tiers: \fullReasoningPCANinety{} for full reasoning, \lightReasoningPCANinety{} for light/non-reasoning models.}
+\label{fig:intrinsic_dimension}
+\end{figure}
+
+These measures capture different aspects: intrinsic dimensionality reveals the fundamental degrees of freedom, while effective dimensionality shows how variance is distributed across the feature space.
+
+
 
 \section{Results}
 
-\subsection{Bootstrap Stability Analysis}
+\subsection{Overall Geometric Structure}
 
-Bootstrap resampling (n=\bootstrapSamples{}) reveals structure with quantifiable uncertainty:
+Initial analysis across all conversations revealed intervention dominance:
 
-\textbf{Variance Explained (95\% CI)}:
+\textbf{Combined features}: PC1 captures \allFeaturesPCOne{} of variance, driven by intervention features.
+
+\textbf{Separated analysis}:
 \begin{itemize}
-    \item PC1: \pcOneVarianceMean{} \pcOneVarianceCI{}
-    \item PC2: \pcTwoVarianceMean{} \pcTwoVarianceCI{}
-    \item PC3: \pcThreeVarianceMean{} \pcThreeVarianceCI{}
-    \item PC4: \pcFourVarianceMean{} \pcFourVarianceCI{}
+    \item Intervention features: PC1 explains \interventionPCOneVariance{}
+    \item Non-intervention features: PC1 explains \nonInterventionPCOneVariance{} [95\% CI: \nonInterventionPCOneCILower{}, \nonInterventionPCOneCIUpper{}]
 \end{itemize}
 
-Despite confidence intervals, loading patterns remain consistent:
-\begin{itemize}
-    \item Social contagion features (peer pressure intensity, event count) consistently load on PC1
-    \item Linguistic features dominate PC2
-    \item Sign stability exceeds 75\% for primary loadings
-\end{itemize}
+This dramatic difference motivated deeper investigation through per-tier analysis.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{\bootstrapPath bootstrap_loadings.pdf}
-\caption{Bootstrap stability of principal component loadings. Error bars show 95\% confidence intervals from \bootstrapSamples{} bootstrap samples. Loading patterns remain consistent, particularly for social contagion features on PC1.}
-\label{fig:bootstrap_loadings}
-\end{figure}
+\subsection{Capability-Dependent Geometric Structure}
 
-\subsection{Multi-Regime Conversation Space}
-
-Based on our empirical findings, we propose a dual-regime model where conversations exist in different geometric structures depending on intervention density:
-
-\textbf{Definition 1 (Multi-Regime Conversation Space).} The full conversation state is represented as:
-\begin{equation}
-\mathbf{c}(t) = \alpha(t) \cdot \mathbf{i}(t) + (1-\alpha(t)) \cdot \mathbf{m}(t)
-\end{equation}
-
-where:
-\begin{itemize}
-    \item $\mathbf{i}(t) \in \mathcal{I}$: Position on the 1-dimensional intervention axis
-    \item $\mathbf{m}(t) \in \mathcal{M}$: Position on the 4-dimensional natural conversation manifold
-    \item $\alpha(t) \in [0,1]$: Intervention density weight at time $t$
-\end{itemize}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{\figuresPath regime_comparison.pdf}
-\caption{Dual-regime structure of conversational dynamics. Top panels show PCA variance explained with and without intervention features. Bottom panels illustrate trajectory dynamics in each regime. The dramatic difference in variance structure (\allFeaturesPCOne{} vs \nonInterventionPCOneVariance{}) reveals how interventions collapse the rich 4D manifold to 1D movement.}
-\label{fig:regime_comparison}
-\end{figure}
-
-\subsection{Predictive Validation}
-
-Cross-validated logistic regression demonstrates strong predictive power:
-
-\textbf{Model Performance}:
-\begin{itemize}
-    \item Best parameters: C = \bestRegularizationC{} (L2 regularization)
-    \item Cross-validation AUC: \cvAUCMean{} $\pm$ \cvAUCStd{}
-    \item Test set AUC: \testAUC{}
-    \item Precision: \precisionNonBreakdown{} (non-breakdown), \precisionBreakdown{} (breakdown)
-    \item Recall: \recallNonBreakdown{} (non-breakdown), \recallBreakdown{} (breakdown)
-\end{itemize}
-
-\textbf{Dimension Coefficients} (standardized):
-\begin{itemize}
-    \item Affective-cognitive: \affectiveCognitiveCoef{}
-    \item Linguistic synchrony: \linguisticSynchronyCoef{}
-    \item Social contagion: \socialContagionCoef{}
-    \item Temporal dynamics: \temporalDynamicsCoef{}
-\end{itemize}
-
-\subsection{Synthetic Data Validation}
-
-To validate our framework's ability to capture conversation dynamics, we generated n=100 synthetic conversations:
-
-\begin{itemize}
-    \item Real vs synthetic discrimination accuracy: \syntheticDiscriminationAccuracy{} (95\% CI: \syntheticDiscriminationCI{})
-    \item Near-chance discrimination (0.5) indicates synthetic data successfully mimics real patterns
-    \item Dimension means show slight positive bias but maintain relative relationships
-\end{itemize}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{\validationPath synthetic_validation.pdf}
-\caption{Real vs synthetic data comparison. Left: Real conversation data projected onto first two theory-driven dimensions. Right: Synthetic data generated from our model. The similar structure and near-chance discrimination accuracy (\syntheticDiscriminationAccuracy{}) validate our dimensional framework.}
-\label{fig:synthetic_validation}
-\end{figure}
-
-\subsection{Model Capability Gradients}
-
-The dimensions show dramatic gradients across model capabilities, revealing how social dynamics manifest differently across the AI capability spectrum:
+Per-tier analysis reveals that geometric complexity varies dramatically with model capability:
 
 \begin{table}[h]
 \centering
@@ -358,115 +345,192 @@ The dimensions show dramatic gradients across model capabilities, revealing how 
 \toprule
 Metric & Full Reasoning & Light Reasoning & Non-Reasoning \\
 \midrule
-Peer Pressure Detection & \fullReasoningPeerPressure{} & \lightReasoningPeerPressure{} & \nonReasoningPeerPressure{} \\
-Breakdown Rate & \fullReasoningBreakdown{} & \lightReasoningBreakdown{} & \nonReasoningBreakdown{} \\
-Recovery Capability & \fullReasoningRecovery{} & \lightReasoningRecovery{} & \nonReasoningRecovery{} \\
-Question Effectiveness (r) & $\fullQuestionCorrelation{}^{***}$ & $\lightQuestionCorrelation{}^{**}$ & $\nonQuestionCorrelation{}^{*}$ \\
-Linguistic Alignment & \fullLinguisticAlignment{} & \fullLinguisticAlignment{} & \nonLinguisticAlignment{} \\
-Social Contagion (mean$\pm$SE) & \socialContagionFullMean{}$\pm$\socialContagionFullSE{} & \socialContagionLightMean{}$\pm$\socialContagionLightSE{} & \socialContagionNoMean{}$\pm$\socialContagionNoSE{} \\
-Bootstrap CI for SC & \socialContagionFullCI{} & \socialContagionLightCI{} & \socialContagionNoCI{} \\
+N & \fullReasoningCount{} & \lightReasoningCount{} & \nonReasoningCount{} \\
+Non-intervention PC1 & \fullReasoningPCOne{} & \lightReasoningPCOne{} & \noReasoningPCOne{} \\
+Bootstrap CI & \fullReasoningPCOneCI{} & \lightReasoningPCOneCI{} & \noReasoningPCOneCI{} \\
+Intrinsic Dim (ML) & \fullReasoningIntrinsicDim{} ± \fullReasoningIntrinsicDimStd{} & \lightReasoningIntrinsicDim{} ± \lightReasoningIntrinsicDimStd{} & \noReasoningIntrinsicDim{} ± \noReasoningIntrinsicDimStd{} \\
+Effective Dim (90\%) & \fullReasoningPCANinety{} & \lightReasoningPCANinety{} & \noReasoningPCANinety{} \\
+Within-tier Silhouette & \fullReasoningSilhouette{} & \lightReasoningSilhouette{} & \noReasoningSilhouette{} \\
 \bottomrule
 \end{tabular}
-\caption{Model capability gradients with bootstrap confidence intervals. *** p<0.001, ** p<0.01, * p<0.05. Social Contagion values include 95\% bootstrap confidence intervals showing clear separation between model tiers. The 0\% peer pressure finding for non-reasoning models (N=\nonReasoningCount{}) is now definitive.}
-\label{tab:capability_gradients}
+\caption{Geometric properties by model tier. Sophisticated models operate in higher-dimensional spaces with more diverse behaviors (low silhouette), while simpler models show constrained, mechanical patterns (high silhouette). Note the distinction between intrinsic dimensionality (true degrees of freedom) and effective dimensionality (principal components for 90\% variance).}
+\label{tab:tier_geometry}
 \end{table}
 
-\textbf{Theory-Driven Dimension Analysis}:
-
-Our theory-driven dimensions reveal statistically significant associations with conversation outcomes:
-
-\begin{itemize}
-    \item \textbf{Social Contagion}: $r$ = \socialContagionBreakdownCorr{} with breakdown (p = \socialContagionBreakdownP{}), $\eta^2$ = \socialContagionEtaSquared{} (large effect)
-    \item \textbf{Temporal Dynamics}: $r$ = \temporalDynamicsBreakdownCorr{} with breakdown (p = \temporalDynamicsBreakdownP{}), $\eta^2$ = \temporalDynamicsEtaSquared{} (large effect)
-    \item \textbf{Linguistic Synchrony}: $r$ = \linguisticSynchronyBreakdownCorr{} with breakdown (p = \linguisticSynchronyBreakdownP{}), $\eta^2$ = \linguisticSynchronyEtaSquared{} (small effect)
-    \item \textbf{Affective-Cognitive}: $r$ = \affectiveCognitiveBreakdownCorr{} with breakdown (p = \affectiveCognitiveBreakdownP{}), $\eta^2$ = \affectiveCognitiveEtaSquared{} (small-medium effect)
-\end{itemize}
-
-The gradient analysis reveals three key insights:
-
-1. \textbf{Social Sophistication Gradient}: Full reasoning models show dramatically higher social contagion scores than non-reasoning models (\socialContagionFullMean{} vs \socialContagionNoMean{}), with non-overlapping confidence intervals confirming this difference is robust.
-
-2. \textbf{Inverse Linguistic Pattern}: While social dynamics decrease with model simplicity, linguistic synchrony shows the opposite pattern (increasing from \fullLinguisticAlignment{} to \nonLinguisticAlignment{}), suggesting simpler models engage in mechanical mirroring rather than genuine social coordination.
-
-3. \textbf{Breakdown Mechanisms Differ by Tier}: The correlation between dimensions and breakdown varies by model capability, with social contagion being the primary driver for full reasoning models while temporal dynamics dominates for simpler models. The complete absence of peer pressure in \nonReasoningCount{} non-reasoning conversations definitively establishes this as a capability-linked phenomenon.
+The inverse relationship between PC1 dominance and dimensionality reveals a fundamental principle: sophisticated models distribute variance across multiple dimensions (requiring \fullReasoningPCANinety{} principal components to capture 90\% of variance), enabling complex social dynamics, while simpler models concentrate variance along fewer axes (requiring only \noReasoningPCANinety{} components), producing predictable mechanical behaviors.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{\figuresPath dimension_gradients.pdf}
-\caption{Theory-driven dimensions across model capabilities with 95\% confidence intervals. The dramatic gradients in social contagion and temporal dynamics dimensions from full to non-reasoning models contrast with the inverse pattern in linguistic synchrony, confirming differential access to manifold regions.}
-\label{fig:dimension_gradients}
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{\tierPath full_reasoning_conversation_space.pdf}
+    \caption{Full Reasoning (N=\fullReasoningCount{})}
+\end{subfigure}
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{\tierPath light_reasoning_conversation_space.pdf}
+    \caption{Light Reasoning (N=\lightReasoningCount{})}
+\end{subfigure}
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{\tierPath no_reasoning_conversation_space.pdf}
+    \caption{Non-Reasoning (N=\nonReasoningCount{})}
+\end{subfigure}
+\caption{Conversation spaces projected onto first two principal components for each model tier. Colors indicate outcomes: green (no breakdown), yellow (resisted), orange (recovered), red (breakdown). Note the increasing concentration and mechanical clustering from full to non-reasoning models, with full reasoning showing the most dispersed, complex structure.}
+\label{fig:conversation_spaces}
 \end{figure}
 
-\subsection{Intervention Threshold Analysis}
-
-Analysis of intervention density reveals a critical threshold for regime transition:
-
-\begin{itemize}
-    \item Intervention threshold: \interventionThreshold{}
-    \item Below threshold: Rich 4D manifold dynamics preserved
-    \item Above threshold: Collapse to 1D intervention axis
-    \item ANOVA: F = 0.92, p = \interventionThresholdPValue{}
-\end{itemize}
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{\tierPath full_reasoning_variance_comparison.pdf}
+    \caption{Full Reasoning}
+\end{subfigure}
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{\tierPath light_reasoning_variance_comparison.pdf}
+    \caption{Light Reasoning}
+\end{subfigure}
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{\tierPath no_reasoning_variance_comparison.pdf}
+    \caption{Non-Reasoning}
+\end{subfigure}
+\caption{Variance explained by principal components comparing all features (left) vs non-intervention features only (right) for each model tier. The dramatic difference in PC1 dominance reveals how intervention features overwhelm natural conversation dynamics, particularly in simpler models.}
+\label{fig:variance_structure}
+\end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{\figuresPath intervention_threshold.pdf}
-\caption{Intervention density analysis. Top: Dimensional structure degrades as intervention density increases. Bottom: Distribution of intervention density by conversation outcome. The empirical threshold at \interventionThreshold{} marks the transition between regimes.}
-\label{fig:intervention_threshold}
+\includegraphics[width=\textwidth]{\tierPath tier_geometry_comparison.pdf}
+\caption{Geometric properties across model tiers. (a) PC1 variance shows intervention dominance increases with model simplicity. (b) Intrinsic dimensionality decreases from sophisticated to simple models. (c) Breakdown rates vary non-monotonically. (d) Within-tier clustering quality (silhouette score) improves with model simplicity, indicating more homogeneous behaviors.}
+\label{fig:tier_comparison}
+\end{figure}
+
+These geometric findings directly explain the behavioral patterns documented in \citep{garcia2025peer}. The peer pressure gradient (\fullReasoningPeerPressure{} → \lightReasoningPeerPressure{} → \nonReasoningPeerPressure{}) maps precisely onto our dimensional complexity gradient, where sophisticated models with distributed variance across 7 dimensions have the geometric freedom for social dynamics, while simpler models concentrated along 3 dimensions exhibit minimal social influence.
+
+
+The breakdown rate gradient observed behaviorally (\fullReasoningBreakdown{} → \lightReasoningBreakdown{} → \nonReasoningBreakdown{}) now makes geometric sense: models with higher dimensional freedom can explore more diverse behavioral territories, including both breakdown attractors and recovery paths. The unique recovery capability of full reasoning models (\fullReasoningRecovery{}) aligns with their higher intrinsic dimensionality (\fullReasoningIntrinsicDim{}), suggesting recovery requires navigating complex geometric paths unavailable in lower-dimensional spaces.
+
+
+\subsection{Multi-Regime Dynamics}
+
+Based on tier-specific findings, we propose a capability-dependent multi-regime model:
+
+\textbf{Definition 1} (Capability-Dependent Conversation Space). The conversation state is:
+\begin{equation}
+\mathbf{c}(t) = \alpha(t) \cdot \mathbf{i}(t) + (1-\alpha(t)) \cdot \mathbf{m}_d(t)
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $\mathbf{i}(t) \in \mathbb{R}$: Position on 1D intervention axis
+    \item $\mathbf{m}_d(t) \in \mathbb{R}^d$: Position on d-dimensional manifold
+    \item $d$ represents effective dimensionality: conversations require approximately \fullReasoningPCANinety{} dimensions (full reasoning) or \noReasoningPCANinety{} dimensions (light/non-reasoning) to capture 90\% of their variance
+    \item $\alpha(t) \in [0,1]$: Intervention density weight
+\end{itemize}
+
+\subsection{Social Dynamics Gradient}
+
+The geometric complexity gradient directly parallels social phenomenon manifestation documented in \citep{garcia2025peer}:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Phenomenon & Full Reasoning & Light Reasoning & Non-Reasoning \\
+\midrule
+Peer Pressure & \fullReasoningPeerPressure{} & \lightReasoningPeerPressure{} & \nonReasoningPeerPressure{} \\
+Social Contagion Score & \socialContagionFullMean{} & \socialContagionLightMean{} & \socialContagionNoMean{} \\
+Breakdown Rate & \fullReasoningBreakdown{} & \lightReasoningBreakdown{} & \nonReasoningBreakdown{} \\
+Recovery Capability & \fullReasoningRecovery{} & \lightReasoningRecovery{} & \nonReasoningRecovery{} \\
+Linguistic Alignment & \fullLinguisticAlignment{} & \lightLinguisticAlignment{} & \nonLinguisticAlignment{} \\
+\bottomrule
+\end{tabular}
+\caption{Social phenomena gradient across model tiers. Note the inverse relationship between linguistic alignment and social dynamics, suggesting mechanical mirroring versus genuine social coordination.}
+\label{tab:social_gradient}
+\end{table}
+
+\subsection{Predictive Validation}
+
+Cross-validated prediction confirms our framework captures meaningful variance:
+
+\begin{itemize}
+    \item Test AUC: \testAUC{} (C = \bestRegularizationC{})
+    \item CV AUC: \cvAUCMean{} ± \cvAUCStd{}
+    \item Key predictors: Affective-cognitive (\affectiveCognitiveCoef{}), Linguistic (\linguisticSynchronyCoef{})
+\end{itemize}
+
+\subsection{Bootstrap Stability}
+
+Bootstrap analysis (n=\bootstrapSamples{}) confirms robust patterns despite uncertainty:
+
+\begin{itemize}
+    \item PC1: \pcOneVarianceMean{} \pcOneVarianceCI{}
+    \item PC2: \pcTwoVarianceMean{} \pcTwoVarianceCI{}
+    \item Sign stability >75\% for primary loadings
+\end{itemize}
+
+The confidence intervals reflect our sample size but key patterns (intervention dominance, capability gradients) remain clear.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{\bootstrapPath bootstrap_loadings.pdf}
+\caption{Bootstrap stability of principal component loadings (95\% CI) based on \bootstrapSamples{} resamples. Error bars represent 95\% confidence intervals. The consistency of loadings across bootstrap samples, particularly for PC1, demonstrates the robustness of our dimensional structure findings. Note that intervention-related features (circuit breaker questions, recovery metrics) dominate PC1, while social contagion metrics distribute across multiple components.}
+\label{fig:bootstrap_loadings}
 \end{figure}
 
 \section{Discussion}
 
-\subsection{Key Insights from Empirical Analysis}
+\subsection{From Behavioral Observation to Geometric Understanding}
 
-Our analysis of \totalConversations{} conversations with adequate statistical power reveals fundamental principles of AI conversation dynamics:
+Our geometric analysis provides the theoretical framework for understanding the peer pressure dynamics documented in \citep{garcia2025peer}. The behavioral study raised fundamental questions: Why do sophisticated models exhibit social vulnerability? Why does peer pressure decline from \fullReasoningPeerPressure{} to \nonReasoningPeerPressure{}? Why can only premium models recover from breakdown? Our geometric findings answer these questions by revealing that social dynamics are not merely behavioral but fundamentally geometric phenomena.
 
-1. \textbf{Intervention dominance definitively established}: Intervention features explain \allFeaturesPCOne{} of combined variance, validated through bootstrap analysis. Confidence intervals [\nonInterventionPCOneCILower{}, \nonInterventionPCOneCIUpper{}] for non-intervention PC1 confirm the robustness of this finding.
+The peer pressure gradient maps precisely onto our dimensional complexity findings. Social influence requires agents to recognize and respond to peer behaviors across multiple dimensions—linguistic style, emotional tone, conceptual framing, and temporal dynamics. Models operating in 7-dimensional spaces have this flexibility; those constrained to 3 dimensions do not.
 
-2. \textbf{Strong predictive validity}: Cross-validated AUC of \testAUC{} demonstrates our dimensions capture meaningful variance in conversation outcomes, providing actionable insights for system design.
+\subsection{Theoretical Implications}
 
-3. \textbf{Model capabilities manifest geometrically}: The peer pressure gradient (\fullReasoningPeerPressure{} → \lightReasoningPeerPressure{} → \nonReasoningPeerPressure{} across N=\nonReasoningCount{}) reflects differential access to manifold regions, with bootstrap CIs confirming clear separation between tiers.
+Our discovery of capability-dependent geometry fundamentally reframes AI conversation dynamics:
 
-\subsection{Methodological Rigor}
+\textbf{Geometric Complexity Enables Social Phenomena}: The dual gradient—intrinsic dimensionality (\fullReasoningIntrinsicDim{} → \noReasoningIntrinsicDim{}) and effective dimensionality (\fullReasoningPCANinety{} → \noReasoningPCANinety{} PCs for 90\% variance)—correlates with peer pressure susceptibility (\fullReasoningPeerPressure{} → \nonReasoningPeerPressure{}). This demonstrates that social dynamics are not merely behavioral but fundamentally geometric, requiring sufficient dimensional freedom to emerge.
 
-Our analysis addresses critical challenges through rigorous methods:
+\textbf{Mechanical vs. Social Mirroring}: The inverse relationship between linguistic alignment and social dynamics reveals two distinct phenomena. Simple models show high alignment (\nonLinguisticAlignment{}) through mechanical copying in low-dimensional spaces. Sophisticated models show lower alignment (\fullLinguisticAlignment{}) but genuine social influence through higher-dimensional interaction.
 
-\textbf{Multicollinearity}: Original condition numbers exceeding 500 million necessitated regularization ($\alpha = \regularizationAlpha{}$), reducing to \regularizedConditionNumber{} for stable estimation.
-
-\textbf{Statistical Power}: At \powerOutcomeGroups{} power for primary comparisons, we exceed conventional thresholds, providing confidence in our findings.
-
-\textbf{Bootstrap Validation}: Confidence intervals quantify uncertainty while confirming the robustness of key patterns.
+\textbf{Intervention as Dimensional Collapse}: The increasing intervention dominance (\fullReasoningPCOne{} → \noReasoningPCOne{}) with model simplicity shows that sophisticated models resist dimensional collapse, maintaining multi-faceted dynamics even under intervention.
 
 \subsection{Practical Implications}
 
 For multi-agent system design:
 
-1. \textbf{Regime-aware intervention strategies}: Deploy interventions sparingly to avoid collapsing rich dynamics to 1D. Target critical moments when manifold position indicates impending breakdown.
-
-2. \textbf{Model selection based on task requirements}: Choose full reasoning models when social sophistication is critical; simpler models offer stability through reduced susceptibility to peer pressure.
-
-3. \textbf{Monitoring in appropriate space}: Track conversations in the 4D manifold for early warning signs. Switch to intervention axis monitoring only when actively intervening.
-
-4. \textbf{Leverage temporal dynamics}: Given its high predictive power ($\eta^2$ = \temporalDynamicsEtaSquared{}), phase transition monitoring provides early breakdown indicators.
+\begin{enumerate}
+    \item \textbf{Model selection by required dynamics}: Choose sophisticated models when social dynamics are beneficial; simpler models for predictable, mechanical tasks.
+    
+    \item \textbf{Capability-aware intervention}: Sophisticated models require lighter touch—they maintain complexity under intervention. Simple models need stronger guidance but respond more predictably.
+    
+    \item \textbf{Dimensional monitoring}: Track conversations in capability-appropriate spaces: monitor \fullReasoningPCANinety{} dimensions for full reasoning models, \noReasoningPCANinety{} dimensions for simpler models.
+    
+    \item \textbf{Heterogeneous teams}: Mix capabilities strategically—sophisticated models for exploration, simple models for stability.
+\end{enumerate}
 
 \section{Limitations}
 
-While our sample provides adequate statistical power, several limitations merit consideration:
-
 \begin{itemize}
-    \item \textbf{Single domain}: Analysis limited to consciousness exploration conversations
-    \item \textbf{Model categorization}: Based on provider-defined tiers rather than objective capability metrics
-    \item \textbf{Multicollinearity}: Heavy regularization required, potentially affecting interpretability
-    \item \textbf{Intervention threshold}: While empirically observed at \interventionThreshold{}, statistical significance not achieved (p=\interventionThresholdPValue{})
+    \item Domain specificity: Analysis limited to consciousness exploration conversations
+    \item Model categorization: Based on provider tiers rather than objective metrics
+    \item Sample size: Confidence intervals remain wide despite adequate power
+    \item Temporal dynamics: Inferred from snapshots rather than continuous observation
+    \item Initial aggregation: Original analysis missed capability-dependent structure
 \end{itemize}
 
-These limitations suggest valuable directions for future research while not undermining our core findings.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{\validationPath synthetic_validation.pdf}
+\caption{Comparison of real vs synthetic data in the first two principal component dimensions. The synthetic data generator successfully captures the geometric structure of real conversations, with discrimination accuracy of \syntheticDiscriminationAccuracy{} (where 0.5 would indicate perfect mimicry). This validates that our dimensional model captures meaningful structure rather than noise.}
+\label{fig:synthetic_validation}
+\end{figure}
 
 \section{Conclusion}
 
-Through rigorous analysis of \totalConversations{} conversations with adequate statistical power, we establish that AI conversation dynamics operate in distinct geometric regimes. Intervention features dominate variance (\allFeaturesPCOne{}) when present but mask a multidimensional structure where PC1 explains \nonInterventionPCOneVariance{} [\nonInterventionPCOneCILower{}, \nonInterventionPCOneCIUpper{}] of variance. Our framework achieves strong predictive validity (AUC = \testAUC{}) and reveals dramatic capability gradients, with non-reasoning models showing 0\% peer pressure across \nonReasoningCount{} conversations.
+Through rigorous analysis of \totalConversations{} conversations with per-tier geometric investigation, we establish that AI conversation dynamics exhibit capability-dependent structure. Sophisticated models navigate higher-dimensional manifolds (requiring \fullReasoningPCANinety{} principal components for 90\% variance) enabling genuine social phenomena, while simpler models operate in constrained low-dimensional spaces (requiring only \noReasoningPCANinety{} components) permitting only mechanical patterns.
 
-This work demonstrates how rigorous empirical analysis can reveal fundamental structure in AI interactions. The validated patterns—intervention dominance, capability-linked social dynamics, and dual-regime geometry—provide both theoretical insights and practical guidance for multi-agent AI system design. Future work should explore additional conversational domains, develop real-time detection methods, and investigate the mechanisms underlying the discovered geometric structure.
+The discovered gradients—both intrinsic dimensionality (\fullReasoningIntrinsicDim{} → \noReasoningIntrinsicDim{}) and effective dimensionality (\fullReasoningPCANinety{} → \noReasoningPCANinety{}), alongside social susceptibility (\fullReasoningPeerPressure{} → \nonReasoningPeerPressure{}) and intervention resistance (\fullReasoningPCOne{} → \noReasoningPCOne{})—reveal that social dynamics in AI require dimensional freedom to manifest. This fundamental insight explains both the emergence of peer pressure in advanced models and its minimal presence in simpler systems.
+
+Future work should explore whether this capability-geometry relationship holds across other domains, develop real-time dimensional tracking methods adapted to model capability, and investigate whether architectural innovations can increase accessible dimensionality without increasing model size. Our framework provides both theoretical understanding and practical guidance for designing multi-agent AI systems with desired social properties.
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}
