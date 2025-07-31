@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a research project analyzing AI conversation dynamics through geometric and embedding trajectory analysis. It combines Python-based data analysis with an academic LaTeX paper documenting the findings.
+This is a research project analyzing AI conversation dynamics through geometric and embedding trajectory analysis. It combines Python-based data analysis with an academic LaTeX paper documenting the findings. a sample of the conversation data we are using can be found in anaysis/sample-json/
 
 ## Key Commands
 

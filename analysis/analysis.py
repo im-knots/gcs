@@ -13,6 +13,10 @@ to understand breakdown patterns and social dynamics.
 Includes ensemble mode for invariant pattern detection across multiple embedding models.
 """
 
+import os
+# Set tokenizers parallelism to avoid warnings
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import json
 import numpy as np
 import pandas as pd
@@ -36,6 +40,8 @@ from tqdm import tqdm
 import warnings
 import pickle
 import hashlib
+from multiprocessing import Pool, cpu_count
+from functools import partial
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
@@ -43,6 +49,7 @@ from sklearn.preprocessing import LabelEncoder
 import statsmodels.api as sm
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.power import FTestAnovaPower
+import seaborn
 warnings.filterwarnings('ignore')
 
 
@@ -158,6 +165,94 @@ class EmbeddingTrajectoryAnalyzer:
         vec1 = np.asarray(vec1).flatten()
         vec2 = np.asarray(vec2).flatten()
         return euclidean(vec1, vec2)
+    
+    def _standardize_embeddings(self, embeddings):
+        """Standardize embeddings to numpy array format"""
+        if isinstance(embeddings, dict):
+            # If it's a dict, extract embeddings
+            if 'embedded_messages' in embeddings:
+                embeddings = [m['embedding'] for m in embeddings['embedded_messages']]
+            else:
+                raise ValueError("Unexpected dict structure for embeddings")
+        elif isinstance(embeddings, list) and embeddings and isinstance(embeddings[0], dict):
+            # List of embedded message dicts
+            embeddings = [m['embedding'] for m in embeddings]
+        
+        # Convert to numpy array
+        embeddings = np.array(embeddings)
+        if embeddings.ndim == 3:
+            embeddings = embeddings.squeeze()
+        if embeddings.ndim == 1:
+            embeddings = embeddings.reshape(1, -1)
+            
+        return embeddings
+    
+    def _batch_calculate_distances(self, all_embeddings, n_messages):
+        """
+        Calculate distance matrices for all models in a single batch operation.
+        
+        Args:
+            all_embeddings: Dict of {model_name: embeddings_array}
+            n_messages: Number of messages
+            
+        Returns:
+            distance_matrices: Dict of {model_name: euclidean_distances}
+            self_similarities: Dict of {model_name: cosine_similarities}
+        """
+        distance_matrices = {}
+        self_similarities = {}
+        
+        try:
+            import torch
+            if torch.cuda.is_available():
+                device = torch.device('cuda')
+                
+                # Stack all embeddings into a single tensor
+                model_names = list(all_embeddings.keys())
+                embeddings_list = []
+                
+                for model_name in model_names:
+                    emb = all_embeddings[model_name]
+                    embeddings_list.append(torch.from_numpy(emb).float())
+                
+                # Process each model's embeddings
+                for i, (model_name, embeddings_tensor) in enumerate(zip(model_names, embeddings_list)):
+                    embeddings_tensor = embeddings_tensor.to(device)
+                    
+                    # Batch calculate Euclidean distances
+                    diff = embeddings_tensor.unsqueeze(0) - embeddings_tensor.unsqueeze(1)
+                    euclidean_distances = torch.norm(diff, dim=2).cpu().numpy()
+                    
+                    # Batch calculate cosine similarities
+                    norms = torch.norm(embeddings_tensor, dim=1, keepdim=True)
+                    norms = torch.clamp(norms, min=1e-8)
+                    normalized = embeddings_tensor / norms
+                    cosine_sim = torch.mm(normalized, normalized.t())
+                    cosine_distances = (1 - cosine_sim).cpu().numpy()
+                    
+                    distance_matrices[model_name] = euclidean_distances
+                    self_similarities[model_name] = 1 - cosine_distances
+                    
+            else:
+                raise RuntimeError("No GPU available")
+                
+        except Exception as e:
+            # CPU fallback - still batch process per model
+            for model_name, embeddings in all_embeddings.items():
+                euclidean_distances = np.zeros((n_messages, n_messages))
+                cosine_distances = np.zeros((n_messages, n_messages))
+                
+                for i in range(n_messages):
+                    for j in range(n_messages):
+                        vec_i = embeddings[i].flatten()
+                        vec_j = embeddings[j].flatten()
+                        euclidean_distances[i, j] = self._safe_euclidean(vec_i, vec_j)
+                        cosine_distances[i, j] = self._safe_cosine(vec_i, vec_j)
+                
+                distance_matrices[model_name] = euclidean_distances
+                self_similarities[model_name] = 1 - cosine_distances
+                
+        return distance_matrices, self_similarities
     
     def _safe_cosine(self, vec1, vec2):
         """Compute cosine distance with proper shape handling"""
@@ -517,6 +612,12 @@ class EmbeddingTrajectoryAnalyzer:
     
     def embed_conversation(self, conversation, verbose=False):
         """Generate embeddings for all messages in a conversation"""
+        # Check if embeddings already exist (from batch processing)
+        if 'embedded_messages' in conversation:
+            if verbose:
+                print(f"Embeddings already exist for session {conversation['metadata']['session_id'][:20]}")
+            return conversation
+            
         messages = conversation['messages']
         
         if verbose:
@@ -552,19 +653,24 @@ class EmbeddingTrajectoryAnalyzer:
         
         # If ensemble mode, generate embeddings for all models
         if self.ensemble_mode:
-            ensemble_embeddings = {}
-            
-            for model_name, model in self.ensemble_models.items():
-                if model_name != self.model_name:  # Skip primary model (already done)
-                    model_embeddings = model.encode(contents, 
-                                                   batch_size=batch_size,
-                                                   show_progress_bar=False,
-                                                   convert_to_numpy=True)
-                    ensemble_embeddings[model_name] = model_embeddings
-                else:
-                    ensemble_embeddings[model_name] = embeddings
-            
-            conversation['ensemble_embeddings'] = ensemble_embeddings
+            # Check if ensemble embeddings already exist (from batch processing)
+            if 'ensemble_embeddings' in conversation:
+                if verbose:
+                    print(f"Ensemble embeddings already exist")
+            else:
+                ensemble_embeddings = {}
+                
+                for model_name, model in self.ensemble_models.items():
+                    if model_name != self.model_name:  # Skip primary model (already done)
+                        model_embeddings = model.encode(contents, 
+                                                       batch_size=batch_size,
+                                                       show_progress_bar=False,
+                                                       convert_to_numpy=True)
+                        ensemble_embeddings[model_name] = model_embeddings
+                    else:
+                        ensemble_embeddings[model_name] = embeddings
+                
+                conversation['ensemble_embeddings'] = ensemble_embeddings
         
         return conversation
     
@@ -1642,7 +1748,8 @@ class EmbeddingTrajectoryAnalyzer:
     def _add_ensemble_invariants(self, conversation):
         invariant_patterns = self.find_ensemble_invariants(conversation)
         conversation['invariant_patterns'] = invariant_patterns
-        # Skip separate ensemble visualization - it's now included in the comprehensive figure
+        # Visualize ensemble analysis if we have the data
+        # NOTE: Disabled as ensemble analysis is now included in per-conversation comprehensive PNGs
         # self.visualize_ensemble_analysis(conversation)
         return conversation
     
@@ -1860,31 +1967,50 @@ class EmbeddingTrajectoryAnalyzer:
         
         return threshold
     
+    def _calculate_single_correlation(self, args):
+        """Helper function for parallel correlation calculation"""
+        model1, model2, dist1, dist2 = args
+        from scipy.stats import spearmanr
+        corr, p_value = spearmanr(dist1, dist2)
+        return f'{model1}-{model2}', {'correlation': corr, 'p_value': p_value}
+    
     def _calculate_ensemble_correlations(self, distance_matrices, self_similarities, model_names, n_messages):
-        """Calculate correlations between distance matrices"""
-        correlations = {}
+        """Calculate correlations between distance matrices using parallel processing"""
+        triu_indices = np.triu_indices(n_messages, k=1)
+        
+        # Prepare arguments for parallel processing
+        correlation_args = []
         for i in range(len(model_names)):
             for j in range(i+1, len(model_names)):
                 model1, model2 = model_names[i], model_names[j]
-                triu_indices = np.triu_indices(n_messages, k=1)
-                dist1 = distance_matrices[model1][triu_indices]
-                dist2 = distance_matrices[model2][triu_indices]
+                # Ensure arrays are numpy arrays on CPU
+                dist1 = np.array(distance_matrices[model1][triu_indices])
+                dist2 = np.array(distance_matrices[model2][triu_indices])
+                correlation_args.append((model1, model2, dist1, dist2))
+        
+        # Disable multiprocessing for now due to CUDA conflicts
+        # Sequential processing is fast enough for correlation calculations
+        correlations = {}
+        for args in correlation_args:
+            key, value = self._calculate_single_correlation(args)
+            correlations[key] = value
                 
-                from scipy.stats import spearmanr
-                corr, p_value = spearmanr(dist1, dist2)
-                correlations[f'{model1}-{model2}'] = {
-                    'correlation': corr,
-                    'p_value': p_value
-                }
         return correlations
     
+    def _calculate_single_velocity_correlation(self, args):
+        """Helper function for parallel velocity correlation calculation"""
+        model1, model2, vel1, vel2 = args
+        from scipy.stats import pearsonr
+        corr, p_value = pearsonr(vel1, vel2)
+        return f'{model1}-{model2}', {'correlation': corr, 'p_value': p_value}
+    
     def _calculate_velocity_correlations(self, ensemble_embeddings, model_names):
-        """Calculate velocity profile correlations across models"""
+        """Calculate velocity profile correlations across models using parallel processing"""
         velocity_profiles = {}
+        
+        # Standardize embeddings and calculate velocities
         for model_name, embeddings in ensemble_embeddings.items():
-            if isinstance(embeddings, list) and embeddings and isinstance(embeddings[0], dict):
-                embeddings = [m['embedding'] for m in embeddings]
-            embeddings = np.array(embeddings)
+            embeddings = self._standardize_embeddings(embeddings)
             
             velocities = []
             for i in range(1, len(embeddings)):
@@ -1892,16 +2018,22 @@ class EmbeddingTrajectoryAnalyzer:
                 velocities.append(v)
             velocity_profiles[model_name] = velocities
         
-        correlations = {}
+        # Prepare arguments for parallel processing
+        correlation_args = []
         for i in range(len(model_names)):
             for j in range(i+1, len(model_names)):
                 model1, model2 = model_names[i], model_names[j]
-                from scipy.stats import pearsonr
-                corr, p_value = pearsonr(velocity_profiles[model1], velocity_profiles[model2])
-                correlations[f'{model1}-{model2}'] = {
-                    'correlation': corr,
-                    'p_value': p_value
-                }
+                correlation_args.append((model1, model2, 
+                                       velocity_profiles[model1], 
+                                       velocity_profiles[model2]))
+        
+        # Disable multiprocessing for now due to CUDA conflicts
+        # Sequential processing is fast enough for correlation calculations
+        correlations = {}
+        for args in correlation_args:
+            key, value = self._calculate_single_velocity_correlation(args)
+            correlations[key] = value
+                
         return correlations
     
     def _calculate_topology_preservation(self, ensemble_embeddings, model_names):
@@ -2037,58 +2169,6 @@ class EmbeddingTrajectoryAnalyzer:
                                      end_turn - start_turn, 2,
                                      facecolor=plt.cm.tab10(phase_idx % 10), alpha=0.7))
     
-    def _add_phase_annotations_edges(self, ax, phase_info, n_messages):
-        """Add phase annotations on the edges (top and left) of the plot"""
-        if not phase_info:
-            return
-        
-        # Sort phases by start turn
-        sorted_phases = sorted(phase_info, key=lambda x: x['start_turn'])
-        
-        # Colors for phases
-        colors = plt.cm.tab10(np.linspace(0, 1, 10))
-        
-        for phase_idx, phase in enumerate(sorted_phases):
-            start_turn = phase['start_turn']
-            if start_turn >= n_messages or start_turn < 0:
-                continue
-                
-            phase_name = phase['name'].replace('_', ' ').title()
-            color = colors[phase_idx % 10]
-            
-            # Calculate phase end
-            if phase_idx < len(sorted_phases) - 1:
-                end_turn = sorted_phases[phase_idx + 1]['start_turn']
-            else:
-                end_turn = n_messages
-            
-            mid_turn = (start_turn + end_turn) / 2
-            
-            # Add annotation on top edge
-            ax.text(mid_turn, n_messages + 2, phase_name,
-                   ha='center', va='bottom', fontsize=10,
-                   bbox=dict(boxstyle="round,pad=0.3", facecolor=color, alpha=0.8),
-                   rotation=45, weight='bold')
-            
-            # Add annotation on left edge
-            ax.text(-2, mid_turn, phase_name,
-                   ha='right', va='center', fontsize=10,
-                   bbox=dict(boxstyle="round,pad=0.3", facecolor=color, alpha=0.8),
-                   rotation=0, weight='bold')
-            
-            # Add colored bars on the edges to show phase extent
-            # Top edge bar
-            from matplotlib.patches import Rectangle
-            ax.add_patch(Rectangle((start_turn, n_messages - 1),
-                                 end_turn - start_turn, 2,
-                                 facecolor=color, alpha=0.7,
-                                 transform=ax.transData))
-            # Left edge bar
-            ax.add_patch(Rectangle((-2, start_turn),
-                                 2, end_turn - start_turn,
-                                 facecolor=color, alpha=0.7,
-                                 transform=ax.transData))
-    
     def create_ensemble_distance_matrices(self, conversation, save_individual=True):
         """Create distance matrices for all ensemble models"""
         ensemble_embeddings = conversation['ensemble_embeddings']
@@ -2097,19 +2177,20 @@ class EmbeddingTrajectoryAnalyzer:
         n_messages = len(conversation['messages'])
         
         # Create a comprehensive figure with multiple sections
-        # Section 1: Distance matrices and trajectories (4 rows)
-        # Section 2: Ensemble analysis (1 row) - removed summary
-        # Section 3: Large annotated recurrence plot (4 rows - much larger)
-        total_rows = 9
-        fig = plt.figure(figsize=(5*n_models, 45))
+        # Section 1: Distance matrices and trajectories (4xN grid)
+        # Section 2: 3 correlation tables (centered)
+        # Section 3: Phase annotated diagram with colored sections
+        
+        # Calculate optimal figure size - increased width to prevent compression
+        fig_width = 7 * n_models  # Increased from 5 to 7 per model
+        fig_height = 28  # Slightly increased for better proportions
+        fig = plt.figure(figsize=(fig_width, fig_height))
         
         # Create GridSpec for flexible layout
         from matplotlib.gridspec import GridSpec
-        gs = GridSpec(total_rows, n_models + 1, figure=fig, hspace=0.4, wspace=0.3)  # Added column for legend, more spacing
-        
-        # Store distance matrices for correlation analysis
-        distance_matrices = {}
-        self_similarities = {}
+        # Total rows: 4 (section 1) + 1 (correlation tables) + 3 (phase diagram) = 8
+        total_rows = 8
+        gs = GridSpec(total_rows, n_models, figure=fig, hspace=0.35, wspace=0.25)  # Increased spacing to prevent overlap
         
         # Get phase information if available
         phase_info = []
@@ -2123,78 +2204,20 @@ class EmbeddingTrajectoryAnalyzer:
                 })
             phase_info.sort(key=lambda x: x['start_turn'])
         
-        # Create distance matrices for each model
-        for idx, (model_name, embeddings) in enumerate(ensemble_embeddings.items()):
-            # Handle different possible formats
-            if isinstance(embeddings, dict):
-                # If it's a dict, it might be the full embedded_messages structure
-                # Try to extract just the embeddings
-                if 'embedded_messages' in embeddings:
-                    embeddings = [m['embedding'] for m in embeddings['embedded_messages']]
-                else:
-                    # Unknown dict structure
-                    raise ValueError(f"Unexpected dict structure for {model_name} embeddings")
-            elif isinstance(embeddings, list) and embeddings and isinstance(embeddings[0], dict):
-                # List of embedded message dicts
-                embeddings = [m['embedding'] for m in embeddings]
+        # Standardize all embeddings first
+        standardized_embeddings = {}
+        for model_name, embeddings in ensemble_embeddings.items():
+            standardized_embeddings[model_name] = self._standardize_embeddings(embeddings)
+        
+        # Batch calculate all distance matrices at once
+        distance_matrices, self_similarities = self._batch_calculate_distances(standardized_embeddings, n_messages)
+        
+        # Create visualizations for each model
+        for idx, model_name in enumerate(model_names):
+            embeddings = standardized_embeddings[model_name]
             
-            # Ensure embeddings is a proper 2D numpy array
-            embeddings = np.array(embeddings)
-            if embeddings.ndim == 3:
-                # If there's an extra dimension, squeeze it
-                embeddings = embeddings.squeeze()
-            # Ensure it's 2D (n_messages, embedding_dim)
-            if embeddings.ndim == 1:
-                embeddings = embeddings.reshape(1, -1)
-            
-            # Compute distances with GPU if available
-            try:
-                import torch
-                if torch.cuda.is_available():
-                    device = torch.device('cuda')
-                    try:
-                        embeddings_tensor = torch.from_numpy(embeddings).float().to(device)
-                    except Exception as e:
-                        print(f"Error converting embeddings to tensor for {model_name}: {e}")
-                        print(f"Embeddings type: {type(embeddings)}, shape: {embeddings.shape if hasattr(embeddings, 'shape') else 'no shape'}")
-                        raise
-                    
-                    # Euclidean distances
-                    diff = embeddings_tensor.unsqueeze(0) - embeddings_tensor.unsqueeze(1)
-                    euclidean_distances = torch.norm(diff, dim=2).cpu().numpy()
-                    
-                    # Cosine distances
-                    norms = torch.norm(embeddings_tensor, dim=1, keepdim=True)
-                    # Avoid division by zero
-                    norms = torch.clamp(norms, min=1e-8)
-                    normalized = embeddings_tensor / norms
-                    try:
-                        cosine_sim = torch.mm(normalized, normalized.t())
-                    except Exception as e:
-                        print(f"Error in torch.mm for {model_name}: {e}")
-                        print(f"normalized type: {type(normalized)}, shape: {normalized.shape}")
-                        raise
-                    cosine_distances = (1 - cosine_sim).cpu().numpy()
-                else:
-                    raise RuntimeError("No GPU")
-            except Exception as e:
-                if "dict" in str(e):
-                    print(f"Dict error caught in GPU path for {model_name}")
-                    raise
-                # CPU fallback
-                euclidean_distances = np.zeros((n_messages, n_messages))
-                cosine_distances = np.zeros((n_messages, n_messages))
-                for i in range(n_messages):
-                    for j in range(n_messages):
-                        # Ensure vectors are 1-D for scipy distance functions
-                        vec_i = embeddings[i].flatten()
-                        vec_j = embeddings[j].flatten()
-                        euclidean_distances[i, j] = self._safe_euclidean(vec_i, vec_j)
-                        cosine_distances[i, j] = self._safe_cosine(vec_i, vec_j)
-            
-            # Store for correlation analysis
-            distance_matrices[model_name] = euclidean_distances
-            self_similarities[model_name] = 1 - cosine_distances
+            # Get pre-calculated distance matrices
+            euclidean_distances = distance_matrices[model_name]
             
             # Create subplots for this model using GridSpec
             ax1 = fig.add_subplot(gs[0, idx])  # Row 0: Euclidean distances
@@ -2204,17 +2227,17 @@ class EmbeddingTrajectoryAnalyzer:
             
             # Plot euclidean distances
             im1 = ax1.imshow(euclidean_distances, cmap='viridis', aspect='auto')
-            ax1.set_title(f'{model_name}\nEuclidean Distance')
-            ax1.set_xlabel('Turn')
+            ax1.set_title(f'{model_name}\nEuclidean Distance', fontsize=12)
+            ax1.set_xlabel('Turn', fontsize=10)
             if idx == 0:
-                ax1.set_ylabel('Turn')
+                ax1.set_ylabel('Turn', fontsize=10)
             
             # Plot self-similarity
             im2 = ax2.imshow(self_similarities[model_name], cmap='RdBu_r', aspect='auto', vmin=0, vmax=1)
-            ax2.set_title(f'Self-Similarity')
-            ax2.set_xlabel('Turn')
+            ax2.set_title(f'Self-Similarity', fontsize=12)
+            ax2.set_xlabel('Turn', fontsize=10)
             if idx == 0:
-                ax2.set_ylabel('Turn')
+                ax2.set_ylabel('Turn', fontsize=10)
             
             # Add phase boundaries if available
             if phase_info:
@@ -2243,12 +2266,18 @@ class EmbeddingTrajectoryAnalyzer:
             
             # Plot recurrence
             ax3.imshow(recurrence_matrix, cmap='binary', aspect='auto')
-            ax3.set_title(f'Recurrence Plot')
-            ax3.set_xlabel('Turn')
+            ax3.set_title(f'Recurrence Plot', fontsize=12)
+            ax3.set_xlabel('Turn', fontsize=10)
             if idx == 0:
-                ax3.set_ylabel('Turn')
+                ax3.set_ylabel('Turn', fontsize=10)
             
-            # Phase boundaries omitted - shown in detail in the large bottom panel
+            # Just add phase boundaries without annotations (save those for the large plot)
+            if phase_info:
+                for phase in phase_info:
+                    start_turn = phase['start_turn']
+                    if start_turn < n_messages and start_turn > 0:
+                        ax3.axhline(y=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
+                        ax3.axvline(x=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
             
             # Row 4: Add trajectory visualization
             # Reduce to 2D for visualization
@@ -2261,19 +2290,17 @@ class EmbeddingTrajectoryAnalyzer:
             
             # Color points by phase if available
             if phase_info:
-                colors_traj = plt.cm.tab10(np.linspace(0, 1, 10))
-                sorted_phases_traj = sorted(phase_info, key=lambda x: x['start_turn'])
+                sorted_phases = sorted(phase_info, key=lambda x: x['start_turn'])
+                distinct_colors = plt.cm.tab20(np.linspace(0, 1, 20))
                 
-                for phase_idx, phase in enumerate(sorted_phases_traj):
+                for phase_idx, phase in enumerate(sorted_phases):
                     start_turn = phase['start_turn']
-                    if phase_idx < len(sorted_phases_traj) - 1:
-                        end_turn = sorted_phases_traj[phase_idx + 1]['start_turn']
+                    if phase_idx < len(sorted_phases) - 1:
+                        end_turn = sorted_phases[phase_idx + 1]['start_turn']
                     else:
                         end_turn = n_messages
                     
-                    # Use same distinct colors as the bottom plot
-                    distinct_colors_traj = plt.cm.tab20(np.linspace(0, 1, 20))
-                    phase_color = distinct_colors_traj[phase_idx % 20]
+                    phase_color = distinct_colors[phase_idx % 20]
                     # Plot points in this phase
                     phase_points = reduced_embeddings[start_turn:end_turn]
                     if len(phase_points) > 0:
@@ -2290,22 +2317,35 @@ class EmbeddingTrajectoryAnalyzer:
             ax4.scatter(reduced_embeddings[-1, 0], reduced_embeddings[-1, 1], 
                       c='red', s=80, marker='v', edgecolors='black', linewidth=1.5, zorder=5)
             
-            ax4.set_title(f'Trajectory (PCA)')
-            ax4.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.0%})')
+            ax4.set_title(f'Trajectory (PCA)', fontsize=12)
+            ax4.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.0%})', fontsize=10)
             if idx == 0:
-                ax4.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.0%})')
+                ax4.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.0%})', fontsize=10)
             
             # Add grid for better readability
             ax4.grid(True, alpha=0.3)
             ax4.set_aspect('equal', adjustable='box')
         
-        # Section 2: Ensemble Analysis Visualizations
-        # Row 4: Correlation matrices - make them all the same size
-        # Calculate positions to center the 3 correlation plots
-        corr_start_col = max(0, (n_models - 3) // 2)
-        ax_dist_corr = fig.add_subplot(gs[4, corr_start_col])
-        ax_vel_corr = fig.add_subplot(gs[4, corr_start_col + 1]) if n_models >= 2 else None
-        ax_topo = fig.add_subplot(gs[4, corr_start_col + 2]) if n_models >= 3 else None
+        # Section 2: Correlation Tables (Row 4)
+        # Center 3 correlation tables with equal spacing
+        if n_models >= 3:
+            # Create a subgridspec for the correlation row to ensure proper centering
+            from matplotlib.gridspec import GridSpecFromSubplotSpec
+            corr_gs = GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[4, :], 
+                                             wspace=0.3, width_ratios=[1, 1, 1])
+            ax_dist_corr = fig.add_subplot(corr_gs[0, 0])
+            ax_vel_corr = fig.add_subplot(corr_gs[0, 1])
+            ax_topo = fig.add_subplot(corr_gs[0, 2])
+        elif n_models == 2:
+            # For 2 models, center the available correlation plots
+            ax_dist_corr = fig.add_subplot(gs[4, 0])
+            ax_vel_corr = fig.add_subplot(gs[4, 1])
+            ax_topo = None
+        else:
+            # For 1 model, just show distance correlation
+            ax_dist_corr = fig.add_subplot(gs[4, 0])
+            ax_vel_corr = None
+            ax_topo = None
         
         # Calculate and visualize ensemble metrics
         correlations = self._calculate_ensemble_correlations(distance_matrices, self_similarities, 
@@ -2316,7 +2356,7 @@ class EmbeddingTrajectoryAnalyzer:
         sns.heatmap(corr_matrix, annot=True, fmt='.3f', xticklabels=model_names,
                    yticklabels=model_names, cmap='RdBu_r', center=0.5, ax=ax_dist_corr,
                    vmin=0, vmax=1, cbar_kws={'label': 'Correlation'})
-        ax_dist_corr.set_title('Distance Matrix Correlations')
+        ax_dist_corr.set_title('Distance Matrix Correlations', fontsize=12)
         
         # Velocity correlations
         if ax_vel_corr is not None:
@@ -2325,7 +2365,7 @@ class EmbeddingTrajectoryAnalyzer:
             sns.heatmap(vel_corr_matrix, annot=True, fmt='.3f', xticklabels=model_names,
                        yticklabels=model_names, cmap='RdBu_r', center=0.5, ax=ax_vel_corr,
                        vmin=0, vmax=1, cbar_kws={'label': 'Correlation'})
-            ax_vel_corr.set_title('Velocity Profile Correlations')
+            ax_vel_corr.set_title('Velocity Profile Correlations', fontsize=12)
         
         # Topology preservation
         if ax_topo is not None:
@@ -2334,97 +2374,118 @@ class EmbeddingTrajectoryAnalyzer:
             sns.heatmap(topo_matrix, annot=True, fmt='.3f', xticklabels=model_names,
                        yticklabels=model_names, cmap='Greens', vmin=0, vmax=1,
                        cbar_kws={'label': 'Preservation'}, ax=ax_topo)
-            ax_topo.set_title('Topology Preservation')
+            ax_topo.set_title('Topology Preservation', fontsize=12)
         
         # Summary statistics removed to avoid overlap
         
-        # Section 3: Large annotated recurrence plot for primary model
-        # Use most of the remaining space (4 rows) for a large plot
-        # Leave last column for color key
-        ax_large = fig.add_subplot(gs[5:9, :n_models])  # Rows 5-8, all model columns
+        # Section 3: Phase annotated diagram (Rows 5-7)
+        # Create a subplot spanning all columns for the phase diagram
+        ax_phase = fig.add_subplot(gs[5:8, :])
         
-        # Get primary model data
-        primary_self_sim = self_similarities[self.model_name]
-        sim_flat = primary_self_sim.flatten()
-        threshold = np.percentile(sim_flat, 85)
-        recurrence_matrix = primary_self_sim > threshold
-        
-        # First add phase shading if available
+        # Create phase-colored sections visualization
         if phase_info:
-            # Use more distinct colors for phases
+            # Use distinct colors for phases
             distinct_colors = plt.cm.tab20(np.linspace(0, 1, 20))
             
             # Sort phases by start turn
             sorted_phases = sorted(phase_info, key=lambda x: x['start_turn'])
             
+            # Create a color array for the entire conversation
+            phase_colors = np.zeros((n_messages, 3))
+            phase_labels = []
+            
+            # Process all phases including the first one (which might start at turn 0)
             for phase_idx, phase in enumerate(sorted_phases):
                 start_turn = phase['start_turn']
-                if start_turn >= n_messages or start_turn < 0:
+                
+                # Ensure we handle the first phase properly
+                if phase_idx == 0 and start_turn > 0:
+                    # Add an initial phase if the first phase doesn't start at 0
+                    phase_labels.append({
+                        'name': 'Initial',
+                        'color': distinct_colors[0][:3],
+                        'start': 0,
+                        'end': start_turn
+                    })
+                    phase_colors[0:start_turn] = distinct_colors[0][:3]
+                
+                if start_turn >= n_messages:
                     continue
                     
                 # Calculate phase end
                 if phase_idx < len(sorted_phases) - 1:
-                    end_turn = sorted_phases[phase_idx + 1]['start_turn']
+                    end_turn = min(sorted_phases[phase_idx + 1]['start_turn'], n_messages)
                 else:
                     end_turn = n_messages
                 
-                color = distinct_colors[phase_idx % 20]
+                # Get color for this phase
+                color_idx = len(phase_labels)  # Use current length for color index
+                color = distinct_colors[color_idx % 20][:3]  # RGB only
                 
-                # Add shaded regions (rectangles) with higher opacity for visibility
-                from matplotlib.patches import Rectangle
-                # Horizontal band
-                ax_large.add_patch(Rectangle((0, start_turn), n_messages, end_turn - start_turn,
-                                           facecolor=color, alpha=0.35, zorder=1))
-                # Vertical band  
-                ax_large.add_patch(Rectangle((start_turn, 0), end_turn - start_turn, n_messages,
-                                           facecolor=color, alpha=0.35, zorder=1))
-        
-        # Now plot the recurrence matrix on top
-        ax_large.imshow(recurrence_matrix, cmap='binary', aspect='equal', interpolation='nearest',
-                       extent=[0, n_messages, n_messages, 0], zorder=2)
-        
-        # Add phase boundaries
-        if phase_info:
-            for phase in phase_info:
-                start_turn = phase['start_turn']
-                if start_turn < n_messages and start_turn > 0:
-                    ax_large.axhline(y=start_turn, color='red', linestyle='--', alpha=0.8, linewidth=2, zorder=3)
-                    ax_large.axvline(x=start_turn, color='red', linestyle='--', alpha=0.8, linewidth=2, zorder=3)
-        
-        ax_large.set_title(f'Detailed Recurrence Plot with Phase Regions ({self.model_name})', fontsize=16)
-        ax_large.set_xlabel('Turn', fontsize=14) 
-        ax_large.set_ylabel('Turn', fontsize=14)
-        ax_large.set_xlim(0, n_messages)
-        ax_large.set_ylim(0, n_messages)
-        ax_large.invert_yaxis()  # Match typical recurrence plot orientation
-        
-        # Add color key legend on the right
-        if phase_info:
-            ax_legend = fig.add_subplot(gs[5:9, n_models])  # Last column, rows 5-8
-            ax_legend.axis('off')
+                # Fill the color array for this phase
+                phase_colors[start_turn:end_turn] = color
+                
+                # Store phase info for legend
+                phase_labels.append({
+                    'name': phase['name'].replace('_', ' ').title(),
+                    'color': color,
+                    'start': start_turn,
+                    'end': end_turn
+                })
             
-            # Create legend entries
+            # Create the phase visualization as colored bars
+            # Create a horizontal bar showing phase progression
+            bar_height = 0.8
+            y_position = 0.5
+            
+            # Draw each phase as a colored rectangle
+            from matplotlib.patches import Rectangle
+            for phase in phase_labels:
+                width = phase['end'] - phase['start']
+                rect = Rectangle((phase['start'], y_position - bar_height/2), 
+                               width, bar_height,
+                               facecolor=phase['color'], 
+                               edgecolor='black', 
+                               linewidth=1)
+                ax_phase.add_patch(rect)
+                
+                # Removed phase name text from the bars - will only show in legend
+            
+            # Set up the axis
+            ax_phase.set_xlim(0, n_messages)
+            ax_phase.set_ylim(0, 1)
+            ax_phase.set_xlabel('Conversation Turn', fontsize=14)
+            ax_phase.set_title('Conversation Phases', fontsize=16)
+            
+            # Remove y-axis as it's not meaningful
+            ax_phase.set_yticks([])
+            
+            # Add turn markers
+            ax_phase.grid(True, axis='x', alpha=0.3)
+            
+            # Add a legend below or to the side
             from matplotlib.patches import Patch
             legend_elements = []
-            sorted_phases = sorted(phase_info, key=lambda x: x['start_turn'])
+            for phase in phase_labels:
+                legend_elements.append(Patch(facecolor=phase['color'], 
+                                           edgecolor='black',
+                                           label=f"{phase['name']} (turns {phase['start']}-{phase['end']-1})"))
             
-            for phase_idx, phase in enumerate(sorted_phases):
-                phase_name = phase['name'].replace('_', ' ').title()
-                color = distinct_colors[phase_idx % 20]
-                legend_elements.append(Patch(facecolor=color, alpha=0.8, label=phase_name))
-            
-            # Add the legend
-            legend = ax_legend.legend(handles=legend_elements, loc='center', 
-                                    title='Conversation Phases', fontsize=12,
-                                    title_fontsize=14, frameon=True, fancybox=True,
-                                    shadow=True)
-            legend.get_frame().set_alpha(0.9)
-            legend.get_frame().set_facecolor('white')
-            legend.get_frame().set_edgecolor('gray')
+            # Place legend below the phase bar
+            ax_phase.legend(handles=legend_elements, loc='upper center', 
+                          bbox_to_anchor=(0.5, -0.15), ncol=min(3, len(phase_labels)),
+                          frameon=True, fancybox=True, shadow=True)
+        else:
+            # If no phase info, just show a message
+            ax_phase.text(0.5, 0.5, 'No phase information available', 
+                        ha='center', va='center', fontsize=14)
+            ax_phase.set_xlim(0, 1)
+            ax_phase.set_ylim(0, 1)
+            ax_phase.axis('off')
         
-        # Overall title
-        plt.suptitle(f"Comprehensive Ensemble Analysis - {conversation['metadata']['session_id'][:12]}", 
-                    fontsize=16, y=0.99)
+        # Overall title - adjust position for new layout
+        plt.suptitle(f"Ensemble Analysis - {conversation['metadata']['session_id'][:12]}", 
+                    fontsize=16, y=0.98)
         
         if save_individual:
             distance_dir = self.output_dir / 'distance_matrices'
@@ -2435,6 +2496,7 @@ class EmbeddingTrajectoryAnalyzer:
             filename = f"{tier}_{session_id[:12]}_ensemble_comprehensive.png"
             output_path = distance_dir / filename
             
+            plt.tight_layout(rect=[0, 0.02, 1, 0.96])  # Leave space for suptitle and legend
             plt.savefig(output_path, dpi=300, bbox_inches='tight')
             conversation['ensemble_distance_matrix_path'] = str(output_path)
         
@@ -7387,8 +7449,9 @@ class EmbeddingTrajectoryAnalyzer:
         self.generate_report()
         
         # Create ensemble summary visualization if in ensemble mode
-        if self.ensemble_mode:
-            self.create_ensemble_summary_visualization()
+        # NOTE: Disabled as ensemble analysis is now included in per-conversation PNGs
+        # if self.ensemble_mode:
+        #     self.create_ensemble_summary_visualization()
         
         print("\n" + "="*70)
         print("ANALYSIS COMPLETE")
