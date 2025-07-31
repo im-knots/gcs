@@ -83,7 +83,7 @@ class EmbeddingTrajectoryAnalyzer:
             
             # Load model with GPU support
             import torch
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            device = 'cuda'
             self.encoder = SentenceTransformer(model_name, device=device)
             
             if device == 'cuda':
@@ -101,14 +101,11 @@ class EmbeddingTrajectoryAnalyzer:
             # Fallback to a smaller, more reliable model
             try:
                 import torch
-                device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                device = 'cuda'
                 self.encoder = SentenceTransformer('all-MiniLM-L6-v2', device=device)
                 model_name = 'all-MiniLM-L6-v2'
-                if device == 'cuda':
-                    print(f"✓ Fallback model loaded on GPU")
-                    self.gpu_batch_size = 256
-                else:
-                    self.gpu_batch_size = 32
+                print(f"✓ Fallback model loaded on GPU")
+                self.gpu_batch_size = 256
             except Exception as e2:
                 print(f"Failed to load fallback model: {e2}")
                 print("\nTroubleshooting steps:")
@@ -126,26 +123,26 @@ class EmbeddingTrajectoryAnalyzer:
         self.embedding_dim = self.encoder.get_sentence_embedding_dimension()
         print(f"Successfully loaded {model_name} with {self.embedding_dim} dimensions")
         
-        # Load ensemble models if specified
-        self.ensemble_mode = ensemble_models is not None
-        self.ensemble_models = {}
-        
-        if self.ensemble_mode:
-            print("\nLoading ensemble models for invariant pattern detection...")
-            # Add primary model to ensemble
-            self.ensemble_models[model_name] = self.encoder
+        # Load ensemble models - now required
+        if ensemble_models is None:
+            raise ValueError("ensemble_models parameter is required")
             
-            # Load additional models
-            for config in ensemble_models:
-                print(f"  Loading {config['name']} ({config['model_id']})...")
-                try:
-                    import torch
-                    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-                    model = SentenceTransformer(config['model_id'], device=device)
-                    self.ensemble_models[config['name']] = model
-                    print(f"    ✓ Loaded with {config['dim']} dimensions on {device.upper()}")
-                except Exception as e:
-                    print(f"    ✗ Failed to load: {e}")
+        self.ensemble_models = {}
+        print("\nLoading ensemble models for invariant pattern detection...")
+        # Add primary model to ensemble
+        self.ensemble_models[model_name] = self.encoder
+        
+        # Load additional models
+        for config in ensemble_models:
+            print(f"  Loading {config['name']} ({config['model_id']})...")
+            try:
+                import torch
+                device = 'cuda'
+                model = SentenceTransformer(config['model_id'], device=device)
+                self.ensemble_models[config['name']] = model
+                print(f"    ✓ Loaded with {config['dim']} dimensions on {device.upper()}")
+            except Exception as e:
+                print(f"    ✗ Failed to load: {e}")
         
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
@@ -158,13 +155,28 @@ class EmbeddingTrajectoryAnalyzer:
         self.conversations = []
         self.all_embeddings = []
         self.all_metadata = []
-        self.ensemble_embeddings = {} if self.ensemble_mode else None
+        self.ensemble_embeddings = {}
+        
+        # Initialize GPU device
+        import torch
+        self.device = torch.device('cuda')
+        torch.cuda.empty_cache()  # Clear GPU cache
+        
+        # Pre-allocate some GPU tensors for reuse
+        self._gpu_cache = {}
     
     def _safe_euclidean(self, vec1, vec2):
-        """Compute euclidean distance with proper shape handling"""
-        vec1 = np.asarray(vec1).flatten()
-        vec2 = np.asarray(vec2).flatten()
-        return euclidean(vec1, vec2)
+        """Compute euclidean distance with proper shape handling using GPU"""
+        import torch
+        # Check if inputs are already tensors
+        if not isinstance(vec1, torch.Tensor):
+            vec1 = torch.tensor(vec1, device=self.device, dtype=torch.float32)
+        if not isinstance(vec2, torch.Tensor):
+            vec2 = torch.tensor(vec2, device=self.device, dtype=torch.float32)
+        
+        vec1 = vec1.flatten()
+        vec2 = vec2.flatten()
+        return torch.norm(vec1 - vec2).item()
     
     def _standardize_embeddings(self, embeddings):
         """Standardize embeddings to numpy array format"""
@@ -199,66 +211,328 @@ class EmbeddingTrajectoryAnalyzer:
             distance_matrices: Dict of {model_name: euclidean_distances}
             self_similarities: Dict of {model_name: cosine_similarities}
         """
+        print(f"      Batch calculating distances for {len(all_embeddings)} models...")
         distance_matrices = {}
         self_similarities = {}
         
-        try:
-            import torch
-            if torch.cuda.is_available():
-                device = torch.device('cuda')
+        import torch
+        torch.cuda.empty_cache()  # Clear GPU memory
+        device = torch.device('cuda')
+        
+        # Stack all embeddings into a single tensor
+        model_names = list(all_embeddings.keys())
+        embeddings_list = []
+        
+        for model_name in model_names:
+            emb = all_embeddings[model_name]
+            embeddings_list.append(torch.from_numpy(emb).float())
+        
+        # Process each model's embeddings
+        for i, (model_name, embeddings_tensor) in enumerate(zip(model_names, embeddings_list)):
+            print(f"        Processing {model_name}...")
+            embeddings_tensor = embeddings_tensor.to(device)
+            
+            # For large matrices, process in chunks to avoid GPU memory issues
+            if n_messages > 200:
+                # Process in chunks
+                chunk_size = 100
+                euclidean_distances = torch.zeros((n_messages, n_messages))
+                cosine_distances = torch.zeros((n_messages, n_messages))
                 
-                # Stack all embeddings into a single tensor
-                model_names = list(all_embeddings.keys())
-                embeddings_list = []
+                for i in range(0, n_messages, chunk_size):
+                    for j in range(0, n_messages, chunk_size):
+                        end_i = min(i + chunk_size, n_messages)
+                        end_j = min(j + chunk_size, n_messages)
+                        
+                        chunk_i = embeddings_tensor[i:end_i]
+                        chunk_j = embeddings_tensor[j:end_j]
+                        
+                        # Euclidean distances for chunk
+                        diff = chunk_i.unsqueeze(1) - chunk_j.unsqueeze(0)
+                        euclidean_distances[i:end_i, j:end_j] = torch.norm(diff, dim=2).cpu()
+                        
+                        # Cosine distances for chunk
+                        norm_i = chunk_i / torch.norm(chunk_i, dim=1, keepdim=True).clamp(min=1e-8)
+                        norm_j = chunk_j / torch.norm(chunk_j, dim=1, keepdim=True).clamp(min=1e-8)
+                        cos_sim = torch.mm(norm_i, norm_j.t())
+                        cosine_distances[i:end_i, j:end_j] = (1 - cos_sim).cpu()
                 
-                for model_name in model_names:
-                    emb = all_embeddings[model_name]
-                    embeddings_list.append(torch.from_numpy(emb).float())
-                
-                # Process each model's embeddings
-                for i, (model_name, embeddings_tensor) in enumerate(zip(model_names, embeddings_list)):
-                    embeddings_tensor = embeddings_tensor.to(device)
-                    
-                    # Batch calculate Euclidean distances
-                    diff = embeddings_tensor.unsqueeze(0) - embeddings_tensor.unsqueeze(1)
-                    euclidean_distances = torch.norm(diff, dim=2).cpu().numpy()
-                    
-                    # Batch calculate cosine similarities
-                    norms = torch.norm(embeddings_tensor, dim=1, keepdim=True)
-                    norms = torch.clamp(norms, min=1e-8)
-                    normalized = embeddings_tensor / norms
-                    cosine_sim = torch.mm(normalized, normalized.t())
-                    cosine_distances = (1 - cosine_sim).cpu().numpy()
-                    
-                    distance_matrices[model_name] = euclidean_distances
-                    self_similarities[model_name] = 1 - cosine_distances
-                    
+                euclidean_distances = euclidean_distances.numpy()
+                cosine_distances = cosine_distances.numpy()
             else:
-                raise RuntimeError("No GPU available")
+                # Small enough to process all at once
+                # Batch calculate Euclidean distances
+                diff = embeddings_tensor.unsqueeze(0) - embeddings_tensor.unsqueeze(1)
+                euclidean_distances = torch.norm(diff, dim=2).cpu().numpy()
                 
-        except Exception as e:
-            # CPU fallback - still batch process per model
-            for model_name, embeddings in all_embeddings.items():
-                euclidean_distances = np.zeros((n_messages, n_messages))
-                cosine_distances = np.zeros((n_messages, n_messages))
-                
-                for i in range(n_messages):
-                    for j in range(n_messages):
-                        vec_i = embeddings[i].flatten()
-                        vec_j = embeddings[j].flatten()
-                        euclidean_distances[i, j] = self._safe_euclidean(vec_i, vec_j)
-                        cosine_distances[i, j] = self._safe_cosine(vec_i, vec_j)
-                
-                distance_matrices[model_name] = euclidean_distances
-                self_similarities[model_name] = 1 - cosine_distances
+                # Batch calculate cosine similarities
+                norms = torch.norm(embeddings_tensor, dim=1, keepdim=True)
+                norms = torch.clamp(norms, min=1e-8)
+                normalized = embeddings_tensor / norms
+                cosine_sim = torch.mm(normalized, normalized.t())
+                cosine_distances = (1 - cosine_sim).cpu().numpy()
+            
+            distance_matrices[model_name] = euclidean_distances
+            self_similarities[model_name] = 1 - cosine_distances
+            
+            # Clear GPU memory after each model
+            torch.cuda.empty_cache()
                 
         return distance_matrices, self_similarities
     
     def _safe_cosine(self, vec1, vec2):
-        """Compute cosine distance with proper shape handling"""
-        vec1 = np.asarray(vec1).flatten()
-        vec2 = np.asarray(vec2).flatten()
-        return cosine(vec1, vec2)
+        """Compute cosine distance with proper shape handling using GPU"""
+        import torch
+        device = torch.device('cuda')
+        vec1 = torch.tensor(vec1, device=device, dtype=torch.float32).flatten()
+        vec2 = torch.tensor(vec2, device=device, dtype=torch.float32).flatten()
+        
+        # Cosine similarity = dot(a,b) / (norm(a) * norm(b))
+        dot_product = torch.dot(vec1, vec2)
+        norm_product = torch.norm(vec1) * torch.norm(vec2)
+        
+        # Handle zero vectors
+        if norm_product == 0:
+            return 1.0
+        
+        cosine_sim = dot_product / norm_product
+        # Return cosine distance (1 - similarity)
+        return (1 - cosine_sim).cpu().numpy().item()
+    
+    def _gpu_mean(self, data, axis=None):
+        """GPU-accelerated mean calculation"""
+        import torch
+        if isinstance(data, torch.Tensor):
+            tensor = data
+        else:
+            tensor = torch.tensor(data, device=self.device, dtype=torch.float32)
+        
+        if axis is None:
+            return tensor.mean().item()
+        else:
+            return tensor.mean(dim=axis).cpu().numpy()
+    
+    def _gpu_std(self, data, axis=None):
+        """GPU-accelerated standard deviation calculation"""
+        import torch
+        device = torch.device('cuda')
+        tensor = torch.tensor(data, device=device, dtype=torch.float32)
+        if axis is None:
+            return tensor.std().cpu().numpy().item()
+        else:
+            return tensor.std(dim=axis).cpu().numpy()
+    
+    def _gpu_percentile(self, data, percentiles):
+        """GPU-accelerated percentile calculation"""
+        import torch
+        device = torch.device('cuda')
+        tensor = torch.tensor(data, device=device, dtype=torch.float32)
+        if isinstance(percentiles, (list, tuple, np.ndarray)):
+            results = []
+            for p in percentiles:
+                k = int(len(tensor) * p / 100.0)
+                val = torch.kthvalue(tensor.flatten(), k).values
+                results.append(val.cpu().numpy().item())
+            return np.array(results)
+        else:
+            k = int(len(tensor) * percentiles / 100.0)
+            return torch.kthvalue(tensor.flatten(), k).values.cpu().numpy().item()
+    
+    def _gpu_norm(self, data):
+        """GPU-accelerated norm calculation"""
+        import torch
+        device = torch.device('cuda')
+        tensor = torch.tensor(data, device=device, dtype=torch.float32)
+        return torch.norm(tensor).cpu().numpy().item()
+    
+    def _gpu_batch_pairwise_distances(self, embeddings):
+        """GPU-accelerated pairwise distance calculation for trajectory"""
+        import torch
+        device = torch.device('cuda')
+        
+        # Convert to GPU tensor
+        embeddings_tensor = torch.tensor(embeddings, device=device, dtype=torch.float32)
+        
+        # Calculate consecutive distances (trajectory)
+        distances = torch.norm(embeddings_tensor[1:] - embeddings_tensor[:-1], dim=1)
+        
+        return distances.cpu().numpy()
+    
+    def _gpu_batch_norms(self, embeddings):
+        """GPU-accelerated batch norm calculation"""
+        import torch
+        device = torch.device('cuda')
+        
+        # Convert to GPU tensor
+        embeddings_tensor = torch.tensor(embeddings, device=device, dtype=torch.float32)
+        
+        # Calculate norms for all embeddings
+        norms = torch.norm(embeddings_tensor, dim=1)
+        
+        return norms.cpu().numpy()
+    
+    def _gpu_pairwise_cosine_similarity(self, embeddings1, embeddings2=None):
+        """GPU-accelerated pairwise cosine similarity"""
+        import torch
+        device = torch.device('cuda')
+        
+        # Convert to GPU tensors
+        emb1_tensor = torch.tensor(embeddings1, device=device, dtype=torch.float32)
+        
+        if embeddings2 is None:
+            # Self-similarity
+            normalized = emb1_tensor / torch.norm(emb1_tensor, dim=1, keepdim=True)
+            cosine_sim = torch.mm(normalized, normalized.t())
+        else:
+            emb2_tensor = torch.tensor(embeddings2, device=device, dtype=torch.float32)
+            norm1 = emb1_tensor / torch.norm(emb1_tensor, dim=1, keepdim=True)
+            norm2 = emb2_tensor / torch.norm(emb2_tensor, dim=1, keepdim=True)
+            cosine_sim = torch.mm(norm1, norm2.t())
+        
+        return cosine_sim.cpu().numpy()
+    
+    def _gpu_pca(self, data, n_components=3):
+        """GPU-accelerated PCA using PyTorch"""
+        import torch
+        device = torch.device('cuda')
+        
+        # Convert to GPU tensor
+        X = torch.tensor(data, device=device, dtype=torch.float32)
+        
+        # Center the data
+        X_mean = X.mean(dim=0)
+        X_centered = X - X_mean
+        
+        # Compute covariance matrix
+        cov_matrix = torch.mm(X_centered.t(), X_centered) / (X.shape[0] - 1)
+        
+        # Eigen decomposition
+        eigenvalues, eigenvectors = torch.linalg.eigh(cov_matrix)
+        
+        # Sort by eigenvalues (descending)
+        idx = eigenvalues.argsort(descending=True)
+        eigenvalues = eigenvalues[idx]
+        eigenvectors = eigenvectors[:, idx]
+        
+        # Project data
+        components = eigenvectors[:, :n_components]
+        X_transformed = torch.mm(X_centered, components)
+        
+        # Calculate explained variance ratio
+        explained_variance_ratio = eigenvalues[:n_components] / eigenvalues.sum()
+        
+        return {
+            'transformed': X_transformed.cpu().numpy(),
+            'components': components.cpu().numpy(),
+            'explained_variance_ratio': explained_variance_ratio.cpu().numpy(),
+            'mean': X_mean.cpu().numpy()
+        }
+    
+    def _gpu_kmeans(self, data, n_clusters, max_iters=100):
+        """GPU-accelerated K-means clustering"""
+        import torch
+        device = torch.device('cuda')
+        
+        X = torch.tensor(data, device=device, dtype=torch.float32)
+        n_samples = X.shape[0]
+        
+        # Initialize centroids randomly
+        indices = torch.randperm(n_samples)[:n_clusters]
+        centroids = X[indices]
+        
+        for _ in range(max_iters):
+            # Assign points to nearest centroid
+            distances = torch.cdist(X, centroids)
+            labels = distances.argmin(dim=1)
+            
+            # Update centroids
+            new_centroids = torch.zeros_like(centroids)
+            for k in range(n_clusters):
+                mask = labels == k
+                if mask.any():
+                    new_centroids[k] = X[mask].mean(dim=0)
+                else:
+                    new_centroids[k] = centroids[k]
+            
+            # Check convergence
+            if torch.allclose(centroids, new_centroids):
+                break
+            centroids = new_centroids
+        
+        return labels.cpu().numpy()
+    
+    def _gpu_nearest_neighbors(self, data, n_neighbors):
+        """GPU-accelerated nearest neighbors search"""
+        import torch
+        device = torch.device('cuda')
+        
+        X = torch.tensor(data, device=device, dtype=torch.float32)
+        
+        # Compute pairwise distances
+        distances = torch.cdist(X, X)
+        
+        # Find k nearest neighbors
+        _, indices = torch.topk(distances, k=n_neighbors+1, largest=False, dim=1)
+        
+        # Remove self (first neighbor)
+        neighbor_indices = indices[:, 1:].cpu().numpy()
+        neighbor_distances = torch.gather(distances, 1, indices)[:, 1:].cpu().numpy()
+        
+        return neighbor_indices, neighbor_distances
+    
+    def _gpu_sliding_window_stats(self, embeddings, window_size):
+        """GPU-accelerated sliding window statistics"""
+        import torch
+        device = torch.device('cuda')
+        
+        X = torch.tensor(embeddings, device=device, dtype=torch.float32)
+        n = len(X)
+        
+        results = []
+        
+        # Create sliding windows efficiently
+        for i in range(n - window_size + 1):
+            window = X[i:i+window_size]
+            
+            # Calculate pairwise distances within window
+            distances = torch.cdist(window, window)
+            
+            # Extract upper triangle (unique pairs)
+            triu_indices = torch.triu_indices(window_size, window_size, offset=1)
+            pairwise_dists = distances[triu_indices[0], triu_indices[1]]
+            
+            # Convert to similarities
+            similarities = 1 / (1 + pairwise_dists)  # Simple similarity measure
+            
+            results.append({
+                'window_start': i,
+                'window_end': i + window_size - 1,
+                'mean_similarity': similarities.mean().cpu().numpy().item(),
+                'min_similarity': similarities.min().cpu().numpy().item(),
+                'similarity_variance': similarities.var().cpu().numpy().item()
+            })
+        
+        return results
+    
+    def _gpu_batch_velocity_calculation(self, embeddings):
+        """GPU-accelerated batch velocity calculation"""
+        import torch
+        device = torch.device('cuda')
+        
+        X = torch.tensor(embeddings, device=device, dtype=torch.float32)
+        
+        # Calculate all consecutive differences
+        velocities = torch.norm(X[1:] - X[:-1], dim=1)
+        
+        # Calculate accelerations (change in velocity)
+        accelerations = torch.diff(velocities)
+        
+        return {
+            'velocities': velocities.cpu().numpy(),
+            'accelerations': accelerations.cpu().numpy(),
+            'mean_velocity': velocities.mean().cpu().numpy().item(),
+            'std_velocity': velocities.std().cpu().numpy().item()
+        }
         
     def load_conversation(self, json_path, verbose=False):
         """Load a conversation from The Academy export format"""
@@ -289,6 +563,7 @@ class EmbeddingTrajectoryAnalyzer:
             'session_id': session_id,
             'export_date': data.get('exportedAt', datetime.now().isoformat()),
             'message_count': len(messages),
+            'filename': Path(json_path).name,
         }
         
         # Extract and process messages
@@ -556,7 +831,7 @@ class EmbeddingTrajectoryAnalyzer:
         
         # Show progress only if verbose
         import torch
-        if torch.cuda.is_available() and verbose:
+        if verbose:
             print(f"Using GPU batch size: {batch_size}")
         
         all_embeddings = self.encoder.encode(all_contents, 
@@ -564,20 +839,36 @@ class EmbeddingTrajectoryAnalyzer:
                                            show_progress_bar=verbose,
                                            convert_to_numpy=True)
         
-        # Distribute embeddings back to conversations
+        # First, embed with all ensemble models
+        all_ensemble_embeddings = {}
+        all_ensemble_embeddings[self.model_name] = all_embeddings
+        
+        # Batch encode with each additional model
+        for model_name, model in self.ensemble_models.items():
+            if model_name != self.model_name:
+                if verbose:
+                    print(f"    Batch encoding all messages with {model_name}...")
+                model_embeddings = model.encode(all_contents, 
+                                                   batch_size=batch_size,
+                                                   show_progress_bar=False,
+                                                   convert_to_numpy=True)
+                all_ensemble_embeddings[model_name] = model_embeddings
+        
+        # Now distribute embeddings back to conversations
         for i, conv in enumerate(conversations):
             start_idx = conversation_boundaries[i]
             end_idx = conversation_boundaries[i + 1]
             
-            conv_embeddings = all_embeddings[start_idx:end_idx]
             messages = conv['messages']
             
             # Store embeddings with metadata
             embedded_messages = []
+            conv_embeddings = all_embeddings[start_idx:end_idx]
+            
             for j, (msg, embedding) in enumerate(zip(messages, conv_embeddings)):
                 embedded_msg = msg.copy()
                 embedded_msg['embedding'] = embedding
-                embedded_msg['embedding_norm'] = np.linalg.norm(embedding)
+                embedded_msg['embedding_norm'] = self._gpu_norm(embedding)
                 embedded_messages.append(embedded_msg)
                 
                 # Add to global collections
@@ -590,23 +881,12 @@ class EmbeddingTrajectoryAnalyzer:
             
             conv['embedded_messages'] = embedded_messages
             
-            # Handle ensemble models if needed
-            if self.ensemble_mode:
-                ensemble_embeddings = {}
-                # Store primary model embeddings
-                ensemble_embeddings[self.model_name] = conv_embeddings
-                
-                # Process other models (we'll batch these too)
-                for model_name, model in self.ensemble_models.items():
-                    if model_name != self.model_name:
-                        contents = [msg['content'] for msg in messages]
-                        model_embeddings = model.encode(contents, 
-                                                       batch_size=batch_size,
-                                                       show_progress_bar=False,
-                                                       convert_to_numpy=True)
-                        ensemble_embeddings[model_name] = model_embeddings
-                
-                conv['ensemble_embeddings'] = ensemble_embeddings
+            # Extract ensemble embeddings for this conversation
+            ensemble_embeddings = {}
+            for model_name, model_embeddings in all_ensemble_embeddings.items():
+                ensemble_embeddings[model_name] = model_embeddings[start_idx:end_idx]
+            
+            conv['ensemble_embeddings'] = ensemble_embeddings
         
         return conversations
     
@@ -634,11 +914,14 @@ class EmbeddingTrajectoryAnalyzer:
                                         convert_to_numpy=True)
         
         # Store embeddings with metadata
+        # Batch calculate norms on GPU
+        embedding_norms = self._gpu_batch_norms(embeddings)
+        
         embedded_messages = []
-        for i, (msg, embedding) in enumerate(zip(messages, embeddings)):
+        for i, (msg, embedding, norm) in enumerate(zip(messages, embeddings, embedding_norms)):
             embedded_msg = msg.copy()
             embedded_msg['embedding'] = embedding
-            embedded_msg['embedding_norm'] = np.linalg.norm(embedding)
+            embedded_msg['embedding_norm'] = norm
             embedded_messages.append(embedded_msg)
             
             # Add to global collections
@@ -651,26 +934,25 @@ class EmbeddingTrajectoryAnalyzer:
         
         conversation['embedded_messages'] = embedded_messages
         
-        # If ensemble mode, generate embeddings for all models
-        if self.ensemble_mode:
-            # Check if ensemble embeddings already exist (from batch processing)
-            if 'ensemble_embeddings' in conversation:
-                if verbose:
-                    print(f"Ensemble embeddings already exist")
-            else:
-                ensemble_embeddings = {}
-                
-                for model_name, model in self.ensemble_models.items():
-                    if model_name != self.model_name:  # Skip primary model (already done)
-                        model_embeddings = model.encode(contents, 
+        # Generate embeddings for all models
+        # Check if ensemble embeddings already exist (from batch processing)
+        if 'ensemble_embeddings' in conversation:
+            if verbose:
+                print(f"Ensemble embeddings already exist")
+        else:
+            ensemble_embeddings = {}
+            
+            for model_name, model in self.ensemble_models.items():
+                if model_name != self.model_name:  # Skip primary model (already done)
+                    model_embeddings = model.encode(contents, 
                                                        batch_size=batch_size,
                                                        show_progress_bar=False,
                                                        convert_to_numpy=True)
-                        ensemble_embeddings[model_name] = model_embeddings
-                    else:
-                        ensemble_embeddings[model_name] = embeddings
-                
-                conversation['ensemble_embeddings'] = ensemble_embeddings
+                    ensemble_embeddings[model_name] = model_embeddings
+                else:
+                    ensemble_embeddings[model_name] = embeddings
+            
+            conversation['ensemble_embeddings'] = ensemble_embeddings
         
         return conversation
     
@@ -725,12 +1007,12 @@ class EmbeddingTrajectoryAnalyzer:
                 print(f"Warning: Conversation has only {n_messages} messages. Length normalization may be unreliable.")
             
             conversation['trajectory_stats'] = {
-                'mean_distance': np.mean(distances),
-                'std_distance': np.std(distances),
-                'max_distance': np.max(distances),
-                'total_distance': np.sum(distances),
-                'total_distance_normalized': np.sum(distances) / sqrt_norm,  # Normalize by sqrt(n)
-                'distance_acceleration': np.diff(distances).mean() if len(distances) > 1 else 0,
+                'mean_distance': self._gpu_mean(distances),
+                'std_distance': self._gpu_std(distances),
+                'max_distance': max(distances) if distances else 0,
+                'total_distance': sum(distances),
+                'total_distance_normalized': sum(distances) / sqrt_norm,  # Normalize by sqrt(n)
+                'distance_acceleration': self._gpu_mean(np.diff(distances)) if len(distances) > 1 else 0,
                 'conversation_length': n_messages,
                 'length_norm_sqrt': sqrt_norm,
                 'length_norm_linear': linear_norm
@@ -767,8 +1049,8 @@ class EmbeddingTrajectoryAnalyzer:
                 # Calculate phase centroid
                 embeddings = [m['embedding'] for m in phase_messages]
                 phase_embeddings[phase_name] = {
-                    'centroid': np.mean(embeddings, axis=0),
-                    'spread': np.std(embeddings, axis=0).mean(),
+                    'centroid': self._gpu_mean(embeddings, axis=0),
+                    'spread': self._gpu_std(embeddings, axis=0).mean(),
                     'message_count': len(phase_messages),
                     'turn_range': (phase_turn, min(next_phase_turn - 1, messages[-1]['turn'])),
                     'start_turn': phase_turn,
@@ -802,15 +1084,15 @@ class EmbeddingTrajectoryAnalyzer:
                 curr_sample = np.random.choice(len(curr_embeddings), len(curr_embeddings), replace=True)
                 next_sample = np.random.choice(len(next_embeddings), len(next_embeddings), replace=True)
                 
-                curr_centroid_boot = np.mean([curr_embeddings[j] for j in curr_sample], axis=0)
-                next_centroid_boot = np.mean([next_embeddings[j] for j in next_sample], axis=0)
+                curr_centroid_boot = self._gpu_mean([curr_embeddings[j] for j in curr_sample], axis=0)
+                next_centroid_boot = self._gpu_mean([next_embeddings[j] for j in next_sample], axis=0)
                 
                 boot_distance = self._safe_euclidean(curr_centroid_boot, next_centroid_boot)
                 bootstrap_distances.append(boot_distance)
             
             # Calculate confidence intervals
-            ci_lower = np.percentile(bootstrap_distances, 2.5)
-            ci_upper = np.percentile(bootstrap_distances, 97.5)
+            ci_lower = self._gpu_percentile(bootstrap_distances, 2.5)
+            ci_upper = self._gpu_percentile(bootstrap_distances, 97.5)
             
             phase_transitions.append({
                 'from': curr_phase,
@@ -850,8 +1132,8 @@ class EmbeddingTrajectoryAnalyzer:
             v2 = p3 - p2
             
             # Curvature: angle between consecutive movement vectors
-            v1_norm = np.linalg.norm(v1)
-            v2_norm = np.linalg.norm(v2)
+            v1_norm = self._gpu_norm(v1)
+            v2_norm = self._gpu_norm(v2)
             
             if v1_norm > 0 and v2_norm > 0:
                 cos_angle = np.dot(v1, v2) / (v1_norm * v2_norm)
@@ -875,8 +1157,8 @@ class EmbeddingTrajectoryAnalyzer:
             indices = np.random.choice(len(curvatures), len(curvatures), replace=True)
             boot_curvatures = [curvatures[i] for i in indices]
             
-            bootstrap_means.append(np.mean(boot_curvatures))
-            bootstrap_maxs.append(np.max(boot_curvatures))
+            bootstrap_means.append(self._gpu_mean(boot_curvatures))
+            bootstrap_maxs.append(max(boot_curvatures))
         
         # Length normalization factor
         # Normalize by sqrt(n) for extensive properties (total curvature grows with length)
@@ -884,15 +1166,15 @@ class EmbeddingTrajectoryAnalyzer:
         length_norm_factor = np.sqrt(n_messages / 100.0)  # Normalize to 100-turn baseline
             
         return {
-            'mean_curvature': np.mean(curvatures),
-            'mean_curvature_ci_lower': np.percentile(bootstrap_means, 2.5),
-            'mean_curvature_ci_upper': np.percentile(bootstrap_means, 97.5),
-            'mean_curvature_normalized': np.mean(curvatures) / length_norm_factor,
+            'mean_curvature': self._gpu_mean(curvatures),
+            'mean_curvature_ci_lower': self._gpu_percentile(bootstrap_means, 2.5),
+            'mean_curvature_ci_upper': self._gpu_percentile(bootstrap_means, 97.5),
+            'mean_curvature_normalized': self._gpu_mean(curvatures) / length_norm_factor,
             'max_curvature': np.max(curvatures),
-            'max_curvature_ci_lower': np.percentile(bootstrap_maxs, 2.5),
-            'max_curvature_ci_upper': np.percentile(bootstrap_maxs, 97.5),
+            'max_curvature_ci_lower': self._gpu_percentile(bootstrap_maxs, 2.5),
+            'max_curvature_ci_upper': self._gpu_percentile(bootstrap_maxs, 97.5),
             'curvature_variance': np.var(curvatures),
-            'mean_acceleration': np.mean(accelerations),
+            'mean_acceleration': self._gpu_mean(accelerations),
             'acceleration_variance': np.var(accelerations),
             'n_turns': n_messages,
             'length_normalization_factor': length_norm_factor
@@ -936,12 +1218,9 @@ class EmbeddingTrajectoryAnalyzer:
         
         embeddings = np.array([m['embedding'] for m in messages])
         
-        # Calculate velocities
-        velocities = []
-        for i in range(len(embeddings)-1):
-            velocity = np.linalg.norm(embeddings[i+1] - embeddings[i])
-            velocities.append(velocity)
-        velocities = np.array(velocities)
+        # Calculate velocities using GPU batch operation
+        velocity_results = self._gpu_batch_velocity_calculation(embeddings)
+        velocities = velocity_results['velocities']
         
         # Detect convergence using sliding window
         window_size = 5
@@ -951,7 +1230,7 @@ class EmbeddingTrajectoryAnalyzer:
             window_velocities = velocities[i:i+window_size]
             
             # Convergence score: inverse of mean velocity in window
-            mean_velocity = np.mean(window_velocities)
+            mean_velocity = self._gpu_mean(window_velocities)
             velocity_variance = np.var(window_velocities)
             
             # Score is high when velocity is low and consistent
@@ -1674,7 +1953,7 @@ class EmbeddingTrajectoryAnalyzer:
             ('information_flow', lambda c: self._add_information_flow(c)),
             ('full_dimensional_analysis', lambda c: self._add_full_dimensional_analysis(c)),
             ('distance_analysis', lambda c: self._add_distance_analysis(c)),
-            ('ensemble_invariants', lambda c: self._add_ensemble_invariants(c) if self.ensemble_mode else c),
+            ('ensemble_invariants', lambda c: self._add_ensemble_invariants(c)),
             ('metric_reliability', lambda c: self._add_metric_reliability(c))
         ]
         
@@ -1682,8 +1961,8 @@ class EmbeddingTrajectoryAnalyzer:
         for step_name, step_func in analysis_steps:
             if step_name not in completed_steps:
                 try:
-                    if verbose:
-                        print(f"Running {step_name}...")
+                    # Always print step name to debug hanging
+                    print(f"  Running {step_name}...")
                     conversation = step_func(conversation)
                     
                     # Save checkpoint after each step
@@ -1876,7 +2155,7 @@ class EmbeddingTrajectoryAnalyzer:
             features['determinism'] = dist['recurrence_stats']['determinism']
         
         # Ensemble invariant features
-        if self.ensemble_mode and 'invariant_patterns' in conversation:
+        if 'invariant_patterns' in conversation:
             invariants = conversation['invariant_patterns']['summary']
             features['ensemble_distance_corr'] = invariants['mean_distance_correlation']
             features['ensemble_velocity_corr'] = invariants['mean_velocity_correlation']
@@ -1968,11 +2247,38 @@ class EmbeddingTrajectoryAnalyzer:
         return threshold
     
     def _calculate_single_correlation(self, args):
-        """Helper function for parallel correlation calculation"""
+        """Helper function for correlation calculation with GPU support"""
         model1, model2, dist1, dist2 = args
+        
+        import torch
+        # GPU-accelerated Spearman correlation
+        device = torch.device('cuda')
+        dist1_gpu = torch.from_numpy(dist1).float().to(device)
+        dist2_gpu = torch.from_numpy(dist2).float().to(device)
+        
+        # Rank the values
+        _, ranks1 = torch.sort(torch.argsort(dist1_gpu))
+        _, ranks2 = torch.sort(torch.argsort(dist2_gpu))
+        
+        # Convert to float for correlation
+        ranks1 = ranks1.float() + 1  # 1-based ranking
+        ranks2 = ranks2.float() + 1
+        
+        # Calculate Pearson correlation on ranks (equivalent to Spearman)
+        mean1 = ranks1.mean()
+        mean2 = ranks2.mean()
+        
+        cov = ((ranks1 - mean1) * (ranks2 - mean2)).mean()
+        std1 = ranks1.std()
+        std2 = ranks2.std()
+        
+        corr = (cov / (std1 * std2)).cpu().numpy()
+        
+        # For p-value, we'll use scipy (it's fast for this)
         from scipy.stats import spearmanr
-        corr, p_value = spearmanr(dist1, dist2)
-        return f'{model1}-{model2}', {'correlation': corr, 'p_value': p_value}
+        _, p_value = spearmanr(dist1, dist2)
+        
+        return f'{model1}-{model2}', {'correlation': float(corr), 'p_value': p_value}
     
     def _calculate_ensemble_correlations(self, distance_matrices, self_similarities, model_names, n_messages):
         """Calculate correlations between distance matrices using parallel processing"""
@@ -1998,24 +2304,46 @@ class EmbeddingTrajectoryAnalyzer:
         return correlations
     
     def _calculate_single_velocity_correlation(self, args):
-        """Helper function for parallel velocity correlation calculation"""
+        """Helper function for velocity correlation calculation with GPU support"""
         model1, model2, vel1, vel2 = args
+        
+        import torch
+        # GPU-accelerated Pearson correlation
+        device = torch.device('cuda')
+        vel1_gpu = torch.from_numpy(np.array(vel1)).float().to(device)
+        vel2_gpu = torch.from_numpy(np.array(vel2)).float().to(device)
+        
+        # Calculate correlation
+        mean1 = vel1_gpu.mean()
+        mean2 = vel2_gpu.mean()
+        
+        cov = ((vel1_gpu - mean1) * (vel2_gpu - mean2)).mean()
+        std1 = vel1_gpu.std()
+        std2 = vel2_gpu.std()
+        
+        corr = (cov / (std1 * std2)).cpu().numpy()
+        
+        # For p-value, use scipy
         from scipy.stats import pearsonr
-        corr, p_value = pearsonr(vel1, vel2)
-        return f'{model1}-{model2}', {'correlation': corr, 'p_value': p_value}
+        _, p_value = pearsonr(vel1, vel2)
+        
+        return f'{model1}-{model2}', {'correlation': float(corr), 'p_value': p_value}
     
     def _calculate_velocity_correlations(self, ensemble_embeddings, model_names):
         """Calculate velocity profile correlations across models using parallel processing"""
         velocity_profiles = {}
         
-        # Standardize embeddings and calculate velocities
+        # Standardize embeddings and calculate velocities using GPU
+        import torch
+        device = torch.device('cuda')
         for model_name, embeddings in ensemble_embeddings.items():
             embeddings = self._standardize_embeddings(embeddings)
+            embeddings_gpu = torch.from_numpy(embeddings).float().to(device)
             
-            velocities = []
-            for i in range(1, len(embeddings)):
-                v = np.linalg.norm(embeddings[i] - embeddings[i-1])
-                velocities.append(v)
+            # Calculate pairwise differences
+            diffs = embeddings_gpu[1:] - embeddings_gpu[:-1]
+            # Calculate norms (velocities)
+            velocities = torch.norm(diffs, dim=1).cpu().numpy().tolist()
             velocity_profiles[model_name] = velocities
         
         # Prepare arguments for parallel processing
@@ -2171,19 +2499,27 @@ class EmbeddingTrajectoryAnalyzer:
     
     def create_ensemble_distance_matrices(self, conversation, save_individual=True):
         """Create distance matrices for all ensemble models"""
+        print(f"    Creating ensemble distance matrices...")
         ensemble_embeddings = conversation['ensemble_embeddings']
         model_names = list(ensemble_embeddings.keys())
         n_models = len(model_names)
         n_messages = len(conversation['messages'])
+        print(f"    Processing {n_models} models with {n_messages} messages")
         
         # Create a comprehensive figure with multiple sections
         # Section 1: Distance matrices and trajectories (4xN grid)
         # Section 2: 3 correlation tables (centered)
         # Section 3: Phase annotated diagram with colored sections
         
+        # Skip visualization for very large conversations to avoid memory issues
+        if n_messages > 500:
+            print(f"    Skipping visualization for large conversation ({n_messages} messages)")
+            return {}
+        
         # Calculate optimal figure size - increased width to prevent compression
         fig_width = 7 * n_models  # Increased from 5 to 7 per model
         fig_height = 28  # Slightly increased for better proportions
+        print(f"    Creating figure ({fig_width}x{fig_height})...")
         fig = plt.figure(figsize=(fig_width, fig_height))
         
         # Create GridSpec for flexible layout
@@ -2281,9 +2617,8 @@ class EmbeddingTrajectoryAnalyzer:
             
             # Row 4: Add trajectory visualization
             # Reduce to 2D for visualization
-            from sklearn.decomposition import PCA
-            pca = PCA(n_components=2)
-            reduced_embeddings = pca.fit_transform(embeddings)
+            pca_result = self._gpu_pca(embeddings, n_components=2)
+            reduced_embeddings = pca_result['transformed']
             
             # Create trajectory plot
             ax4.plot(reduced_embeddings[:, 0], reduced_embeddings[:, 1], 'b-', alpha=0.5, linewidth=1)
@@ -2318,9 +2653,9 @@ class EmbeddingTrajectoryAnalyzer:
                       c='red', s=80, marker='v', edgecolors='black', linewidth=1.5, zorder=5)
             
             ax4.set_title(f'Trajectory (PCA)', fontsize=12)
-            ax4.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.0%})', fontsize=10)
+            ax4.set_xlabel(f'PC1 ({pca_result["explained_variance_ratio"][0]:.0%})', fontsize=10)
             if idx == 0:
-                ax4.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.0%})', fontsize=10)
+                ax4.set_ylabel(f'PC2 ({pca_result["explained_variance_ratio"][1]:.0%})', fontsize=10)
             
             # Add grid for better readability
             ax4.grid(True, alpha=0.3)
@@ -2484,7 +2819,8 @@ class EmbeddingTrajectoryAnalyzer:
             ax_phase.axis('off')
         
         # Overall title - adjust position for new layout
-        plt.suptitle(f"Ensemble Analysis - {conversation['metadata']['session_id'][:12]}", 
+        filename = conversation['metadata'].get('filename', 'unknown.json')
+        plt.suptitle(f"Ensemble Analysis - {conversation['metadata']['session_id'][:12]}\n{filename}", 
                     fontsize=16, y=0.98)
         
         if save_individual:
@@ -2557,196 +2893,10 @@ class EmbeddingTrajectoryAnalyzer:
             embeddings = np.array([m['embedding'] for m in messages])
             n = len(embeddings)
             
-            # If ensemble mode, create distance matrices for all models
-            if self.ensemble_mode and 'ensemble_embeddings' in conversation:
-                return self.create_ensemble_distance_matrices(conversation, save_individual)
-            
-            # Otherwise continue with single model analysis
-            
-            # Get phase information if available
-            phase_info = []
-            if 'phase_metrics' in conversation and 'phase_embeddings' in conversation['phase_metrics']:
-                phase_embeddings = conversation['phase_metrics']['phase_embeddings']
-                for phase_name, phase_data in phase_embeddings.items():
-                    phase_info.append({
-                        'name': phase_name,
-                        'start_turn': phase_data['start_turn'],
-                        'turn_range': phase_data['turn_range']
-                    })
-                # Sort by start turn
-                phase_info.sort(key=lambda x: x['start_turn'])
-            
-            # Compute full distance matrices with GPU acceleration if available
-            try:
-                import torch
-                if torch.cuda.is_available():
-                    # GPU-accelerated distance computation
-                    device = torch.device('cuda')
-                    embeddings_tensor = torch.from_numpy(embeddings).float().to(device)
-                    
-                    # Euclidean distances using broadcasting
-                    diff = embeddings_tensor.unsqueeze(0) - embeddings_tensor.unsqueeze(1)
-                    euclidean_distances = torch.norm(diff, dim=2).cpu().numpy()
-                    
-                    # Cosine distances
-                    # Normalize embeddings
-                    normalized = embeddings_tensor / torch.norm(embeddings_tensor, dim=1, keepdim=True)
-                    # Compute cosine similarity matrix
-                    cosine_sim = torch.mm(normalized, normalized.t())
-                    cosine_distances = (1 - cosine_sim).cpu().numpy()
-                else:
-                    raise RuntimeError("No GPU available")
-                    
-            except Exception as e:
-                # Fallback to CPU computation
-                euclidean_distances = np.zeros((n, n))
-                cosine_distances = np.zeros((n, n))
-                
-                for i in range(n):
-                    for j in range(n):
-                        # Ensure vectors are 1-D for scipy distance functions
-                        vec_i = embeddings[i].flatten()
-                        vec_j = embeddings[j].flatten()
-                        euclidean_distances[i, j] = self._safe_euclidean(vec_i, vec_j)
-                        cosine_distances[i, j] = self._safe_cosine(vec_i, vec_j)
-            
-            # Analyze distance patterns
-            # 1. Self-similarity matrix (for detecting returns to topics)
-            self_similarity = 1 - cosine_distances
-            
-            # 2. Recurrence analysis using FAN (Fixed Amount of Neighbors) method
-            # FAN method: each point has a fixed number of neighbors
-            # This is more robust than arbitrary threshold selection
-            k_neighbors = max(2, int(0.05 * n))  # 5% of points as neighbors, min 2
-            recurrence_matrix = np.zeros((n, n), dtype=bool)
-            
-            for i in range(n):
-                # Find k nearest neighbors for each point
-                distances_from_i = euclidean_distances[i, :]
-                # Exclude self (distance 0)
-                neighbor_indices = np.argsort(distances_from_i)[1:k_neighbors+1]
-                recurrence_matrix[i, neighbor_indices] = True
-                recurrence_matrix[neighbor_indices, i] = True  # Symmetric
-            
-            # 3. Find embedding loops with adaptive threshold
-            # Calculate adaptive threshold
-            threshold = self._calculate_adaptive_similarity_threshold(embeddings)
-            
-            loops = []
-            min_loop_size = max(10, n // 20)  # Dynamic min loop size
-            
-            for i in range(n):
-                for j in range(i + min_loop_size, n):
-                    if self_similarity[i, j] > threshold:
-                        loops.append({
-                            'start': i,
-                            'end': j,
-                            'similarity': self_similarity[i, j],
-                            'loop_size': j - i,
-                            'z_score': (self_similarity[i, j] - self.similarity_stats['mean']) / self.similarity_stats['std']
-                        })
-            
-            # 4. Analyze distance distribution
-            upper_triangle = euclidean_distances[np.triu_indices(n, k=1)]
-            
-            # 5. Create heatmap visualization
-            fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-            
-            # Euclidean distance heatmap
-            im1 = axes[0].imshow(euclidean_distances, cmap='viridis', aspect='auto')
-            axes[0].set_title('Euclidean Distance Matrix')
-            axes[0].set_xlabel('Turn')
-            axes[0].set_ylabel('Turn')
-            plt.colorbar(im1, ax=axes[0])
-            
-            # Self-similarity heatmap
-            im2 = axes[1].imshow(self_similarity, cmap='RdBu_r', aspect='auto', vmin=0, vmax=1)
-            axes[1].set_title('Self-Similarity Matrix')
-            axes[1].set_xlabel('Turn')
-            axes[1].set_ylabel('Turn')
-            plt.colorbar(im2, ax=axes[1])
-            
-            # Recurrence plot
-            axes[2].imshow(recurrence_matrix, cmap='binary', aspect='auto')
-            axes[2].set_title('Recurrence Plot')
-            axes[2].set_xlabel('Turn')
-            axes[2].set_ylabel('Turn')
-            
-            # Add phase annotations only to recurrence plot
-            if phase_info and len(axes) > 2:
-                ax = axes[2]  # Recurrence plot only
-                
-                for i, phase in enumerate(phase_info):
-                    start_turn = phase['start_turn']
-                    phase_name = phase['name']
-                    
-                    # Clean phase name - extract just the current state
-                    # Handle patterns like "exploration transitioning to synthesis"
-                    if 'transitioning to' in phase_name:
-                        clean_name = phase_name.split('transitioning to')[0].strip()
-                    else:
-                        clean_name = phase_name
-                    
-                    # Further cleanup - remove underscores and capitalize
-                    clean_name = clean_name.replace('_', ' ').title()
-                    
-                    # Add vertical and horizontal lines at phase boundaries
-                    if start_turn < n and i > 0:  # Don't draw line at turn 0
-                        ax.axhline(y=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
-                        ax.axvline(x=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
-                    
-                    # Determine end turn for this phase
-                    if i < len(phase_info) - 1:
-                        end_turn = phase_info[i + 1]['start_turn']
-                    else:
-                        end_turn = n
-                    
-                    # Add phase label on the right side of the plot
-                    mid_turn = (start_turn + end_turn) / 2
-                    if mid_turn < n:
-                        ax.text(n + 1, mid_turn, clean_name, 
-                               fontsize=9, color='red', 
-                               horizontalalignment='left', 
-                               verticalalignment='center',
-                               rotation=0, alpha=0.9)
-            
-            plt.tight_layout()
-            
-            # Save individual distance matrices if requested
-            if save_individual:
-                # Create subfolder for distance matrices
-                distance_dir = self.output_dir / 'distance_matrices'
-                distance_dir.mkdir(exist_ok=True)
-                
-                # Create unique filename using session_id and tier
-                session_id = conversation['metadata']['session_id']
-                tier = conversation.get('tier', 'unknown')
-                filename = f"{tier}_{session_id[:12]}_distance_matrices.png"
-                output_path = distance_dir / filename
-                
-                plt.savefig(output_path, dpi=300, bbox_inches='tight')
-                
-                # Store the path for later use
-                conversation['distance_matrix_path'] = str(output_path)
-            
-            plt.close()
-            
-            return {
-                'distance_stats': {
-                    'mean_distance': np.mean(upper_triangle),
-                    'std_distance': np.std(upper_triangle),
-                    'min_distance': np.min(upper_triangle),
-                    'max_distance': np.max(upper_triangle),
-                    'distance_quartiles': np.percentile(upper_triangle, [25, 50, 75]).tolist()
-                },
-                'recurrence_stats': {
-                    'recurrence_rate': np.sum(recurrence_matrix[np.triu_indices(n, k=1)]) / (n * (n-1) / 2),
-                    'determinism': self._calculate_determinism(recurrence_matrix),
-                    'max_diagonal_length': self._max_diagonal_length(recurrence_matrix)
-                },
-                'embedding_loops': loops[:10],  # Top 10 loops
-                'loop_count': len(loops)
-            }
+            # Create distance matrices for all models
+            if 'ensemble_embeddings' not in conversation:
+                raise ValueError("Ensemble embeddings are required for distance analysis")
+            return self.create_ensemble_distance_matrices(conversation, save_individual)
     
     def _calculate_determinism(self, recurrence_matrix):
         """Calculate determinism from recurrence matrix"""
@@ -3986,7 +4136,7 @@ class EmbeddingTrajectoryAnalyzer:
 
     def find_ensemble_invariants(self, conversation):
         """Find invariant patterns across multiple embedding models"""
-        if not self.ensemble_mode or 'ensemble_embeddings' not in conversation:
+        if 'ensemble_embeddings' not in conversation:
             return None
         
         embeddings_dict = conversation['ensemble_embeddings']
@@ -4003,14 +4153,16 @@ class EmbeddingTrajectoryAnalyzer:
             'convergence_patterns': {}
         }
         
-        # 1. Distance Matrix Correlations
-        distance_matrices = {}
+        # 1. Distance Matrix Correlations - Use GPU batch calculation
+        print(f"      Calculating invariant patterns...")
+        
+        # Standardize embeddings first
+        standardized_embeddings = {}
         for model_name, embeddings in embeddings_dict.items():
-            dist_matrix = np.zeros((n_messages, n_messages))
-            for i in range(n_messages):
-                for j in range(n_messages):
-                    dist_matrix[i, j] = self._safe_euclidean(embeddings[i], embeddings[j])
-            distance_matrices[model_name] = dist_matrix
+            standardized_embeddings[model_name] = self._standardize_embeddings(embeddings)
+        
+        # Use existing batch distance calculation
+        distance_matrices, self_similarities = self._batch_calculate_distances(standardized_embeddings, n_messages)
         
         # Compare all pairs with baseline random correlations
         from scipy.stats import spearmanr, permutation_test
@@ -4050,12 +4202,13 @@ class EmbeddingTrajectoryAnalyzer:
                     innovation = np.random.randn(embeddings.shape[1]) * std * np.sqrt(max(0, 1 - autocorr**2))
                     ar1_surrogate[t] = autocorr * (ar1_surrogate[t-1] - mean) + mean + innovation
                 
-                # Use both baselines
+                # Use both baselines - calculate distances on GPU
                 for surrogate in [block_shuffled, ar1_surrogate]:
-                    dist_surrogate = np.zeros((n, n))
-                    for i in range(n):
-                        for j in range(n):
-                            dist_surrogate[i, j] = self._safe_euclidean(surrogate[i], surrogate[j])
+                    # Use GPU for distance calculation
+                    import torch
+                    surrogate_tensor = torch.tensor(surrogate, device=self.device, dtype=torch.float32)
+                    diff = surrogate_tensor.unsqueeze(0) - surrogate_tensor.unsqueeze(1)
+                    dist_surrogate = torch.norm(diff, dim=2).cpu().numpy()
                     
                     triu_indices = np.triu_indices(n, k=1)
                     original_dist = distance_matrices[model_names[0]][triu_indices]
@@ -4065,9 +4218,10 @@ class EmbeddingTrajectoryAnalyzer:
             
             return np.array(random_correlations)
         
-        # Get baseline correlations
-        baseline_embeddings = list(embeddings_dict.values())[0]
-        baseline_correlations = generate_random_baseline(baseline_embeddings, n_permutations=100)
+        # Get baseline correlations - reduce permutations for speed
+        print(f"      Generating baseline correlations...")
+        baseline_embeddings = list(standardized_embeddings.values())[0]
+        baseline_correlations = generate_random_baseline(baseline_embeddings, n_permutations=20)  # Reduced from 100
         baseline_mean = np.mean(baseline_correlations)
         baseline_std = np.std(baseline_correlations)
         
@@ -4097,14 +4251,11 @@ class EmbeddingTrajectoryAnalyzer:
                     'significant_vs_baseline': significance < 0.05
                 }
         
-        # 2. Velocity Profile Correlations
+        # 2. Velocity Profile Correlations - Use GPU batch calculation
         velocity_profiles = {}
-        for model_name, embeddings in embeddings_dict.items():
-            velocities = []
-            for i in range(1, n_messages):
-                v = np.linalg.norm(embeddings[i] - embeddings[i-1])
-                velocities.append(v)
-            velocity_profiles[model_name] = velocities
+        for model_name in standardized_embeddings.keys():
+            velocity_result = self._gpu_batch_velocity_calculation(standardized_embeddings[model_name])
+            velocity_profiles[model_name] = velocity_result['velocities'].tolist()
         
         for i in range(n_models):
             for j in range(i+1, n_models):
@@ -4141,7 +4292,7 @@ class EmbeddingTrajectoryAnalyzer:
             'consensus_rate': len(consensus_boundaries) / max(1, len(set(all_boundaries)))
         }
         
-        # 4. Topology Preservation
+        # 4. Topology Preservation - Use GPU
         k = min(10, n_messages // 5)
         topology_scores = {}
         
@@ -4149,15 +4300,11 @@ class EmbeddingTrajectoryAnalyzer:
             for j in range(i+1, n_models):
                 model1, model2 = model_names[i], model_names[j]
                 
-                # k-NN for each point
-                from sklearn.neighbors import NearestNeighbors
-                nbrs1 = NearestNeighbors(n_neighbors=k).fit(embeddings_dict[model1])
-                nbrs2 = NearestNeighbors(n_neighbors=k).fit(embeddings_dict[model2])
+                # Use GPU nearest neighbors
+                indices1, _ = self._gpu_nearest_neighbors(standardized_embeddings[model1], k)
+                indices2, _ = self._gpu_nearest_neighbors(standardized_embeddings[model2], k)
                 
-                _, indices1 = nbrs1.kneighbors(embeddings_dict[model1])
-                _, indices2 = nbrs2.kneighbors(embeddings_dict[model2])
-                
-                # Calculate preservation
+                # Calculate preservation using vectorized operations
                 preservation_scores = []
                 for idx in range(n_messages):
                     neighbors1 = set(indices1[idx])
@@ -4166,29 +4313,42 @@ class EmbeddingTrajectoryAnalyzer:
                     preservation_scores.append(preservation)
                 
                 topology_scores[f'{model1}-{model2}'] = {
-                    'mean_preservation': np.mean(preservation_scores),
-                    'std_preservation': np.std(preservation_scores)
+                    'mean_preservation': self._gpu_mean(preservation_scores),
+                    'std_preservation': self._gpu_std(preservation_scores)
                 }
         
         invariants['topology_preservation'] = topology_scores
         
-        # 5. Curvature Agreement
+        # 5. Curvature Agreement - Use GPU batch calculation
         curvature_profiles = {}
-        for model_name, embeddings in embeddings_dict.items():
-            curvatures = []
-            for i in range(2, n_messages):
-                v1 = embeddings[i-1] - embeddings[i-2]
-                v2 = embeddings[i] - embeddings[i-1]
+        import torch
+        
+        for model_name in standardized_embeddings.keys():
+            embeddings_tensor = torch.tensor(standardized_embeddings[model_name], device=self.device, dtype=torch.float32)
+            
+            if n_messages >= 3:
+                # Calculate all direction vectors at once
+                v1 = embeddings_tensor[1:-1] - embeddings_tensor[:-2]  # vectors from i-2 to i-1
+                v2 = embeddings_tensor[2:] - embeddings_tensor[1:-1]   # vectors from i-1 to i
                 
-                v1_norm = np.linalg.norm(v1)
-                v2_norm = np.linalg.norm(v2)
+                # Calculate norms
+                v1_norms = torch.norm(v1, dim=1)
+                v2_norms = torch.norm(v2, dim=1)
                 
-                if v1_norm > 0 and v2_norm > 0:
-                    cos_angle = np.dot(v1, v2) / (v1_norm * v2_norm)
-                    angle = np.arccos(np.clip(cos_angle, -1, 1))
-                    curvatures.append(angle)
-                else:
-                    curvatures.append(0)
+                # Calculate angles where both norms are non-zero
+                valid_mask = (v1_norms > 0) & (v2_norms > 0)
+                angles = torch.zeros(len(v1), device=self.device)
+                
+                if valid_mask.any():
+                    dot_products = torch.sum(v1[valid_mask] * v2[valid_mask], dim=1)
+                    cos_angles = dot_products / (v1_norms[valid_mask] * v2_norms[valid_mask])
+                    cos_angles = torch.clamp(cos_angles, -1, 1)
+                    angles[valid_mask] = torch.acos(cos_angles)
+                
+                curvatures = angles.cpu().numpy().tolist()
+            else:
+                curvatures = []
+            
             curvature_profiles[model_name] = curvatures
         
         # Find high curvature consensus
@@ -4275,11 +4435,12 @@ class EmbeddingTrajectoryAnalyzer:
             'n_consensus_convergences': len(invariants['convergence_patterns']['consensus'])
         }
         
+        print(f"      Invariant patterns calculated")
         return invariants
 
     def visualize_ensemble_analysis(self, conversation):
         """Create visualizations for ensemble analysis"""
-        if not self.ensemble_mode or 'invariant_patterns' not in conversation:
+        if 'invariant_patterns' not in conversation:
             return
         
         invariants = conversation['invariant_patterns']
@@ -4403,8 +4564,7 @@ class EmbeddingTrajectoryAnalyzer:
             f.write(f"Primary Embedding Model: {self.model_name}\n")
             f.write(f"Embedding Dimensions: {self.embedding_dim}\n")
             
-            if self.ensemble_mode:
-                f.write(f"Ensemble Models: {', '.join(self.ensemble_models.keys())}\n")
+            f.write(f"Ensemble Models: {', '.join(self.ensemble_models.keys())}\n")
             
             f.write("\n")
             
@@ -4465,7 +4625,6 @@ class EmbeddingTrajectoryAnalyzer:
                 f.write(f"  Mean entropy trend: {np.mean(trends):.3f}\n")
             
             # Ensemble analysis summary
-            if self.ensemble_mode:
                 f.write("\n" + "="*50 + "\n")
                 f.write("ENSEMBLE INVARIANT ANALYSIS\n")
                 f.write("-"*30 + "\n")
@@ -4518,8 +4677,7 @@ class EmbeddingTrajectoryAnalyzer:
             f.write(f"  - distance_matrices/ (folder with individual conversation matrices)\n")
             f.write(f"  - distance_matrices_tier_comparison.png\n")
             f.write(f"  - distance_statistics_summary.png\n")
-            if self.ensemble_mode:
-                f.write(f"  - ensemble_comparison_summary.png\n")
+            f.write(f"  - ensemble_comparison_summary.png\n")
             
             # Statistical Analysis Results
             if hasattr(self, 'statistical_results') and self.statistical_results:
@@ -4614,17 +4772,15 @@ class EmbeddingTrajectoryAnalyzer:
                 f.write("  - Speaker dynamics (4 features)\n")
                 f.write("  - Information flow (3 features)\n")
                 f.write("  - Full dimensional analysis (13 features)\n")
-                if self.ensemble_mode:
-                    f.write("  - Ensemble invariants (6 features)\n")
+                f.write("  - Ensemble invariants (6 features)\n")
             
             f.write("\n" + "="*50 + "\n")
             f.write("\nReport saved to: " + str(report_path))
         
         print(f"\nGenerated report: {report_path}")
         
-        # Generate ensemble-specific report if enabled
-        if self.ensemble_mode:
-            self.generate_ensemble_report()
+        # Generate ensemble-specific report
+        self.generate_ensemble_report()
     
     def generate_ensemble_report(self):
         """Generate detailed report on ensemble invariant patterns"""
@@ -4691,8 +4847,6 @@ class EmbeddingTrajectoryAnalyzer:
     
     def create_ensemble_summary_visualization(self):
         """Create a comprehensive visualization summarizing ensemble analysis across all conversations"""
-        if not self.ensemble_mode:
-            return
         
         # Collect all conversations with ensemble analysis
         ensemble_conversations = [c for c in self.conversations if 'invariant_patterns' in c]
@@ -5892,8 +6046,7 @@ class EmbeddingTrajectoryAnalyzer:
         self.create_dimensional_analysis_figure(tier_groups)
         self.create_projection_comparison_figure(tier_groups)
         
-        if self.ensemble_mode:
-            self.create_ensemble_comparison_figure(tier_groups)
+        self.create_ensemble_comparison_figure(tier_groups)
         
         # Create distance matrices comparison
         self.create_distance_matrices_comparison_figure(tier_groups)
@@ -6988,8 +7141,7 @@ class EmbeddingTrajectoryAnalyzer:
         """
         print("="*70)
         print("EMBEDDING TRAJECTORY ANALYSIS")
-        if self.ensemble_mode:
-            print(f"WITH ENSEMBLE INVARIANT DETECTION ({len(self.ensemble_models)} models)")
+        print(f"WITH ENSEMBLE INVARIANT DETECTION ({len(self.ensemble_models)} models)")
         print(f"ANALYZING {len(tier_directories)} MODEL TIERS")
         print("="*70)
         
@@ -7094,7 +7246,7 @@ class EmbeddingTrajectoryAnalyzer:
                         
                         # Batch embed only those that need it
                         if need_embedding:
-                            need_embedding = self.embed_conversations_batch(need_embedding, verbose=False)
+                            need_embedding = self.embed_conversations_batch(need_embedding, verbose=True)
                             # Mark embedding as complete for these
                             for conv in need_embedding:
                                 self.save_conversation_checkpoint(conv, 'embedding')
@@ -7465,9 +7617,8 @@ class EmbeddingTrajectoryAnalyzer:
         print("  - distance_matrices_tier_comparison.png")
         print("  - distance_statistics_summary.png")
         print("  - statistical_analysis.png")
-        if self.ensemble_mode:
-            print("  - ensemble_comparison_summary.png")
-            print("  - ensemble_invariant_report.txt")
+        print("  - ensemble_comparison_summary.png")
+        print("  - ensemble_invariant_report.txt")
         if self.tier_results:
             print("  - tier_comparison_analysis.png")
             print("  - conversation_trajectory_space.html")
