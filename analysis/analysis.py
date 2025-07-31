@@ -199,6 +199,31 @@ class EmbeddingTrajectoryAnalyzer:
             
         return embeddings
     
+    def _batch_calculate_distances_multi_conv(self, all_conversations_embeddings):
+        """
+        Calculate distance matrices for multiple conversations in parallel on GPU.
+        
+        Args:
+            all_conversations_embeddings: List of dicts, each with {model_name: embeddings_array}
+            
+        Returns:
+            List of (distance_matrices, self_similarities) for each conversation
+        """
+        print(f"      GPU batch calculating distances for {len(all_conversations_embeddings)} conversations...")
+        results = []
+        
+        import torch
+        torch.cuda.empty_cache()
+        device = torch.device('cuda')
+        
+        # Process all conversations and models in larger GPU batches
+        for conv_embeddings in all_conversations_embeddings:
+            n_messages = len(list(conv_embeddings.values())[0])
+            result = self._batch_calculate_distances(conv_embeddings, n_messages)
+            results.append(result)
+            
+        return results
+    
     def _batch_calculate_distances(self, all_embeddings, n_messages):
         """
         Calculate distance matrices for all models in a single batch operation.
@@ -211,12 +236,45 @@ class EmbeddingTrajectoryAnalyzer:
             distance_matrices: Dict of {model_name: euclidean_distances}
             self_similarities: Dict of {model_name: cosine_similarities}
         """
-        print(f"      Batch calculating distances for {len(all_embeddings)} models...")
         distance_matrices = {}
         self_similarities = {}
         
         import torch
-        torch.cuda.empty_cache()  # Clear GPU memory
+        device = torch.device('cuda')
+        
+        # Process each model separately since they have different dimensions
+        model_names = list(all_embeddings.keys())
+        
+        print(f"        Processing {len(model_names)} models on GPU...")
+        
+        for model_name in model_names:
+            emb = all_embeddings[model_name]
+            embeddings_tensor = torch.from_numpy(emb).float().to(device)
+            
+            # Calculate Euclidean distances
+            diff = embeddings_tensor.unsqueeze(0) - embeddings_tensor.unsqueeze(1)  # (n_messages, n_messages, embedding_dim)
+            euclidean_distances = torch.norm(diff, dim=-1)  # (n_messages, n_messages)
+            
+            # Calculate cosine similarities
+            norms = torch.norm(embeddings_tensor, dim=1, keepdim=True)
+            normalized = embeddings_tensor / norms.clamp(min=1e-8)
+            cosine_sim = torch.mm(normalized, normalized.t())  # (n_messages, n_messages)
+            
+            # Store results
+            distance_matrices[model_name] = euclidean_distances.cpu().numpy()
+            self_similarities[model_name] = cosine_sim.cpu().numpy()
+        
+        # Clear GPU memory
+        torch.cuda.empty_cache()
+        
+        return distance_matrices, self_similarities
+    
+    def _batch_calculate_distances_sequential(self, all_embeddings, n_messages):
+        """Original sequential version for comparison"""
+        distance_matrices = {}
+        self_similarities = {}
+        
+        import torch
         device = torch.device('cuda')
         
         # Stack all embeddings into a single tensor
@@ -229,7 +287,6 @@ class EmbeddingTrajectoryAnalyzer:
         
         # Process each model's embeddings
         for i, (model_name, embeddings_tensor) in enumerate(zip(model_names, embeddings_list)):
-            print(f"        Processing {model_name}...")
             embeddings_tensor = embeddings_tensor.to(device)
             
             # For large matrices, process in chunks to avoid GPU memory issues
@@ -510,6 +567,59 @@ class EmbeddingTrajectoryAnalyzer:
                 'mean_similarity': similarities.mean().cpu().numpy().item(),
                 'min_similarity': similarities.min().cpu().numpy().item(),
                 'similarity_variance': similarities.var().cpu().numpy().item()
+            })
+        
+        return results
+    
+    def _gpu_batch_velocity_calculation_multi(self, embeddings_list):
+        """GPU-accelerated batch velocity calculation for multiple conversations"""
+        import torch
+        device = torch.device('cuda')
+        
+        results = []
+        
+        # Process multiple conversations in a single GPU batch
+        max_len = max(len(emb) for emb in embeddings_list)
+        batch_size = len(embeddings_list)
+        
+        # Pad embeddings to same length for batch processing
+        padded_embeddings = []
+        valid_lengths = []
+        
+        for emb in embeddings_list:
+            valid_lengths.append(len(emb))
+            if len(emb) < max_len:
+                # Pad with zeros
+                padding = torch.zeros((max_len - len(emb), emb.shape[1]), device=device)
+                emb_tensor = torch.tensor(emb, device=device, dtype=torch.float32)
+                padded = torch.cat([emb_tensor, padding], dim=0)
+                padded_embeddings.append(padded)
+            else:
+                padded_embeddings.append(torch.tensor(emb, device=device, dtype=torch.float32))
+        
+        # Stack all conversations
+        batch_tensor = torch.stack(padded_embeddings)  # (batch_size, max_len, embedding_dim)
+        
+        # Calculate velocities for all conversations at once
+        diff = batch_tensor[:, 1:] - batch_tensor[:, :-1]
+        batch_velocities = torch.norm(diff, dim=2)  # (batch_size, max_len-1)
+        
+        # Extract valid velocities for each conversation
+        for i in range(batch_size):
+            valid_len = valid_lengths[i] - 1
+            velocities = batch_velocities[i, :valid_len]
+            
+            # Calculate accelerations
+            if len(velocities) > 1:
+                accelerations = torch.diff(velocities)
+            else:
+                accelerations = torch.tensor([])
+            
+            results.append({
+                'velocities': velocities.cpu().numpy(),
+                'accelerations': accelerations.cpu().numpy(),
+                'mean_velocity': velocities.mean().cpu().numpy().item() if len(velocities) > 0 else 0,
+                'std_velocity': velocities.std().cpu().numpy().item() if len(velocities) > 0 else 0
             })
         
         return results
@@ -1923,6 +2033,404 @@ class EmbeddingTrajectoryAnalyzer:
         
         return reliability
     
+    def analyze_conversations_batch(self, conversations, verbose=False, use_checkpoint=True):
+        """Run comprehensive analysis on multiple conversations in parallel"""
+        if not conversations:
+            return conversations
+            
+        print(f"    Batch analyzing {len(conversations)} conversations in parallel...")
+        
+        # Step 1: Embed all conversations in batch
+        conversations = self._batch_embed_conversations(conversations, verbose)
+        
+        # Debug: Check if embeddings were created
+        if verbose:
+            for i, conv in enumerate(conversations):
+                has_ensemble = 'ensemble_embeddings' in conv
+                n_models = len(conv.get('ensemble_embeddings', {})) if has_ensemble else 0
+                print(f"      Conv {i}: has_ensemble={has_ensemble}, n_models={n_models}")
+        
+        # Step 2: Calculate distances for all conversations in parallel
+        all_distances = self._batch_calculate_all_distances(conversations, verbose)
+        
+        # Step 3: Calculate velocities and accelerations in batch
+        all_velocities = self._batch_calculate_velocities(conversations, verbose)
+        
+        # Step 4: Calculate ensemble invariants in batch
+        conversations = self._batch_find_ensemble_invariants(conversations, all_distances, all_velocities, verbose)
+        
+        # Step 5: Run other analyses that can be batched
+        conversations = self._batch_analyze_trajectories(conversations, verbose)
+        
+        # Step 6: Create visualizations (still per conversation due to plotting constraints)
+        for i, conv in enumerate(conversations):
+            if verbose:
+                print(f"    Creating visualizations for conversation {i+1}/{len(conversations)}...")
+            self.create_ensemble_distance_matrices(conv)
+            
+            # Save checkpoint after full analysis
+            self.save_conversation_checkpoint(conv, 'full_analysis')
+        
+        return conversations
+    
+    def _batch_embed_conversations(self, conversations, verbose=False):
+        """Embed all conversations in a single batch operation"""
+        if verbose:
+            print("    Batch embedding all conversations...")
+        
+        # Check which conversations need embedding
+        need_embedding = []
+        need_embedding_indices = []
+        
+        for i, conv in enumerate(conversations):
+            if 'ensemble_embeddings' not in conv or not conv.get('embedded_messages'):
+                need_embedding.append(conv)
+                need_embedding_indices.append(i)
+        
+        if not need_embedding:
+            if verbose:
+                print("      All conversations already embedded, skipping...")
+            return conversations
+        
+        # Collect all messages from conversations that need embedding
+        all_messages = []
+        conv_message_counts = []
+        
+        for conv in need_embedding:
+            messages = conv.get('messages', [])
+            conv_message_counts.append(len(messages))
+            all_messages.extend(messages)
+        
+        if not all_messages:
+            return conversations
+        
+        # Extract contents
+        all_contents = [msg.get('content', '') for msg in all_messages]
+        
+        # Batch encode with all models
+        if verbose:
+            print(f"      Encoding {len(all_contents)} messages with {len(self.ensemble_models)} models...")
+        
+        # Encode with primary model
+        primary_model = self.ensemble_models[self.model_name]
+        all_embeddings = primary_model.encode(all_contents, 
+                                             batch_size=32,
+                                             show_progress_bar=False,
+                                             convert_to_numpy=True)
+        
+        # Store embeddings per conversation (only for those that needed embedding)
+        start_idx = 0
+        for idx, conv_idx in enumerate(need_embedding_indices):
+            conv = conversations[conv_idx]
+            end_idx = start_idx + conv_message_counts[idx]
+            conv_embeddings = all_embeddings[start_idx:end_idx]
+            
+            # Create embedded_messages list to maintain compatibility
+            embedded_messages = []
+            for j, msg in enumerate(conv['messages']):
+                embedded_msg = msg.copy()
+                embedded_msg['embedding'] = conv_embeddings[j].tolist()
+                embedded_msg['embedding_norm'] = float(np.linalg.norm(conv_embeddings[j]))
+                embedded_messages.append(embedded_msg)
+            
+            conv['embedded_messages'] = embedded_messages
+            conv['embedding_model'] = self.model_name
+            start_idx = end_idx
+        
+        # Encode with ensemble models
+        all_ensemble_embeddings = {self.model_name: all_embeddings}
+        
+        for model_name, model in self.ensemble_models.items():
+            if model_name != self.model_name:
+                if verbose:
+                    print(f"      Batch encoding with {model_name}...")
+                model_embeddings = model.encode(all_contents, 
+                                              batch_size=32,
+                                              show_progress_bar=False,
+                                              convert_to_numpy=True)
+                all_ensemble_embeddings[model_name] = model_embeddings
+        
+        # Store ensemble embeddings (only for conversations that needed embedding)
+        start_idx = 0
+        for idx, conv_idx in enumerate(need_embedding_indices):
+            conv = conversations[conv_idx]
+            end_idx = start_idx + conv_message_counts[idx]
+            
+            conv['ensemble_embeddings'] = {}
+            for model_name, embeddings in all_ensemble_embeddings.items():
+                conv_embeddings = embeddings[start_idx:end_idx]
+                conv['ensemble_embeddings'][model_name] = [emb.tolist() for emb in conv_embeddings]
+            
+            start_idx = end_idx
+        
+        return conversations
+    
+    def _batch_calculate_all_distances(self, conversations, verbose=False):
+        """Calculate distance matrices for all conversations in parallel"""
+        if verbose:
+            print("    Batch calculating distance matrices...")
+        
+        import torch
+        device = self.device
+        
+        all_distances = []
+        
+        # Group conversations and models for maximum parallelization
+        conv_embeddings = []
+        conv_indices = []
+        model_names = list(self.ensemble_models.keys())
+        
+        # Collect all embeddings
+        for i, conv in enumerate(conversations):
+            if 'ensemble_embeddings' not in conv:
+                continue
+            
+            conv_models_embeddings = {}
+            for model_name in model_names:
+                if model_name in conv['ensemble_embeddings']:
+                    embeddings = torch.tensor(conv['ensemble_embeddings'][model_name], 
+                                            device=device, dtype=torch.float32)
+                    conv_models_embeddings[model_name] = embeddings
+            
+            if conv_models_embeddings:
+                conv_embeddings.append(conv_models_embeddings)
+                conv_indices.append(i)
+        
+        if not conv_embeddings:
+            return all_distances
+        
+        # Process all conversations and models
+        for conv_idx, model_embeddings_dict in zip(conv_indices, conv_embeddings):
+            # Process each model's embeddings
+            model_distances = {}
+            
+            for model_name, embeddings in model_embeddings_dict.items():
+                n_messages = embeddings.shape[0]
+                
+                # Calculate Euclidean distances
+                diff = embeddings.unsqueeze(0) - embeddings.unsqueeze(1)  # (n_messages, n_messages, embedding_dim)
+                euclidean = torch.norm(diff, dim=-1)  # (n_messages, n_messages)
+                
+                # Calculate cosine distances
+                norms = torch.norm(embeddings, dim=1, keepdim=True)  # (n_messages, 1)
+                normalized = embeddings / (norms + 1e-8)  # (n_messages, embedding_dim)
+                cosine_sim = torch.mm(normalized, normalized.t())  # (n_messages, n_messages)
+                cosine = 1 - cosine_sim
+                
+                model_distances[model_name] = {
+                    'euclidean': euclidean.cpu().numpy(),
+                    'cosine': cosine.cpu().numpy()
+                }
+            
+            all_distances.append(model_distances)
+        
+        # Fill in empty entries for conversations without embeddings
+        final_distances = []
+        for i in range(len(conversations)):
+            if i in conv_indices:
+                idx = conv_indices.index(i)
+                final_distances.append(all_distances[idx])
+            else:
+                final_distances.append({})
+        
+        torch.cuda.empty_cache()
+        return final_distances
+    
+    def _batch_calculate_velocities(self, conversations, verbose=False):
+        """Calculate velocities for all conversations in parallel"""
+        if verbose:
+            print("    Batch calculating velocities...")
+        
+        import torch
+        device = self.device
+        
+        all_velocities = []
+        
+        # Collect all embeddings first
+        all_embeddings_by_model = {model: [] for model in self.ensemble_models}
+        conv_indices = []
+        message_counts = []
+        
+        for i, conv in enumerate(conversations):
+            if 'ensemble_embeddings' not in conv:
+                all_velocities.append({})
+                continue
+            
+            has_embeddings = False
+            for model_name in self.ensemble_models:
+                if model_name in conv['ensemble_embeddings']:
+                    embeddings = torch.tensor(conv['ensemble_embeddings'][model_name], 
+                                            device=device, dtype=torch.float32)
+                    all_embeddings_by_model[model_name].append(embeddings)
+                    has_embeddings = True
+            
+            if has_embeddings:
+                conv_indices.append(i)
+                message_counts.append(len(conv['messages']))
+        
+        # Process each model's embeddings in batch
+        results_by_conv = [{} for _ in range(len(conversations))]
+        
+        for model_name, embeddings_list in all_embeddings_by_model.items():
+            if not embeddings_list:
+                continue
+                
+            # Calculate velocities for all conversations at once
+            for idx, (conv_idx, embeddings) in enumerate(zip(conv_indices, embeddings_list)):
+                if len(embeddings) > 1:
+                    diff = embeddings[1:] - embeddings[:-1]
+                    velocities = torch.norm(diff, dim=1)
+                    
+                    # Calculate accelerations
+                    if len(velocities) > 1:
+                        accel_diff = velocities[1:] - velocities[:-1]
+                        accelerations = accel_diff
+                    else:
+                        accelerations = torch.tensor([], device=device)
+                else:
+                    velocities = torch.tensor([], device=device)
+                    accelerations = torch.tensor([], device=device)
+                
+                results_by_conv[conv_idx][model_name] = {
+                    'velocities': velocities.cpu().numpy(),
+                    'accelerations': accelerations.cpu().numpy()
+                }
+        
+        torch.cuda.empty_cache()
+        return results_by_conv
+    
+    def _batch_find_ensemble_invariants(self, conversations, all_distances, all_velocities, verbose=False):
+        """Find ensemble invariants for all conversations in batch"""
+        if verbose:
+            print("    Batch finding ensemble invariants...")
+        
+        import torch
+        device = self.device
+        
+        for i, conv in enumerate(conversations):
+            if i >= len(all_distances) or i >= len(all_velocities):
+                continue
+                
+            distances = all_distances[i]
+            velocities = all_velocities[i]
+            
+            if not distances or not velocities:
+                continue
+            
+            # Calculate correlations across models on GPU
+            model_names = list(distances.keys())
+            n_models = len(model_names)
+            
+            if n_models < 2:
+                continue
+            
+            # Stack all distance matrices
+            euclidean_matrices = []
+            for model in model_names:
+                euclidean_matrices.append(torch.tensor(distances[model]['euclidean'], 
+                                                      device=device, dtype=torch.float32))
+            
+            euclidean_stack = torch.stack(euclidean_matrices)  # (n_models, n_messages, n_messages)
+            
+            # Calculate pairwise correlations efficiently
+            flat_matrices = euclidean_stack.view(n_models, -1)
+            
+            # Standardize
+            means = flat_matrices.mean(dim=1, keepdim=True)
+            stds = flat_matrices.std(dim=1, keepdim=True)
+            standardized = (flat_matrices - means) / (stds + 1e-8)
+            
+            # Correlation matrix
+            corr_matrix = torch.mm(standardized, standardized.t()) / flat_matrices.shape[1]
+            
+            # Average correlation (excluding diagonal)
+            mask = ~torch.eye(n_models, dtype=torch.bool, device=device)
+            avg_correlation = corr_matrix[mask].mean().item()
+            
+            # Velocity correlations
+            velocity_tensors = []
+            min_length = min(len(velocities[model]['velocities']) for model in model_names)
+            
+            if min_length > 0:
+                for model in model_names:
+                    vel = velocities[model]['velocities'][:min_length]
+                    velocity_tensors.append(torch.tensor(vel, device=device, dtype=torch.float32))
+                
+                vel_stack = torch.stack(velocity_tensors)
+                
+                # Standardize velocities
+                vel_means = vel_stack.mean(dim=1, keepdim=True)
+                vel_stds = vel_stack.std(dim=1, keepdim=True)
+                vel_standardized = (vel_stack - vel_means) / (vel_stds + 1e-8)
+                
+                # Velocity correlation matrix
+                vel_corr = torch.mm(vel_standardized, vel_standardized.t()) / min_length
+                avg_vel_correlation = vel_corr[mask].mean().item()
+            else:
+                avg_vel_correlation = 0.0
+            
+            # Store results
+            conv['ensemble_analysis'] = {
+                'distance_correlation': avg_correlation,
+                'velocity_correlation': avg_vel_correlation,
+                'model_agreement': (avg_correlation + avg_vel_correlation) / 2,
+                'correlation_matrix': corr_matrix.cpu().numpy().tolist()
+            }
+        
+        torch.cuda.empty_cache()
+        return conversations
+    
+    def _batch_analyze_trajectories(self, conversations, verbose=False):
+        """Analyze trajectories for all conversations in batch"""
+        if verbose:
+            print("    Batch analyzing trajectories...")
+        
+        import torch
+        device = self.device
+        
+        for conv in conversations:
+            if 'ensemble_embeddings' not in conv:
+                continue
+            
+            # Use primary model for trajectory analysis
+            model_name = self.model_name
+            if model_name in conv['ensemble_embeddings']:
+                embeddings = torch.tensor(conv['ensemble_embeddings'][model_name], 
+                                        device=device, dtype=torch.float32)
+                
+                # Calculate trajectory metrics
+                n_messages = len(embeddings)
+                
+                if n_messages > 1:
+                    # Total path length
+                    diffs = embeddings[1:] - embeddings[:-1]
+                    distances = torch.norm(diffs, dim=1)
+                    total_length = distances.sum().item()
+                    
+                    # Direct distance (first to last)
+                    direct_distance = torch.norm(embeddings[-1] - embeddings[0]).item()
+                    
+                    # Curvature (ratio)
+                    curvature = total_length / (direct_distance + 1e-8)
+                    
+                    # Average step size
+                    avg_step = distances.mean().item()
+                    
+                    # Variance in step sizes
+                    step_variance = distances.var().item()
+                    
+                    conv['trajectory_metrics'] = {
+                        'total_path_length': total_length,
+                        'direct_distance': direct_distance,
+                        'curvature': curvature,
+                        'average_step_size': avg_step,
+                        'step_size_variance': step_variance,
+                        'n_messages': n_messages
+                    }
+        
+        torch.cuda.empty_cache()
+        return conversations
+    
     def analyze_conversation_comprehensive(self, conversation, verbose=False, use_checkpoint=True):
         """Run comprehensive analysis on a single conversation with checkpoint support"""
         session_id = conversation['metadata']['session_id']
@@ -2497,14 +3005,28 @@ class EmbeddingTrajectoryAnalyzer:
                                      end_turn - start_turn, 2,
                                      facecolor=plt.cm.tab10(phase_idx % 10), alpha=0.7))
     
+    def create_ensemble_distance_matrices_batch(self, conversations, save_individual=True):
+        """Create distance matrices for multiple conversations in parallel on GPU"""
+        if not conversations:
+            return
+            
+        print(f"    Batch creating ensemble distance matrices for {len(conversations)} conversations...")
+        
+        # Process each conversation but keep GPU busy
+        for conv in conversations:
+            self.create_ensemble_distance_matrices(conv, save_individual)
+    
     def create_ensemble_distance_matrices(self, conversation, save_individual=True):
         """Create distance matrices for all ensemble models"""
-        print(f"    Creating ensemble distance matrices...")
+        # Check if ensemble_embeddings exists
+        if 'ensemble_embeddings' not in conversation:
+            print(f"    Warning: No ensemble embeddings found for conversation")
+            return {}
+            
         ensemble_embeddings = conversation['ensemble_embeddings']
         model_names = list(ensemble_embeddings.keys())
         n_models = len(model_names)
         n_messages = len(conversation['messages'])
-        print(f"    Processing {n_models} models with {n_messages} messages")
         
         # Create a comprehensive figure with multiple sections
         # Section 1: Distance matrices and trajectories (4xN grid)
@@ -2857,7 +3379,8 @@ class EmbeddingTrajectoryAnalyzer:
             }
         
         # Analyze loops and patterns (using primary model for consistency)
-        primary_embeddings = np.array([m['embedding'] for m in conversation['embedded_messages']])
+        # Use the standardized embeddings we already have
+        primary_embeddings = standardized_embeddings[self.model_name]
         primary_self_sim = self_similarities[self.model_name]
         
         # Find loops with adaptive threshold
@@ -4134,6 +4657,19 @@ class EmbeddingTrajectoryAnalyzer:
         
         return []
 
+    def find_ensemble_invariants_batch(self, conversations):
+        """Find invariant patterns for multiple conversations in parallel"""
+        if not conversations:
+            return
+            
+        print(f"    Batch finding ensemble invariants for {len(conversations)} conversations...")
+        
+        # Process each conversation
+        for conv in conversations:
+            invariants = self.find_ensemble_invariants(conv)
+            if invariants:
+                conv['invariant_patterns'] = invariants
+    
     def find_ensemble_invariants(self, conversation):
         """Find invariant patterns across multiple embedding models"""
         if 'ensemble_embeddings' not in conversation:
@@ -4154,8 +4690,6 @@ class EmbeddingTrajectoryAnalyzer:
         }
         
         # 1. Distance Matrix Correlations - Use GPU batch calculation
-        print(f"      Calculating invariant patterns...")
-        
         # Standardize embeddings first
         standardized_embeddings = {}
         for model_name, embeddings in embeddings_dict.items():
@@ -7244,35 +7778,26 @@ class EmbeddingTrajectoryAnalyzer:
                             else:
                                 need_embedding.append(conv)
                         
-                        # Batch embed only those that need it
-                        if need_embedding:
-                            need_embedding = self.embed_conversations_batch(need_embedding, verbose=True)
-                            # Mark embedding as complete for these
-                            for conv in need_embedding:
-                                self.save_conversation_checkpoint(conv, 'embedding')
+                        # Skip embedding here - it will be done in analyze_conversations_batch
+                        # Just add all conversations for batch analysis
                         
                         # Combine all conversations
                         all_convs = already_embedded + need_embedding
                         
-                        # Now analyze each conversation individually
-                        for j, conv in enumerate(all_convs):
+                        # Analyze batch of conversations in parallel on GPU
+                        analyzed_convs = self.analyze_conversations_batch(all_convs, verbose=False, use_checkpoint=True)
+                        
+                        # Process results
+                        for j, conv in enumerate(analyzed_convs):
                             try:
-                                # Use checkpoint-aware comprehensive analysis
-                                # Skip re-embedding since we handled it above
-                                completed_steps = self.get_completed_analysis_steps(conv)
-                                if 'embedding' not in completed_steps:
-                                    completed_steps.add('embedding')
-                                    if 'analysis_completed' not in conv:
-                                        conv['analysis_completed'] = set()
-                                    conv['analysis_completed'].add('embedding')
-                                
-                                # Run comprehensive analysis with checkpointing
-                                conv = self.analyze_conversation_comprehensive(conv, verbose=False, use_checkpoint=True)
-                                
+                                # Conv is already analyzed from batch processing
                                 self.conversations.append(conv)
                                 tier_conversations.append(conv)
-                                all_conversation_files.append(batch_files[j])
-                                processed_files.add(str(batch_files[j]))
+                                
+                                # Find the corresponding file
+                                if j < len(batch_files):
+                                    all_conversation_files.append(batch_files[j])
+                                    processed_files.add(str(batch_files[j]))
                                 
                             except Exception as e:
                                 pbar.write(f"Error analyzing conversation: {e}")
