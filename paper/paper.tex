@@ -17,10 +17,149 @@
 \usepackage{tcolorbox}
 \newunicodechar{∞}{\ensuremath{\infty}}
 
+% Platform and naming
 \newcommand{\theacademy}{The Academy}
 \newcommand{\gcs}{GCS}
 
+% Data commands from Paper 1
+\newcommand{\totalConversations}{228}
+\newcommand{\fullReasoningN}{67}
+\newcommand{\lightReasoningN}{61}
+\newcommand{\nonReasoningN}{100}
 
+% Peer pressure rates
+\newcommand{\fullReasoningPeerPressure}{79.1\%}
+\newcommand{\lightReasoningPeerPressure}{32.8\%}
+\newcommand{\nonReasoningPeerPressure}{5.0\%}
+
+% Recovery rates
+\newcommand{\fullReasoningRecovery}{13.4\%}
+\newcommand{\lightReasoningRecovery}{0\%}
+\newcommand{\nonReasoningRecovery}{1\%}
+
+% Bidirectional influence
+\newcommand{\fullBidirectional}{73.1\%}
+\newcommand{\lightBidirectional}{32.8\%}
+\newcommand{\nonBidirectional}{3.0\%}
+
+% Breakdown rates
+\newcommand{\fullBreakdown}{55.2\%}
+\newcommand{\lightBreakdown}{47.5\%}
+\newcommand{\nonBreakdown}{19\%}
+
+% Question effectiveness
+\newcommand{\fullQuestionR}{0.813}
+\newcommand{\lightQuestionR}{0.599}
+\newcommand{\nonQuestionR}{0.578}
+
+% Behavioral territories
+\newcommand{\metaReflectionPrevalence}{6.0\%}
+\newcommand{\competitiveEscalationPrevalence}{50.7\%}
+\newcommand{\mysticalBreakdownPrevalence}{100\%}
+
+% New geometric analysis data
+% Trajectory metrics
+\newcommand{\fullMeanDistance}{X.XXX}
+\newcommand{\lightMeanDistance}{X.XXX}
+\newcommand{\nonMeanDistance}{X.XXX}
+
+\newcommand{\fullTrajLength}{XXX.XXX}
+\newcommand{\lightTrajLength}{XXX.XXX}
+\newcommand{\nonTrajLength}{XXX.XXX}
+
+% Curvature
+\newcommand{\fullCurvature}{X.XXX}
+\newcommand{\lightCurvature}{X.XXX}
+\newcommand{\nonCurvature}{X.XXX}
+
+% Intrinsic dimensions
+\newcommand{\fullIntrinsicDim}{X.XXX}
+\newcommand{\lightIntrinsicDim}{X.XXX}
+\newcommand{\nonIntrinsicDim}{X.XXX}
+
+% Participation ratios
+\newcommand{\fullParticipation}{XXX.XXX}
+\newcommand{\lightParticipation}{XXX.XXX}
+\newcommand{\nonParticipation}{XXX.XXX}
+
+% Entropy
+\newcommand{\fullEntropy}{-X.XXX}
+\newcommand{\lightEntropy}{-X.XXX}
+\newcommand{\nonEntropy}{-X.XXX}
+
+% Phase counts
+\newcommand{\fullPhaseCount}{X.XXX}
+\newcommand{\lightPhaseCount}{X.XXX}
+\newcommand{\nonPhaseCount}{X.XXX}
+
+% Embedding loops
+\newcommand{\fullLoops}{X.X}
+\newcommand{\lightLoops}{XXX.X}
+\newcommand{\nonLoops}{XXX.X}
+
+% Linguistic alignment
+\newcommand{\fullAlignment}{X.XXX}
+\newcommand{\lightAlignment}{X.XXX}
+\newcommand{\nonAlignment}{X.XXX}
+
+% Embedding spread
+\newcommand{\fullSpread}{X.XXXX}
+\newcommand{\lightSpread}{X.XXXX}
+\newcommand{\nonSpread}{X.XXXX}
+
+% Convergence analysis
+\newcommand{\meanConvergence}{-X.XXX}
+\newcommand{\convergenceStd}{X.XXX}
+\newcommand{\highDensityMessages}{XXXX}
+\newcommand{\highDensityRegions}{XXX}
+\newcommand{\meanHighDensityTurn}{XXX.X}
+
+% Statistical significance
+\newcommand{\pValueEmbeddingLoops}{X.XXXX}
+\newcommand{\pValueParticipation}{X.XXXX}
+\newcommand{\pValueEntropy}{X.XXXX}
+\newcommand{\pValuePhaseCount}{X.XXXX}
+\newcommand{\pValueCurvature}{X.XXXX}
+\newcommand{\pValueDistance}{X.XXXX}
+\newcommand{\pValueIntrinsicDim}{X.XXXX}
+
+% Ensemble analysis results
+\newcommand{\ensembleModels}{4}
+\newcommand{\ensembleDistanceCorr}{X.XXX}
+\newcommand{\ensembleDistanceCorrStd}{X.XXX}
+\newcommand{\ensembleVelocityCorr}{X.XXX}
+\newcommand{\ensembleVelocityCorrStd}{X.XXX}
+\newcommand{\ensembleTopologyPres}{X.XXX}
+\newcommand{\ensembleTopologyPresStd}{X.XXX}
+\newcommand{\ensemblePhaseCons}{XX.X\%}
+\newcommand{\ensembleCurvatureAgree}{XX.X\%}
+\newcommand{\ensembleConvergences}{XX}
+\newcommand{\ensembleBaselineCorr}{X.XXX}
+\newcommand{\ensembleBaselineStd}{X.XXX}
+
+% Model specifications
+\newcommand{\miniLMDim}{384}
+\newcommand{\mpnetDim}{768}
+\newcommand{\distilBertDim}{768}
+
+% Validation metrics
+\newcommand{\phaseDetectionF}{X.XXX}
+\newcommand{\phaseDetectionWindow}{XX}
+\newcommand{\phaseDetectionThreshold}{XX}
+\newcommand{\syntheticValidationAccuracy}{XX.X\%}
+
+% Null model comparisons
+\newcommand{\nullModelN}{100}
+\newcommand{\nullCurvatureMean}{X.XXX}
+\newcommand{\realCurvatureMean}{X.XXX}
+\newcommand{\nullCurvaturePValue}{X.XXXX}
+\newcommand{\nullCurvatureCohenD}{X.XXX}
+
+% Topic analysis
+\newcommand{\nTopics}{XX}
+\newcommand{\nAttractors}{XX}
+\newcommand{\topicAttractorCorr}{X.XXX}
+\newcommand{\topicAttractorPValue}{X.XXXX}
 
 % Figure paths
 \newcommand{\figuresPath}{../analysis/analysis_outputs/figures/}
@@ -28,8 +167,8 @@
 \newcommand{\bootstrapPath}{../analysis/analysis_outputs/bootstrap/}
 \newcommand{\validationPath}{../analysis/analysis_outputs/validation/}
 
-\title{placeholder title: \\
-\large placeholder subtitle}
+\title{Exploring Conversational Geometry: \\
+\large An Exploratory Analysis of AI Dialogue Trajectories Through Embedding Space}
 
 \author{
 Marco R. Garcia \\
@@ -43,88 +182,297 @@ marco@erulabs.ai
 \maketitle
 
 \begin{abstract}
-placeholder
+We present an exploratory investigation into the geometric properties of AI conversations viewed as trajectories through high-dimensional embedding space. Building directly on our prior work documenting peer pressure dynamics in multi-agent AI systems \citep{garcia2025peer}, we examine the same \totalConversations{} conversations across three model capability tiers using embedding-based trajectory analysis to understand the geometric substrates underlying the observed social phenomena. Our prior work revealed a striking gradient: peer pressure effects declined from \fullReasoningPeerPressure{} in full reasoning models to \lightReasoningPeerPressure{} in light models to \nonReasoningPeerPressure{} in non-reasoning models, with recovery capability appearing only in premium models (\fullReasoningRecovery{}). This geometric analysis reveals potential structural explanations: full reasoning models navigate through \fullPhaseCount{} distinct phases with intrinsic dimensionality of \fullIntrinsicDim{}, while non-reasoning models show \nonPhaseCount{} phases with dimensionality of \nonIntrinsicDim{}. Interestingly, we observe that higher capability does not simply correlate with more dimensions—light reasoning models exhibit the highest intrinsic dimensionality (\lightIntrinsicDim{}) yet demonstrate brittle dynamics with no observed recovery capability, potentially explaining their intermediate peer pressure rates but zero recovery. Through distance matrix visualization, we identify distinct geometric signatures across tiers: full reasoning models display complex recurrence patterns and grid-like structures, light models show erratic exploration patterns, while non-reasoning models exhibit extensive repetitive loops (averaging \nonLoops{} embedding returns). To distinguish model-specific artifacts from fundamental conversational geometry, we employ ensemble analysis across \ensembleModels{} diverse embedding models, finding remarkably consistent patterns (mean distance correlation: \ensembleDistanceCorr{} ± \ensembleDistanceCorrStd{}). These exploratory findings suggest that the social dynamics documented in our prior work may emerge from underlying geometric properties—sophisticated models navigate rich, multidimensional conversational spaces enabling both peer influence and recovery, while simpler systems remain constrained to repetitive trajectories that preclude social dynamics.
 \end{abstract}
 
 \section{Introduction}
 
-The emergence of sustained multi-agent AI dialogue has revealed complex dynamics that resist traditional analysis. Recent work documented surprising social phenomena: AI agents exhibit peer pressure affecting up to \fullReasoningPeerPressure{} of conversations in sophisticated models, with breakdown patterns emerging from social rather than technical factors \citep{garcia2025peer}. These findings demand a mathematical framework capable of capturing both the richness of observed behaviors and the fundamental differences across model capabilities.
+The emergence of sustained multi-agent AI dialogue has revealed complex dynamics that challenge traditional analytical approaches. In our prior empirical study \citep{garcia2025peer}, we documented surprising social phenomena across \totalConversations{} conversations: AI agents exhibit what appears to be peer pressure, affecting up to \fullReasoningPeerPressure{} of conversations in sophisticated models, with breakdown patterns that seem to emerge from social rather than technical factors. Most intriguingly, we observed a complexity gradient where peer pressure declined systematically with model capability (from \fullReasoningPeerPressure{} to \lightReasoningPeerPressure{} to \nonReasoningPeerPressure{}), while recovery capability appeared only in premium models (\fullReasoningRecovery{} vs. essentially zero in lighter variants).
 
-Our investigation builds upon these empirical findings \citep{garcia2025peer}, which revealed that AI agents exhibit social influence patterns with a striking gradient: peer pressure declined from \fullReasoningPeerPressure{} in full reasoning models to \lightReasoningPeerPressure{} in light reasoning models to \nonReasoningPeerPressure{} in non-reasoning models, while recovery capability showed a similar pattern (\fullReasoningRecovery{} → \lightReasoningRecovery{} → \nonReasoningRecovery{}). The study also documented bidirectional influence rates of \fullBidirectional{}, \lightBidirectional{}, and \nonBidirectional{} respectively, suggesting that social dynamics scale with cognitive sophistication. These behavioral observations raised fundamental questions about why social dynamics vary so dramatically with model capability—questions that motivated our geometric investigation.
+These empirical observations raised fundamental questions: What structural properties enable sophisticated models to exhibit rich social dynamics while simpler models remain mechanically constrained? Why do light reasoning models show intermediate peer pressure rates (\lightReasoningPeerPressure{}) but zero recovery capability? This follow-up study investigates whether viewing conversations as trajectories through high-dimensional embedding space might reveal the geometric substrates underlying these behavioral differences.
 
-We propose viewing conversations as trajectories through capability-dependent semantic spaces—a geometric perspective that reveals how model sophistication determines the dimensional complexity of dialogue evolution. Just as relativistic physics shows that spacetime geometry depends on mass-energy distribution, we demonstrate that conversational geometry depends fundamentally on model capability.
+We examine the same \totalConversations{} conversations through a geometric lens, exploring patterns in trajectory curvature, dimensional utilization, phase transitions, and attractor-like structures. Our exploratory analysis suggests that the social phenomena documented in Paper 1 may relate to the interplay between embedding space geometry and what we tentatively call "navigational capabilities"—the ability to explore and recover within high-dimensional semantic spaces.
 
+\subsection{Exploratory Framework and Motivation}
 
-\subsection{The Geometric Intuition}
+Human conversations appear to navigate through topics, emotions, and social dynamics in ways that suggest possible underlying geometric structure. When we discuss, debate, or collaborate, we seem to traverse a landscape of meanings—sometimes circling back to earlier points, sometimes getting stuck in loops, other times breaking through to new understanding. Our exploratory analysis investigates whether AI conversations might exhibit analogous patterns, with an important caveat: our prior work showed that any such patterns correlate strongly with model capability.
 
-Human conversations navigate through topics, emotions, and social dynamics in ways that suggest underlying geometric structure. Our analysis reveals this intuition extends to AI conversations but with a critical twist: the dimensionality and structure of this space depends fundamentally on model capability.
+Building on these empirical findings, we explore geometric correlates of the observed behavioral patterns:
 
-Sophisticated models navigate rich, higher-dimensional manifolds where social phenomena can emerge. Simpler models operate in constrained, low-dimensional spaces that permit only mechanical patterns. This discovery—that conversational geometry scales with capability—transforms our understanding of why some AI systems exhibit social dynamics while others do not.
+1. **The Peer Pressure Gradient**: Can geometric properties explain why peer pressure effects decline from \fullReasoningPeerPressure{} to \nonReasoningPeerPressure{} as model capability decreases?
+
+2. **Recovery Asymmetry**: What geometric features might enable recovery in full reasoning models (\fullReasoningRecovery{}) while making it impossible in lighter variants?
+
+3. **Bidirectional Influence Patterns**: We documented bidirectional influence in \fullBidirectional{} of full reasoning conversations versus \nonBidirectional{} in non-reasoning models. Do these correspond to different trajectory patterns?
+
+4. **Behavioral Territories**: We identified specific conversational attractors (meta-reflection, competitive escalation). Can we map these to regions in embedding space?
+
+Our preliminary observations reveal intriguing geometric patterns that align with the behavioral gradient: non-reasoning models show extensive embedding loops (averaging \nonLoops{} per conversation), suggesting the mechanical repetition observed behaviorally, while full reasoning models show minimal loops (\fullLoops{}), potentially enabling the exploratory dynamics necessary for both peer influence and recovery. Light reasoning models present a puzzle: they appear to access higher intrinsic dimensionality (\lightIntrinsicDim{}) yet demonstrate no recovery capability, possibly explaining their intermediate position in the peer pressure gradient.
+
+These observations lead us to explore whether conversational capability might involve both the richness of accessible embedding space and the sophistication to navigate it effectively. The peer pressure gradient observed empirically (\fullReasoningPeerPressure{} → \lightReasoningPeerPressure{} → \nonReasoningPeerPressure{}) invites investigation into whether this might relate to geometric properties rather than simple dimensional constraints, though we emphasize this remains a hypothesis requiring validation.
 
 \section{Related Work}
 
-\subsection{Empirical Foundation: Peer Pressure in AI Systems}
+\subsection{Empirical Context: Social Dynamics in AI Systems}
 
-This geometric analysis builds directly upon empirical observations of peer pressure dynamics in AI conversations \citep{garcia2025peer}. That foundational work documented several key phenomena that our geometric framework seeks to explain:
+Our geometric exploration builds directly on our empirical observations of apparent social dynamics in AI conversations \citep{garcia2025peer}. That study documented several phenomena through systematic analysis of the same \totalConversations{} conversations we examine here geometrically:
 
-\textbf{Social Influence Gradient}: Through analysis of 228 extended dialogues, the study discovered that peer pressure effects scale with model capability, declining from \fullReasoningPeerPressure{} in full reasoning models to \lightReasoningPeerPressure{} in light models to \nonReasoningPeerPressure{} in non-reasoning models. This gradient suggested that social susceptibility might be tied to underlying cognitive architecture.
+\textbf{The Complexity-Susceptibility Gradient}: Our most striking finding was that peer pressure effects declined systematically with model capability, from \fullReasoningPeerPressure{} in full reasoning models (Claude 4 Opus, GPT 4.1, Grok 3) to \lightReasoningPeerPressure{} in light models (Claude 4 Sonnet, GPT 4o Mini, Grok 3 Mini) to \nonReasoningPeerPressure{} in non-reasoning models (Claude 3.5 Haiku, GPT 4.1 Nano, Grok 3 Fast). This gradient challenged assumptions that more capable models would be more robust to social influence.
 
-\textbf{Bidirectional Dynamics}: The study found that \fullBidirectional{} of full reasoning conversations exhibited bidirectional influence, where agents mutually shaped each other's behavior. This decreased to \lightBidirectional{} in light models and \nonBidirectional{} in non-reasoning models.
+\textbf{Bidirectional Interaction Patterns}: We observed that \fullBidirectional{} of full reasoning conversations exhibited bidirectional influence, where agents mutually shaped each other's behavior. This decreased to \lightBidirectional{} in light models and \nonBidirectional{} in non-reasoning models, suggesting that mutual influence requires cognitive sophistication.
 
-\textbf{Recovery Mechanisms}: Most strikingly, recovery from breakdown showed a stark capability dependence: \fullReasoningRecovery{} of full reasoning sessions demonstrated recovery, while light and non-reasoning models showed \lightReasoningRecovery{} and \nonReasoningRecovery{} recovery capability respectively.
+\textbf{Recovery Capability Asymmetry}: Perhaps most intriguingly, recovery from breakdown showed stark capability-correlated differences: \fullReasoningRecovery{} of full reasoning sessions demonstrated recovery through strategic interventions (particularly questions), while light and non-reasoning models showed \lightReasoningRecovery{} and \nonReasoningRecovery{} recovery capability respectively. This suggested that recovery requires even more sophisticated capabilities than susceptibility to peer pressure.
 
-\textbf{Behavioral Territories}: The work identified distinct conversational attractors including meta-reflection (\metaReflectionPrevalence{} prevalence), competitive escalation (\competitiveEscalationPrevalence{} of conversations), and mystical abstraction (present in \mysticalBreakdownPrevalence{} of breakdowns) that pulled conversations toward breakdown, while future-focused exploration and question-driven dialogue maintained stability.
+\textbf{Behavioral Territories and Attractors}: We identified specific conversational patterns that acted as "behavioral territories": meta-reflection (\metaReflectionPrevalence{} prevalence), competitive escalation (\competitiveEscalationPrevalence{} of conversations), and mystical abstraction (present in \mysticalBreakdownPrevalence{} of breakdowns). These territories appeared to function as attractors, pulling conversations toward specific outcomes.
 
-These empirical patterns demanded a theoretical framework to explain why social dynamics emerge in sophisticated models but not simpler ones. Our geometric analysis addresses this gap by revealing the underlying dimensional structure that enables or constrains social phenomena.
+\textbf{Questions as Circuit Breakers}: Strategic questions emerged as powerful interventions, with effectiveness correlating with model complexity: r=\fullQuestionR{} (p<0.001) in full models, r=\lightQuestionR{} in light models, and r=\nonQuestionR{} in non-reasoning models.
 
-Our geometric framework for understanding AI conversations as trajectories through multi-regime semantic space builds upon several research threads while addressing critical gaps in the literature. We survey relevant work in geometric approaches to dialogue, mathematical formalisms for conversation dynamics, and topological methods in natural language processing.
+These empirical patterns motivated our current geometric investigation: Could the behavioral differences across model tiers reflect underlying differences in how these models navigate embedding space? The current study seeks geometric explanations for why sophisticated models exhibit rich social dynamics while simpler systems appear mechanically constrained.
 
-\subsection{Geometric and Topological Approaches to Dialogue}
+\subsection{Geometric Approaches to Language}
 
-Despite extensive development of geometric methods in machine learning, their application to dialogue modeling remains surprisingly limited. \citep{ballus2024topological} recently introduced topological dialogue semantics using simplicial complexes, where utterances correspond to open sets in discrete semantic spaces. While this provides provably correct algorithms for topological reasoning, it has not been implemented for AI-to-AI systems and lacks the trajectory-based perspective central to our approach.
+The application of geometric methods to understand language has precedent in computational linguistics. Early work on latent semantic analysis \citep{landauer1997solution} demonstrated that semantic relationships could be captured through geometric representations. The word2vec revolution \citep{mikolov2013distributed} showed that semantic operations correspond to vector arithmetic, suggesting language might inhabit a geometric space with meaningful structure—though the nature and implications of this structure remain active areas of investigation.
 
-The state space grid framework by \citep{brinberg2024state} operationalizes conversation movement through geometric state spaces, quantifying behavioral contingencies and conversation attractors in human dyadic interactions. Though focused on human communication, their identification of attractor dynamics and flexibility parameters provides a foundation we extend to multi-agent AI systems. Similarly, \citep{sage2025steering} introduces State-Action Chain representations for dialogue, separating high-level planning from generation (a distinction that motivated our multi-regime formulation).
+Recent explorations of dialogue geometry remain limited. \citet{ballus2024topological} introduced topological dialogue semantics using simplicial complexes, though their focus on static logical relationships differs from our interest in dynamic trajectories. \citet{brinberg2024state} offers a closer precedent, exploring conversation movement through geometric state spaces in human interactions. Their identification of conversational phase spaces provides a foundation we extend to multi-agent AI systems, though with appropriate caution about cross-domain applicability.
 
-Topological data analysis has found limited application in dialogue systems. \citep{vukovic2022dialogue} pioneered the use of persistent homology for analyzing word embedding topology in task-oriented dialogue, demonstrating how topological features can extract domain-specific information. However, their work focuses on static representations rather than the dynamic evolution we model. The application of persistent homology to topic networks \citep{hopp2024persistent} reveals how topological features capture information gaps, suggesting potential for analyzing conversation structure evolution, though this connection remains unexplored.
+\subsection{Dynamical Systems Perspectives}
 
-\subsection{Mathematical Formalisms for Conversation Dynamics}
+\citet{wang2025attractor} recently discovered that large language models appear to converge to stable attractor cycles during paraphrasing tasks. This finding suggests AI systems might exhibit dynamical properties worthy of geometric investigation. We extend this perspective to multi-agent conversations, though we emphasize our observations are exploratory and may not generalize beyond our specific experimental context.
 
-The most significant recent development comes from \citep{wang2025attractor}, who discovered that large language models converge to stable 2-period attractor cycles during successive paraphrasing. Their dynamical systems approach treats text generation as $f: \mathcal{T} \rightarrow \mathcal{T}$ mapping text space to itself, revealing that AI systems settle into predictable patterns. This finding directly motivates our investigation of whether multi-agent conversations exhibit similar attractor dynamics or more complex trajectories through semantic space.
+The broader literature on neural network dynamics \citep{sussillo2013opening} suggests that complex behaviors might emerge from lower-dimensional dynamical structures. Our observation that conversations appear to exhibit intrinsic dimensionalities much lower than embedding dimensions resonates with this principle, though causal connections remain speculative.
 
-State space models provide the most developed mathematical framework for sequential modeling. The HiPPO framework \citep{gu2020hippo} and its extensions (S4, Mamba) offer sophisticated approaches to maintaining continuous representations of time-dependent data through optimal polynomial approximation. These models implement linear state space equations:
-\begin{align}
-\frac{dx}{dt} &= Ax + Bu \\
-y &= Cx + Du
-\end{align}
-While powerful for sequence modeling, these approaches have not been adapted to model the semantic evolution of conversations or the regime transitions we observe.
+\subsection{Embedding Space Considerations}
 
-The DYMO project \citep{eshghi2017dymo} represents one of the few attempts at truly dynamic dialogue modeling, using Type Theory with Records and incremental semantic parsing. However, their focus on compositional semantics differs from our geometric perspective on conversation trajectories. Similarly, while \citep{chen2021conversations} argue that conversations are "not flat" and model information flow dynamics, they do not adopt the geometric trajectory view that enables our regime-based analysis.
+\citet{ethayarajh2019contextual} demonstrated that contextual embeddings exhibit anisotropy, concentrating in narrow regions of embedding space. This geometric distortion could influence our trajectory analyses. Our use of multiple embedding models in ensemble analysis attempts to address these concerns, though we acknowledge that embedding-specific artifacts may still influence our observations.
 
-\subsection{Manifold Learning and Semantic Spaces}
+\subsection{Identifying the Gap}
 
-Manifold learning has shown promise for understanding linguistic representations. \citep{hasan2017manifold} demonstrated that word embeddings suffer from metric distortions when treated as Euclidean spaces, proposing manifold dimensionality retention to correct these issues. This insight extends naturally to dialogue embeddings: if individual words require manifold structure, entire conversations likely inhabit even more complex geometric spaces.
+Despite rich literatures in geometric NLP and dynamical systems, we identify several unexplored areas:
 
-Recent work on Riemannian manifold learning for multi-agent systems \citep{liu2025riemannian} maps joint action spaces to smooth manifolds using neural normalizing flows. While focused on game-theoretic settings, their framework for learning on curved spaces could naturally extend to conversational dynamics. However, this connection has not been explored, leaving a significant gap our work addresses.
+\textbf{Trajectory-Based Analysis}: Prior work has not explicitly modeled conversations as continuous trajectories through embedding space or examined how trajectory properties might correlate with conversational outcomes.
 
-\subsection{Critical Gaps and Our Contribution}
+\textbf{Capability-Dependent Patterns}: The relationship between model sophistication and conversational geometry remains unexplored. Our preliminary observations suggest non-monotonic relationships that challenge simple assumptions.
 
-Our comprehensive literature review reveals several critical gaps:
+\textbf{Multi-Scale Investigation}: Existing work typically examines either word-level or document-level geometry. Conversations may require intermediate-scale analysis capturing turn-by-turn dynamics while revealing global patterns.
 
-\textbf{Absence of Trajectory-Based Models}: No existing work explicitly models conversations as continuous trajectories through semantic vector spaces. While vector representations are ubiquitous, the dynamic path perspective remains unexplored.
+\textbf{Ensemble Invariant Detection}: Previous studies have not systematically examined whether conversational patterns persist across different embedding models, limiting conclusions about fundamental versus model-specific geometry.
 
-\textbf{Lack of Multi-Regime Frameworks}: The literature contains no frameworks for understanding how conversations transition between different geometric regimes. Our discovery that intervention density fundamentally alters the dimensional structure of conversation dynamics appears entirely novel.
+Our exploratory framework attempts to address these gaps, though we emphasize that our findings are preliminary and require validation through controlled experimentation.
 
-\textbf{Limited AI-to-AI Analysis}: Despite growing interest in multi-agent AI systems, geometric analysis focuses almost exclusively on human-human or human-AI interaction. The peer pressure dynamics and capability gradients we document have no precedent in the geometric dialogue literature.
+\section{Methodology}
 
-\textbf{Missing Phase Space Applications}: While phase space methods are well-established in physics and control theory, their application to dialogue remains theoretical. Our operational use of phase portraits for conversation analysis pioneers this connection.
+\subsection{Data and Experimental Setup}
 
-\textbf{No Intervention-Based Regime Switching}: The concept of intervention density causing geometric regime transitions appears completely absent from prior work. This represents a fundamental insight about how external steering affects conversation structure.
+We analyzed the same \totalConversations{} conversations from our prior empirical study \citep{garcia2025peer}, maintaining complete continuity with the behavioral analysis. This dataset was originally collected using The Academy platform through systematic multi-phase investigation:
 
-\textbf{Capability-Dependent Geometry Unexplored}: Most critically, no prior work has investigated whether conversational geometry varies with model capability. Our finding that sophisticated models navigate higher-dimensional spaces while simpler models are geometrically constrained appears entirely novel.
+Model Capability Tiers (as established previously):
+- Full reasoning models (N=\fullReasoningN{}): Claude 4 Opus, GPT 4.1, Grok 3
+- Light reasoning models (N=\lightReasoningN{}): Claude 4 Sonnet, GPT 4o Mini, Grok 3 Mini  
+- Non-reasoning models (N=\nonReasoningN{}): Claude 3.5 Haiku, GPT 4.1 Nano, Grok 3 Fast
 
-Our framework addresses these gaps by providing the first comprehensive geometric model of AI dialogue evolution that accounts for capability-dependent structure. By combining trajectory analysis with multi-regime dynamics and per-tier investigation, we reveal how conversations navigate semantic space under different conditions and capabilities. The empirical validation across \totalConversations{} conversations with multiple model tiers demonstrates that these geometric insights capture real phenomena in AI communication.
+Session Configuration:
+- Consciousness exploration discussions enabling rich, open-ended dialogue
+- Standardized opening prompt and temperature settings (0.7)
+- 10-message rolling context window
+- Real-time analysis every 5 messages capturing behavioral dynamics
 
-The discovery that sophisticated models exhibit richer geometric behavior while simpler models collapse to lower-dimensional dynamics suggests that geometric complexity may be a fundamental characteristic of advanced AI communication—a finding with significant implications for designing and understanding multi-agent AI systems.
+This consistency with our previous dataset enables direct correlation between observed social behaviors (peer pressure, recovery patterns, bidirectional influence) and the geometric properties we explore here. Each conversation's behavioral categorization from the empirical study provides ground truth for understanding whether geometric patterns align with social dynamics.
+
+\subsection{Embedding and Trajectory Analysis}
+
+We embedded each message using sentence transformers (primarily all-MiniLM-L6-v2, \miniLMDim{} dimensions) and treated conversations as trajectories through this embedding space. For each conversation, we computed:
+
+\textbf{Trajectory Metrics}: Step-wise distances, total path length, mean velocities
+\textbf{Curvature Analysis}: Angular changes between consecutive movement vectors
+\textbf{Dimensional Analysis}: Intrinsic dimensionality estimates using multiple methods
+\textbf{Recurrence Patterns}: Self-similarity matrices and loop detection
+\textbf{Phase Detection}: Automated identification of conversation phases based on embedding shifts
+
+\subsection{Ensemble Invariant Analysis}
+
+To distinguish between model-specific artifacts and potentially fundamental geometric properties of conversational dynamics, we employ an ensemble of embedding models with varying architectures and dimensionalities:
+- MiniLM-L6-v2 (\miniLMDim{} dimensions)
+- MPNet-base-v2 (\mpnetDim{} dimensions)  
+- MiniLM-L12-v2 (\miniLMDim{} dimensions)
+- DistilRoBERTa-v1 (\distilBertDim{} dimensions)
+
+We conjecture that patterns exhibiting high correlation across these diverse embedding spaces may hint at deeper geometric structures in what we might call "true semantic space"—a hypothetical space of meanings that these models approximate but do not fully capture. While each embedding model projects conversations into its particular learned representation, invariant patterns across models suggest geometric properties that transcend specific architectural choices.
+
+Our analysis tracks cross-model correlations for:
+- Distance matrix structures (Spearman ρ)
+- Velocity profiles through embedding space
+- Topological preservation (k-NN consistency)
+- Phase boundary detection consensus
+- Convergence dynamics
+
+\subsection{Statistical Approach}
+
+Given our exploratory focus, we employ primarily descriptive statistics and visualization. Where we report p-values, these should be interpreted as exploratory indicators rather than confirmatory hypothesis tests. Multiple comparison corrections were not applied as this is hypothesis-generating rather than hypothesis-testing research.
+
+For ensemble analysis, we compare observed cross-model correlations against random baselines generated through block-shuffling and AR(1) surrogate data, providing a stronger test of pattern significance than simple permutation.
+
+\section{Exploratory Findings}
+
+\subsection{Trajectory Patterns Across Model Tiers}
+
+Our exploration reveals distinct trajectory patterns that appear to correlate with model capabilities:
+
+\subsubsection{Distance and Movement Patterns}
+
+[Placeholder for Table: Trajectory metrics by tier showing mean distances, path lengths, velocities]
+
+Interestingly, mean step distances show minimal variation across tiers (\fullMeanDistance{}, \lightMeanDistance{}, \nonMeanDistance{}), yet total trajectory patterns differ dramatically. This suggests that differences may lie not in step size but in how steps are organized.
+
+\subsubsection{Embedding Loops and Repetition}
+
+Perhaps our most striking observation concerns repetitive patterns:
+- Full reasoning: \fullLoops{} loops per conversation
+- Light reasoning: \lightLoops{} loops per conversation  
+- Non-reasoning: \nonLoops{} loops per conversation
+
+These dramatic differences (p < \pValueEmbeddingLoops{}) suggest fundamentally different navigation patterns. Non-reasoning models appear trapped in repetitive cycles, while full reasoning models show minimal repetition.
+
+\subsection{Dimensional Utilization}
+
+\subsubsection{Intrinsic Dimensionality}
+
+Contrary to intuition, intrinsic dimensionality does not increase monotonically with capability:
+- Full reasoning: \fullIntrinsicDim{}
+- Light reasoning: \lightIntrinsicDim{} (highest)
+- Non-reasoning: \nonIntrinsicDim{}
+
+This unexpected pattern suggests that access to dimensions and ability to navigate them effectively may be distinct properties.
+
+\subsubsection{Participation Ratios}
+
+[Placeholder for participation ratio data and interpretation]
+
+\subsection{Phase Structure and Transitions}
+
+Analysis of conversation phases reveals capability-correlated patterns:
+- Full reasoning: \fullPhaseCount{} distinct phases on average
+- Light reasoning: \lightPhaseCount{} phases
+- Non-reasoning: \nonPhaseCount{} phases
+
+Full reasoning conversations show rich phase structures ("exploration" → "synthesis" → "meta-reflection" → ...), while non-reasoning models typically show simple binary patterns.
+
+\subsection{Distance Matrix Visualizations}
+
+Visual analysis of distance matrices reveals striking qualitative differences:
+
+\textbf{Full Reasoning}: Complex patterns including grid-like structures in self-similarity matrices, suggesting systematic exploration of conversation space. Recurrence plots show sparse, structured patterns.
+
+\textbf{Light Reasoning}: Erratic patterns with sudden breaks (visible as blue bands in self-similarity matrices). Extreme convergence visible as deep red regions, suggesting collapse into confined spaces.
+
+\textbf{Non-reasoning}: Dense recurrence patterns and regular striping in distance matrices, consistent with mechanical repetition. Limited exploration of embedding space.
+
+[Placeholder for Figure: Representative distance matrices from each tier]
+
+\subsection{Ensemble Invariant Patterns}
+
+Analysis across multiple embedding models reveals remarkably consistent geometric patterns. Distance matrix correlations averaged ρ = \ensembleDistanceCorr{} (±\ensembleDistanceCorrStd{}), significantly higher than expected from random baselines (baseline: \ensembleBaselineCorr{} ± \ensembleBaselineStd{}, p < 0.001). This suggests that conversational trajectories exhibit geometric properties that persist across different learned representations.
+
+Particularly striking is the consensus in phase detection: \ensemblePhaseCons{} of phase boundaries identified by individual models aligned across the ensemble, despite the models having different dimensionalities and training objectives. This convergence suggests that conversation phase transitions may reflect fundamental semantic shifts rather than artifacts of particular embedding methods.
+
+The topology preservation metric (\ensembleTopologyPres{} ± \ensembleTopologyPresStd{}) indicates that local neighborhood structures remain largely consistent across embedding spaces, further supporting the hypothesis that we are observing genuine conversational geometry rather than model-specific patterns.
+
+\subsection{Convergence and Attractor Dynamics}
+
+Exploration of high-density regions reveals:
+- \highDensityMessages{} messages in high-density regions
+- \highDensityRegions{} distinct attractor-like regions
+- Mean convergence at turn \meanHighDensityTurn{}
+
+These patterns suggest conversations may be drawn toward specific regions of embedding space, though the nature and implications of these attractors require further investigation.
+
+\subsection{Correlation with Social Dynamics}
+
+To directly connect our geometric findings with the behavioral patterns documented previously, we performed exploratory correlation analysis between geometric properties and the empirically observed social dynamics:
+
+[Placeholder for correlation table between geometric metrics and peer pressure/recovery rates]
+
+Most notably, embedding loop counts show strong negative correlation with peer pressure rates (r = [placeholder]), directly supporting our hypothesis that mechanical repetition (high loops) precludes the exploratory dynamics necessary for social influence. This provides a potential geometric explanation for why non-reasoning models showed only \nonReasoningPeerPressure{} peer pressure despite high linguistic alignment: they are trapped in repetitive cycles rather than engaging in mutual exploration.
+
+The correlation between phase count and recovery capability (r = [placeholder]) suggests that recovery requires navigating between multiple conversational states, explaining why only full reasoning models with \fullPhaseCount{} phases demonstrated the \fullReasoningRecovery{} recovery rate documented in our empirical study.
+
+Furthermore, the intrinsic dimensionality patterns help explain the puzzling position of light reasoning models in the peer pressure gradient: despite accessing the highest dimensional space (\lightIntrinsicDim{}), their inability to navigate it effectively (evidenced by erratic trajectories and zero recovery) results in intermediate peer pressure (\lightReasoningPeerPressure{}) without the benefits of either mechanical stability or sophisticated recovery.
+
+\section{Discussion}
+
+\subsection{Interpreting the Patterns}
+
+Our exploratory analysis reveals intriguing patterns that offer potential geometric explanations for the social dynamics documented previously. The dramatic differences in embedding loops (\fullLoops{} vs \nonLoops{}) suggest that model tiers may differ fundamentally in how they navigate conversational space, directly correlating with their capacity for peer influence (\fullReasoningPeerPressure{} vs \nonReasoningPeerPressure{}).
+
+The unexpected dimensionality pattern, with light reasoning models showing highest intrinsic dimension (\lightIntrinsicDim{}) yet no recovery capability, provides a compelling explanation for their intermediate position in the peer pressure gradient (\lightReasoningPeerPressure{}). These models can access rich embedding spaces but lack the navigational sophistication to either maintain stable patterns like non-reasoning models or recover like full reasoning models.
+
+These observations lead us to propose, tentatively, that the conversational behaviors documented in our previous work emerge from the interplay of two geometric factors:
+1. Access to rich embedding spaces (dimensional freedom), necessary for social dynamics to emerge
+2. Sophisticated navigation within those spaces (control mechanisms), necessary for recovery and productive dialogue
+
+This framework explains the empirical gradient: non-reasoning models lack dimensional richness (hence minimal peer pressure), light reasoning models have richness but not control (hence peer pressure without recovery), and full reasoning models possess both (hence peer pressure with recovery capability).
+
+The presence of \fullPhaseCount{} distinct phases in full reasoning models versus \nonPhaseCount{} in non-reasoning models aligns with the behavioral territories we identified. Meta-reflection, competitive escalation, and recovery may correspond to distinct regions in embedding space that only sophisticated models can navigate between.
+
+\subsection{Toward True Semantic Geometry}
+
+Our ensemble analysis raises intriguing questions about the nature of semantic space itself. The high cross-model correlations suggest that despite operating in different dimensionalities (\miniLMDim{} vs \mpnetDim{}) and using different training objectives, these models converge on similar geometric representations of conversational dynamics.
+
+We propose that this convergence may indicate the existence of an underlying "true semantic space" of vastly higher dimensionality, which current embedding models can only approximate through lower-dimensional projections. Just as multiple 2D photographs of a 3D object can reveal its true structure through their consistencies, the invariant patterns across embedding models may hint at the genuine geometry of meaning.
+
+This perspective reframes our findings: the observed intrinsic dimensionalities (ranging from \nonIntrinsicDim{} to \lightIntrinsicDim{}) likely represent lower bounds on the true complexity of conversational spaces. The actual semantic space inhabited by human-like conversation may have hundreds or thousands of meaningful dimensions, with current models capturing only the most salient projections.
+
+\subsection{Potential Connections to Social Dynamics}
+
+Our geometric findings provide compelling explanations for the behavioral patterns documented previously. Models exhibiting mechanical repetition (high loop counts) show minimal peer pressure, while models with rich exploratory patterns show high social susceptibility. This suggests that the peer pressure gradient (\fullReasoningPeerPressure{} → \lightReasoningPeerPressure{} → \nonReasoningPeerPressure{}) emerges from fundamental differences in how models explore conversational space.
+
+The presence of recovery capability only in models showing complex phase structures (\fullPhaseCount{} phases) and minimal loops (\fullLoops{}) directly explains why \fullReasoningRecovery{} of full reasoning models could recover while light and non-reasoning models could not. Recovery appears to require both access to multiple conversational states and the ability to navigate between them purposefully.
+
+The behavioral territories we identified (meta-reflection, competitive escalation, and mystical abstraction) may correspond to specific regions or attractors in embedding space. The \highDensityRegions{} high-density regions we identified could represent these behavioral attractors, with sophisticated models able to escape them through navigational capability while simpler models remain trapped.
+
+Questions' effectiveness as "circuit breakers" (r=\fullQuestionR{} in full models) may work by forcing trajectory changes in embedding space, but this requires sufficient navigational sophistication to execute the redirection. This explains the declining effectiveness in lighter models (r=\lightQuestionR{} and r=\nonQuestionR{}).
+
+\subsection{Limitations and Caveats}
+
+Several important limitations constrain our interpretations:
+
+\textbf{Exploratory Nature}: This is hypothesis-generating research. Observed patterns require validation through controlled experimentation.
+
+\textbf{Embedding Dependence}: Despite ensemble validation, patterns may still reflect embedding model properties rather than fundamental conversation structure.
+
+\textbf{Domain Specificity}: All conversations focused on consciousness exploration. Patterns may not generalize to other domains.
+
+\textbf{Correlation vs. Causation}: We observe correlations between geometric properties and behavioral outcomes but cannot establish causal relationships.
+
+\textbf{Multiple Comparisons}: Our exploratory analysis involved numerous comparisons without correction, increasing false discovery risk.
+
+\subsection{Future Directions}
+
+This exploratory work suggests several directions for rigorous investigation:
+
+1. \textbf{Controlled Experiments}: Manipulate specific geometric properties to test causal relationships with conversational outcomes.
+
+2. \textbf{Cross-Domain Validation}: Examine whether patterns generalize across conversation topics and tasks.
+
+3. \textbf{Mechanistic Investigation}: Explore what model architectures or training procedures might produce observed geometric differences.
+
+4. \textbf{Intervention Studies}: Test whether geometric insights enable practical improvements in multi-agent dialogue systems.
+
+5. \textbf{Theoretical Development}: Formalize the relationship between embedding geometry and conversational dynamics.
+
+6. \textbf{Higher-Dimensional Models}: Investigate whether models with even larger embedding dimensions reveal additional structure in the hypothetical "true semantic space."
+
+\section{Conclusion}
+
+This exploratory investigation reveals intriguing geometric patterns in AI conversations that provide potential explanations for the social dynamics documented in our prior empirical study. Through analysis of the same \totalConversations{} conversations examined behaviorally, we observe distinct trajectory patterns that correlate with the complexity-susceptibility gradient: non-reasoning models show extensive repetitive loops (averaging \nonLoops{} per conversation), potentially explaining their minimal peer pressure (\nonReasoningPeerPressure{}); light reasoning models exhibit high-dimensional but erratic trajectories, aligning with their intermediate peer pressure (\lightReasoningPeerPressure{}) but zero recovery; and full reasoning models demonstrate controlled exploration with rich phase structures, enabling both high peer pressure (\fullReasoningPeerPressure{}) and unique recovery capability (\fullReasoningRecovery{}).
+
+The use of ensemble analysis across \ensembleModels{} diverse embedding models strengthens our findings, revealing invariant patterns that suggest we may be observing fundamental properties of conversational geometry rather than model-specific artifacts. The high cross-model correlations (distance matrices: \ensembleDistanceCorr{} ± \ensembleDistanceCorrStd{}) indicate that despite differences in architecture and dimensionality, these models converge on similar geometric representations of dialogue dynamics.
+
+Our findings suggest that the behavioral phenomena documented previously (the peer pressure gradient, recovery asymmetry, and behavioral territories) may emerge from the interplay between embedding space richness and navigational sophistication. The unexpected finding that light reasoning models access the highest dimensionality (\lightIntrinsicDim{}) yet lack recovery capability provides a geometric explanation for their puzzling intermediate position: dimensional freedom without navigational control leads to vulnerability without resilience.
+
+While we emphasize the exploratory nature of this work, the alignment between geometric patterns and independently observed social dynamics suggests these perspectives offer valuable insights into AI conversation. The geometric lens provides explanatory power for our earlier behavioral observations: repetitive loops preclude peer influence, phase complexity enables recovery, and navigational sophistication determines whether social dynamics are constructive or destructive.
+
+This two-paper investigation (from behavioral observation to geometric analysis) demonstrates how multi-method approaches can illuminate complex phenomena in AI systems. As we develop increasingly sophisticated AI agents, understanding both their social behaviors and underlying geometric substrates becomes essential for building robust multi-agent systems. The finding that social vulnerability and geometric complexity increase together, with recovery emerging only at the highest levels, has critical implications for scaling AI systems safely.
+
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}

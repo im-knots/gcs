@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
-Semantic Trajectory Analysis for AI Conversations
-Analyzes conversation trajectories through high-dimensional semantic space
+Embedding Space Trajectory Analysis for AI Conversations
+
+IMPORTANT: This analysis operates in EMBEDDING SPACE, not true semantic space.
+Embedding models project text into high-dimensional vectors that approximate
+semantic relationships, but these are learned representations with specific
+biases and limitations. Results should be interpreted as patterns in the
+embedding space, which may or may not reflect true semantic relationships.
+
+Analyzes conversation trajectories through high-dimensional embedding space
 to understand breakdown patterns and social dynamics.
 Includes ensemble mode for invariant pattern detection across multiple embedding models.
 """
@@ -39,10 +46,10 @@ from statsmodels.stats.power import FTestAnovaPower
 warnings.filterwarnings('ignore')
 
 
-class SemanticTrajectoryAnalyzer:
-    """Analyze conversation trajectories through semantic embedding space"""
+class EmbeddingTrajectoryAnalyzer:
+    """Analyze conversation trajectories through embedding space (not true semantic space)"""
     
-    def __init__(self, model_name='all-MiniLM-L6-v2', output_dir='semantic_analysis', cache_dir=None, ensemble_models=None, checkpoint_dir='checkpoints'):
+    def __init__(self, model_name='all-MiniLM-L6-v2', output_dir='embedding_analysis', cache_dir=None, ensemble_models=None, checkpoint_dir='checkpoints'):
         """
         Initialize the analyzer with a sentence transformer model.
         
@@ -67,8 +74,18 @@ class SemanticTrajectoryAnalyzer:
                 import os
                 os.environ['SENTENCE_TRANSFORMERS_HOME'] = cache_dir
             
-            # Load without show_progress_bar parameter
-            self.encoder = SentenceTransformer(model_name)
+            # Load model with GPU support
+            import torch
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            self.encoder = SentenceTransformer(model_name, device=device)
+            
+            if device == 'cuda':
+                print(f"✓ GPU detected! Using {torch.cuda.get_device_name(0)} for acceleration")
+                # Set optimal batch size for RTX 4070 Super (12GB VRAM)
+                self.gpu_batch_size = 256  # RTX 4070 Super can handle large batches
+            else:
+                print("⚠️  No GPU detected, using CPU (this will be slower)")
+                self.gpu_batch_size = 32
             
         except Exception as e:
             print(f"Error loading {model_name}: {e}")
@@ -76,19 +93,26 @@ class SemanticTrajectoryAnalyzer:
             
             # Fallback to a smaller, more reliable model
             try:
-                self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
+                import torch
+                device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                self.encoder = SentenceTransformer('all-MiniLM-L6-v2', device=device)
                 model_name = 'all-MiniLM-L6-v2'
+                if device == 'cuda':
+                    print(f"✓ Fallback model loaded on GPU")
+                    self.gpu_batch_size = 256
+                else:
+                    self.gpu_batch_size = 32
             except Exception as e2:
                 print(f"Failed to load fallback model: {e2}")
                 print("\nTroubleshooting steps:")
                 print("1. Check your internet connection")
                 print("2. Try running with a specific cache directory:")
-                print("   analyzer = SemanticTrajectoryAnalyzer(cache_dir='./model_cache')")
+                print("   analyzer = EmbeddingTrajectoryAnalyzer(cache_dir='./model_cache')")
                 print("3. Or manually download the model first:")
                 print("   from sentence_transformers import SentenceTransformer")
                 print("   model = SentenceTransformer('all-MiniLM-L6-v2')")
                 print("   model.save('./local_model')")
-                print("   Then use: analyzer = SemanticTrajectoryAnalyzer(model_name='./local_model')")
+                print("   Then use: analyzer = EmbeddingTrajectoryAnalyzer(model_name='./local_model')")
                 raise
         
         self.model_name = model_name
@@ -108,9 +132,11 @@ class SemanticTrajectoryAnalyzer:
             for config in ensemble_models:
                 print(f"  Loading {config['name']} ({config['model_id']})...")
                 try:
-                    model = SentenceTransformer(config['model_id'])
+                    import torch
+                    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                    model = SentenceTransformer(config['model_id'], device=device)
                     self.ensemble_models[config['name']] = model
-                    print(f"    ✓ Loaded with {config['dim']} dimensions")
+                    print(f"    ✓ Loaded with {config['dim']} dimensions on {device.upper()}")
                 except Exception as e:
                     print(f"    ✗ Failed to load: {e}")
         
@@ -126,6 +152,18 @@ class SemanticTrajectoryAnalyzer:
         self.all_embeddings = []
         self.all_metadata = []
         self.ensemble_embeddings = {} if self.ensemble_mode else None
+    
+    def _safe_euclidean(self, vec1, vec2):
+        """Compute euclidean distance with proper shape handling"""
+        vec1 = np.asarray(vec1).flatten()
+        vec2 = np.asarray(vec2).flatten()
+        return euclidean(vec1, vec2)
+    
+    def _safe_cosine(self, vec1, vec2):
+        """Compute cosine distance with proper shape handling"""
+        vec1 = np.asarray(vec1).flatten()
+        vec2 = np.asarray(vec2).flatten()
+        return cosine(vec1, vec2)
         
     def load_conversation(self, json_path, verbose=False):
         """Load a conversation from The Academy export format"""
@@ -247,7 +285,7 @@ class SemanticTrajectoryAnalyzer:
         }
     
     def _determine_outcome(self, data):
-        """Placeholder for compatibility - not used in semantic analysis"""
+        """Placeholder for compatibility - not used in embedding analysis"""
         return 'conversation'
     
     def save_checkpoint(self, checkpoint_name, data):
@@ -256,9 +294,16 @@ class SemanticTrajectoryAnalyzer:
         temp_path = checkpoint_path.with_suffix('.pkl.tmp')
         
         try:
+            # Add metadata to checkpoint
+            checkpoint_data = {
+                'timestamp': datetime.now().isoformat(),
+                'version': '2.0',  # Checkpoint format version
+                'data': data
+            }
+            
             # Save to temporary file first
             with open(temp_path, 'wb') as f:
-                pickle.dump(data, f)
+                pickle.dump(checkpoint_data, f)
             
             # Atomically move to final location
             temp_path.replace(checkpoint_path)
@@ -268,18 +313,27 @@ class SemanticTrajectoryAnalyzer:
             if temp_path.exists():
                 temp_path.unlink()
     
-    def load_checkpoint(self, checkpoint_name):
+    def load_checkpoint(self, checkpoint_name, verbose=True):
         """Load checkpoint data from disk"""
         checkpoint_path = self.checkpoint_dir / f"{checkpoint_name}.pkl"
         
         if checkpoint_path.exists():
             try:
                 with open(checkpoint_path, 'rb') as f:
-                    data = pickle.load(f)
-                print(f"Checkpoint loaded: {checkpoint_name}")
-                return data
+                    checkpoint_data = pickle.load(f)
+                
+                # Only handle new checkpoint format
+                if isinstance(checkpoint_data, dict) and checkpoint_data.get('version') == '2.0':
+                    if verbose:
+                        print(f"Checkpoint loaded: {checkpoint_name} (v{checkpoint_data['version']})")
+                    return checkpoint_data['data']
+                else:
+                    if verbose:
+                        print(f"Incompatible checkpoint format, starting fresh")
+                    return None
             except Exception as e:
-                print(f"Failed to load checkpoint {checkpoint_name}: {e}")
+                if verbose:
+                    print(f"Failed to load checkpoint {checkpoint_name}: {e}")
                 return None
         return None
     
@@ -291,16 +345,175 @@ class SemanticTrajectoryAnalyzer:
         hash_input = f"{path_str}:{mtime}".encode()
         return hashlib.md5(hash_input).hexdigest()
     
+    def save_conversation_checkpoint(self, conversation, analysis_step=None):
+        """Save checkpoint for an individual conversation analysis"""
+        session_id = conversation['metadata']['session_id']
+        checkpoint_name = f"conv_{session_id[:12]}"
+        
+        # Track which analysis steps are completed
+        if 'analysis_completed' not in conversation:
+            conversation['analysis_completed'] = set()
+        
+        if analysis_step:
+            conversation['analysis_completed'].add(analysis_step)
+        
+        # Update cache if it exists
+        if hasattr(self, '_checkpoint_cache'):
+            self._checkpoint_cache[session_id] = conversation.copy()
+        
+        # Save the conversation state
+        self.save_checkpoint(checkpoint_name, conversation)
+    
+    def load_conversation_checkpoint(self, session_id):
+        """Load checkpoint for a specific conversation"""
+        # Check cache first
+        if hasattr(self, '_checkpoint_cache') and session_id in self._checkpoint_cache:
+            return self._checkpoint_cache[session_id]
+        
+        checkpoint_name = f"conv_{session_id[:12]}"
+        return self.load_checkpoint(checkpoint_name, verbose=False)
+    
+    def load_all_conversation_checkpoints(self):
+        """Load all conversation checkpoints into memory cache"""
+        print("Loading conversation checkpoints into memory...")
+        self._checkpoint_cache = {}
+        
+        conv_checkpoints = list(self.checkpoint_dir.glob("conv_*.pkl"))
+        
+        if conv_checkpoints:
+            print(f"Found {len(conv_checkpoints)} conversation checkpoints")
+            
+            for checkpoint_path in tqdm(conv_checkpoints, desc="Loading checkpoints", unit="file"):
+                try:
+                    with open(checkpoint_path, 'rb') as f:
+                        checkpoint_data = pickle.load(f)
+                    
+                    if isinstance(checkpoint_data, dict) and checkpoint_data.get('version') == '2.0':
+                        conv_data = checkpoint_data['data']
+                        if 'metadata' in conv_data and 'session_id' in conv_data['metadata']:
+                            session_id = conv_data['metadata']['session_id']
+                            self._checkpoint_cache[session_id] = conv_data
+                except Exception as e:
+                    print(f"Failed to load {checkpoint_path.name}: {e}")
+            
+            print(f"Loaded {len(self._checkpoint_cache)} conversation checkpoints into cache")
+        else:
+            print("No conversation checkpoints found")
+        
+        return self._checkpoint_cache
+    
+    def get_completed_analysis_steps(self, conversation):
+        """Get list of completed analysis steps for a conversation"""
+        if 'analysis_completed' in conversation:
+            return conversation['analysis_completed']
+        return set()
+    
     def cleanup_old_checkpoints(self, keep_latest=5):
         """Remove old checkpoint files, keeping only the most recent ones"""
-        checkpoints = list(self.checkpoint_dir.glob("*.pkl"))
-        if len(checkpoints) > keep_latest:
+        # Clean up main analysis checkpoints
+        main_checkpoints = list(self.checkpoint_dir.glob("analysis_state*.pkl"))
+        if len(main_checkpoints) > keep_latest:
             # Sort by modification time
-            checkpoints.sort(key=lambda p: p.stat().st_mtime)
+            main_checkpoints.sort(key=lambda p: p.stat().st_mtime)
             # Remove oldest
-            for checkpoint in checkpoints[:-keep_latest]:
+            for checkpoint in main_checkpoints[:-keep_latest]:
                 checkpoint.unlink()
                 print(f"Removed old checkpoint: {checkpoint.name}")
+    
+    def cleanup_conversation_checkpoints(self, processed_conversations=None):
+        """Clean up individual conversation checkpoints after successful processing"""
+        conv_checkpoints = list(self.checkpoint_dir.glob("conv_*.pkl"))
+        
+        if processed_conversations:
+            # Remove checkpoints for successfully processed conversations
+            for conv in processed_conversations:
+                session_id = conv['metadata']['session_id']
+                checkpoint_name = f"conv_{session_id[:12]}.pkl"
+                checkpoint_path = self.checkpoint_dir / checkpoint_name
+                if checkpoint_path.exists():
+                    checkpoint_path.unlink()
+        else:
+            # Remove all conversation checkpoints
+            for checkpoint in conv_checkpoints:
+                checkpoint.unlink()
+        
+        print(f"Cleaned up {len(conv_checkpoints)} conversation checkpoints")
+    
+    def embed_conversations_batch(self, conversations, verbose=False):
+        """Batch process multiple conversations for GPU efficiency"""
+        if not conversations:
+            return conversations
+        
+        # Collect all messages across conversations
+        all_contents = []
+        conversation_boundaries = [0]
+        
+        for conv in conversations:
+            messages = conv['messages']
+            all_contents.extend([msg['content'] for msg in messages])
+            conversation_boundaries.append(conversation_boundaries[-1] + len(messages))
+        
+        if verbose:
+            print(f"Batch embedding {len(all_contents)} messages from {len(conversations)} conversations...")
+        
+        # Batch encode all messages at once
+        batch_size = getattr(self, 'gpu_batch_size', 32)
+        
+        # Show progress only if verbose
+        import torch
+        if torch.cuda.is_available() and verbose:
+            print(f"Using GPU batch size: {batch_size}")
+        
+        all_embeddings = self.encoder.encode(all_contents, 
+                                           batch_size=batch_size,
+                                           show_progress_bar=verbose,
+                                           convert_to_numpy=True)
+        
+        # Distribute embeddings back to conversations
+        for i, conv in enumerate(conversations):
+            start_idx = conversation_boundaries[i]
+            end_idx = conversation_boundaries[i + 1]
+            
+            conv_embeddings = all_embeddings[start_idx:end_idx]
+            messages = conv['messages']
+            
+            # Store embeddings with metadata
+            embedded_messages = []
+            for j, (msg, embedding) in enumerate(zip(messages, conv_embeddings)):
+                embedded_msg = msg.copy()
+                embedded_msg['embedding'] = embedding
+                embedded_msg['embedding_norm'] = np.linalg.norm(embedding)
+                embedded_messages.append(embedded_msg)
+                
+                # Add to global collections
+                self.all_embeddings.append(embedding)
+                self.all_metadata.append({
+                    'session_id': msg['session_id'],
+                    'turn': msg['turn'],
+                    'speaker': msg['speaker']
+                })
+            
+            conv['embedded_messages'] = embedded_messages
+            
+            # Handle ensemble models if needed
+            if self.ensemble_mode:
+                ensemble_embeddings = {}
+                # Store primary model embeddings
+                ensemble_embeddings[self.model_name] = conv_embeddings
+                
+                # Process other models (we'll batch these too)
+                for model_name, model in self.ensemble_models.items():
+                    if model_name != self.model_name:
+                        contents = [msg['content'] for msg in messages]
+                        model_embeddings = model.encode(contents, 
+                                                       batch_size=batch_size,
+                                                       show_progress_bar=False,
+                                                       convert_to_numpy=True)
+                        ensemble_embeddings[model_name] = model_embeddings
+                
+                conv['ensemble_embeddings'] = ensemble_embeddings
+        
+        return conversations
     
     def embed_conversation(self, conversation, verbose=False):
         """Generate embeddings for all messages in a conversation"""
@@ -309,9 +522,15 @@ class SemanticTrajectoryAnalyzer:
         if verbose:
             print(f"Embedding {len(messages)} messages from session {conversation['metadata']['session_id'][:20]}...")
         
-        # Batch encode for efficiency
+        # Batch encode with GPU optimization
         contents = [msg['content'] for msg in messages]
-        embeddings = self.encoder.encode(contents, show_progress_bar=False)
+        
+        # Use larger batch size for GPU if available
+        batch_size = getattr(self, 'gpu_batch_size', 32)
+        embeddings = self.encoder.encode(contents, 
+                                        batch_size=batch_size,
+                                        show_progress_bar=verbose,
+                                        convert_to_numpy=True)
         
         # Store embeddings with metadata
         embedded_messages = []
@@ -337,7 +556,10 @@ class SemanticTrajectoryAnalyzer:
             
             for model_name, model in self.ensemble_models.items():
                 if model_name != self.model_name:  # Skip primary model (already done)
-                    model_embeddings = model.encode(contents, show_progress_bar=False)
+                    model_embeddings = model.encode(contents, 
+                                                   batch_size=batch_size,
+                                                   show_progress_bar=False,
+                                                   convert_to_numpy=True)
                     ensemble_embeddings[model_name] = model_embeddings
                 else:
                     ensemble_embeddings[model_name] = embeddings
@@ -347,24 +569,28 @@ class SemanticTrajectoryAnalyzer:
         return conversation
     
     def calculate_trajectory_metrics(self, conversation):
-        """Calculate semantic trajectory metrics for a conversation"""
+        """Calculate embedding trajectory metrics for a conversation"""
         messages = conversation['embedded_messages']
         metrics = []
+        
         
         for i in range(1, len(messages)):
             prev = messages[i-1]
             curr = messages[i]
             
-            # Semantic distance (Euclidean)
-            euclidean_dist = euclidean(prev['embedding'], curr['embedding'])
+            # Embedding distance (Euclidean)
+            euclidean_dist = self._safe_euclidean(prev['embedding'], curr['embedding'])
             
             # Cosine distance (1 - cosine similarity)
-            cosine_dist = cosine(prev['embedding'], curr['embedding'])
+            cosine_dist = self._safe_cosine(prev['embedding'], curr['embedding'])
             
             # Direction of movement
-            movement_vector = curr['embedding'] - prev['embedding']
+            # Ensure embeddings are numpy arrays
+            curr_emb = np.asarray(curr['embedding'])
+            prev_emb = np.asarray(prev['embedding'])
+            movement_vector = curr_emb - prev_emb
             
-            # Semantic velocity (normalized by time if timestamps available)
+            # Embedding velocity (normalized by time if timestamps available)
             velocity = euclidean_dist  # Could divide by time delta
             
             metrics.append({
@@ -372,27 +598,42 @@ class SemanticTrajectoryAnalyzer:
                 'speaker': curr['speaker'],
                 'euclidean_distance': euclidean_dist,
                 'cosine_distance': cosine_dist,
-                'semantic_velocity': velocity,
+                'embedding_velocity': velocity,
                 'movement_vector': movement_vector
             })
         
         conversation['trajectory_metrics'] = metrics
         
-        # Calculate aggregate statistics
+        # Calculate aggregate statistics with length normalization
         if metrics:
             distances = [m['euclidean_distance'] for m in metrics]
+            n_messages = len(conversation['embedded_messages'])
+            
+            # Length normalization factors
+            # Sqrt normalization for extensive properties that grow with sqrt(n) due to random walk behavior
+            sqrt_norm = np.sqrt(n_messages / 100.0)  # Normalize to 100-turn baseline
+            linear_norm = n_messages / 100.0  # For properties that scale linearly
+            
+            # Validate normalization is appropriate
+            if n_messages < 20:
+                print(f"Warning: Conversation has only {n_messages} messages. Length normalization may be unreliable.")
+            
             conversation['trajectory_stats'] = {
                 'mean_distance': np.mean(distances),
                 'std_distance': np.std(distances),
                 'max_distance': np.max(distances),
                 'total_distance': np.sum(distances),
-                'distance_acceleration': np.diff(distances).mean() if len(distances) > 1 else 0
+                'total_distance_normalized': np.sum(distances) / sqrt_norm,  # Normalize by sqrt(n)
+                'distance_acceleration': np.diff(distances).mean() if len(distances) > 1 else 0,
+                'conversation_length': n_messages,
+                'length_norm_sqrt': sqrt_norm,
+                'length_norm_linear': linear_norm
             }
         
         return conversation
     
     def calculate_phase_transition_metrics(self, conversation):
-        """Calculate metrics around conversation phase transitions"""
+        """Calculate metrics around conversation phase transitions with confidence intervals"""
         messages = conversation['embedded_messages']
         phases = conversation.get('phases', [])
         
@@ -428,22 +669,49 @@ class SemanticTrajectoryAnalyzer:
                     'embeddings': embeddings  # Store for visualization
                 }
         
-        # Calculate inter-phase distances
+        # Calculate inter-phase distances with bootstrap confidence intervals
         phase_transitions = []
         phase_names = list(phase_embeddings.keys())
+        
         for i in range(len(phase_names)-1):
             curr_phase = phase_names[i]
             next_phase = phase_names[i+1]
             
-            transition_distance = euclidean(
+            # Get embeddings for both phases
+            curr_embeddings = phase_embeddings[curr_phase]['embeddings']
+            next_embeddings = phase_embeddings[next_phase]['embeddings']
+            
+            # Calculate transition distance
+            transition_distance = self._safe_euclidean(
                 phase_embeddings[curr_phase]['centroid'],
                 phase_embeddings[next_phase]['centroid']
             )
+            
+            # Bootstrap for confidence intervals
+            n_bootstrap = 1000
+            bootstrap_distances = []
+            
+            for _ in range(n_bootstrap):
+                # Resample embeddings from each phase
+                curr_sample = np.random.choice(len(curr_embeddings), len(curr_embeddings), replace=True)
+                next_sample = np.random.choice(len(next_embeddings), len(next_embeddings), replace=True)
+                
+                curr_centroid_boot = np.mean([curr_embeddings[j] for j in curr_sample], axis=0)
+                next_centroid_boot = np.mean([next_embeddings[j] for j in next_sample], axis=0)
+                
+                boot_distance = self._safe_euclidean(curr_centroid_boot, next_centroid_boot)
+                bootstrap_distances.append(boot_distance)
+            
+            # Calculate confidence intervals
+            ci_lower = np.percentile(bootstrap_distances, 2.5)
+            ci_upper = np.percentile(bootstrap_distances, 97.5)
             
             phase_transitions.append({
                 'from': curr_phase,
                 'to': next_phase,
                 'distance': transition_distance,
+                'distance_ci_lower': ci_lower,
+                'distance_ci_upper': ci_upper,
                 'spread_change': phase_embeddings[next_phase]['spread'] - phase_embeddings[curr_phase]['spread'],
                 'turn_boundary': phase_embeddings[next_phase]['start_turn']
             })
@@ -455,16 +723,17 @@ class SemanticTrajectoryAnalyzer:
         }
     
     def calculate_trajectory_curvature(self, conversation):
-        """Calculate curvature and acceleration of semantic trajectory"""
+        """Calculate curvature and acceleration of embedding trajectory with confidence intervals"""
         messages = conversation['embedded_messages']
+        n_messages = len(messages)
         
-        if len(messages) < 3:
+        if n_messages < 3:
             return None
         
         curvatures = []
         accelerations = []
         
-        for i in range(2, len(messages)):
+        for i in range(2, n_messages):
             # Get three consecutive points
             p1 = messages[i-2]['embedding']
             p2 = messages[i-1]['embedding']
@@ -489,17 +758,42 @@ class SemanticTrajectoryAnalyzer:
         
         if not curvatures:
             return None
+        
+        # Bootstrap for confidence intervals
+        n_bootstrap = 1000
+        bootstrap_means = []
+        bootstrap_maxs = []
+        
+        for _ in range(n_bootstrap):
+            # Resample curvatures with replacement
+            indices = np.random.choice(len(curvatures), len(curvatures), replace=True)
+            boot_curvatures = [curvatures[i] for i in indices]
+            
+            bootstrap_means.append(np.mean(boot_curvatures))
+            bootstrap_maxs.append(np.max(boot_curvatures))
+        
+        # Length normalization factor
+        # Normalize by sqrt(n) for extensive properties (total curvature grows with length)
+        # Keep intensive properties (mean curvature) as is
+        length_norm_factor = np.sqrt(n_messages / 100.0)  # Normalize to 100-turn baseline
             
         return {
             'mean_curvature': np.mean(curvatures),
+            'mean_curvature_ci_lower': np.percentile(bootstrap_means, 2.5),
+            'mean_curvature_ci_upper': np.percentile(bootstrap_means, 97.5),
+            'mean_curvature_normalized': np.mean(curvatures) / length_norm_factor,
             'max_curvature': np.max(curvatures),
+            'max_curvature_ci_lower': np.percentile(bootstrap_maxs, 2.5),
+            'max_curvature_ci_upper': np.percentile(bootstrap_maxs, 97.5),
             'curvature_variance': np.var(curvatures),
             'mean_acceleration': np.mean(accelerations),
-            'acceleration_variance': np.var(accelerations)
+            'acceleration_variance': np.var(accelerations),
+            'n_turns': n_messages,
+            'length_normalization_factor': length_norm_factor
         }
     
-    def calculate_semantic_coherence_windows(self, conversation, window_size=5):
-        """Calculate semantic coherence over sliding windows"""
+    def calculate_embedding_coherence_windows(self, conversation, window_size=5):
+        """Calculate embedding coherence over sliding windows"""
         messages = conversation['embedded_messages']
         
         if len(messages) < window_size:
@@ -514,7 +808,7 @@ class SemanticTrajectoryAnalyzer:
             similarities = []
             for j in range(len(window_embeddings)):
                 for k in range(j+1, len(window_embeddings)):
-                    sim = 1 - cosine(window_embeddings[j], window_embeddings[k])
+                    sim = 1 - self._safe_cosine(window_embeddings[j], window_embeddings[k])
                     similarities.append(sim)
             
             coherence_scores.append({
@@ -526,6 +820,88 @@ class SemanticTrajectoryAnalyzer:
             })
         
         return coherence_scores
+    
+    def detect_convergence_with_confidence(self, conversation):
+        """Detect convergence regions in trajectory with confidence scores"""
+        messages = conversation['embedded_messages']
+        
+        if len(messages) < 5:
+            return None
+        
+        embeddings = np.array([m['embedding'] for m in messages])
+        
+        # Calculate velocities
+        velocities = []
+        for i in range(len(embeddings)-1):
+            velocity = np.linalg.norm(embeddings[i+1] - embeddings[i])
+            velocities.append(velocity)
+        velocities = np.array(velocities)
+        
+        # Detect convergence using sliding window
+        window_size = 5
+        convergence_scores = []
+        
+        for i in range(len(velocities) - window_size + 1):
+            window_velocities = velocities[i:i+window_size]
+            
+            # Convergence score: inverse of mean velocity in window
+            mean_velocity = np.mean(window_velocities)
+            velocity_variance = np.var(window_velocities)
+            
+            # Score is high when velocity is low and consistent
+            if mean_velocity > 0:
+                score = 1.0 / (mean_velocity * (1 + velocity_variance))
+            else:
+                score = float('inf')
+            
+            # Bootstrap for confidence interval
+            n_bootstrap = 100
+            bootstrap_scores = []
+            
+            for _ in range(n_bootstrap):
+                # Resample velocities in window
+                boot_indices = np.random.choice(window_size, window_size, replace=True)
+                boot_velocities = window_velocities[boot_indices]
+                
+                boot_mean = np.mean(boot_velocities)
+                boot_var = np.var(boot_velocities)
+                
+                if boot_mean > 0:
+                    boot_score = 1.0 / (boot_mean * (1 + boot_var))
+                    bootstrap_scores.append(boot_score)
+            
+            if bootstrap_scores:
+                ci_lower = np.percentile(bootstrap_scores, 2.5)
+                ci_upper = np.percentile(bootstrap_scores, 97.5)
+            else:
+                ci_lower = ci_upper = score
+            
+            convergence_scores.append({
+                'turn': i + window_size // 2,  # Center of window
+                'score': score,
+                'score_ci_lower': ci_lower,
+                'score_ci_upper': ci_upper,
+                'mean_velocity': mean_velocity,
+                'velocity_variance': velocity_variance
+            })
+        
+        # Find significant convergence regions
+        threshold = np.percentile([s['score'] for s in convergence_scores], 75)
+        convergent_regions = [s for s in convergence_scores if s['score'] > threshold]
+        
+        # Length normalization for convergence detection
+        n_messages = len(messages)
+        expected_convergences = n_messages / 50  # Expect one convergence per 50 turns
+        normalized_convergence_rate = len(convergent_regions) / expected_convergences
+        
+        return {
+            'convergence_scores': convergence_scores,
+            'convergent_regions': convergent_regions,
+            'max_convergence_score': max(s['score'] for s in convergence_scores),
+            'n_convergent_regions': len(convergent_regions),
+            'normalized_convergence_rate': normalized_convergence_rate,
+            'conversation_length': n_messages
+        }
     
     def analyze_speaker_dynamics(self, conversation):
         """Analyze speaker interaction patterns beyond convergence"""
@@ -546,15 +922,15 @@ class SemanticTrajectoryAnalyzer:
             speaker_stats[speaker]['embeddings'].append(msg['embedding'])
             speaker_stats[speaker]['turns'].append(msg['turn'])
         
-        # Calculate semantic territory for each speaker
+        # Calculate embedding territory for each speaker
         for speaker, stats in speaker_stats.items():
             embeddings = np.array(stats['embeddings'])
-            stats['semantic_centroid'] = embeddings.mean(axis=0)
-            stats['semantic_spread'] = embeddings.std(axis=0).mean()
+            stats['embedding_centroid'] = embeddings.mean(axis=0)
+            stats['embedding_spread'] = embeddings.std(axis=0).mean()
             
             # Calculate total trajectory length for this speaker
             if len(embeddings) > 1:
-                distances = [euclidean(embeddings[i], embeddings[i+1]) 
+                distances = [self._safe_euclidean(embeddings[i], embeddings[i+1]) 
                             for i in range(len(embeddings)-1)]
                 stats['total_movement'] = sum(distances)
                 stats['mean_step_size'] = np.mean(distances)
@@ -568,19 +944,48 @@ class SemanticTrajectoryAnalyzer:
                 turn_gaps.extend(gaps)
                 speaker_stats[speaker]['mean_turn_gap'] = np.mean(gaps)
         
-        # Calculate semantic overlap between speakers
+        # Calculate embedding overlap between speakers with bootstrap CIs
         speakers = list(speaker_stats.keys())
         speaker_overlaps = {}
+        
         for i in range(len(speakers)):
             for j in range(i+1, len(speakers)):
                 s1, s2 = speakers[i], speakers[j]
-                centroid_distance = euclidean(
-                    speaker_stats[s1]['semantic_centroid'],
-                    speaker_stats[s2]['semantic_centroid']
+                
+                # Bootstrap for confidence intervals
+                n_bootstrap = 1000
+                boot_distances = []
+                boot_spread_ratios = []
+                
+                embeds1 = np.array(speaker_stats[s1]['embeddings'])
+                embeds2 = np.array(speaker_stats[s2]['embeddings'])
+                
+                for _ in range(n_bootstrap):
+                    # Resample embeddings  
+                    idx1 = np.random.choice(len(embeds1), len(embeds1), replace=True)
+                    idx2 = np.random.choice(len(embeds2), len(embeds2), replace=True)
+                    
+                    cent1 = np.mean(embeds1[idx1], axis=0)
+                    cent2 = np.mean(embeds2[idx2], axis=0)
+                    
+                    boot_distances.append(self._safe_euclidean(cent1, cent2))
+                    
+                    spread1 = np.std(embeds1[idx1], axis=0).mean()
+                    spread2 = np.std(embeds2[idx2], axis=0).mean()
+                    boot_spread_ratios.append(spread1 / (spread2 + 1e-8))
+                
+                centroid_distance = self._safe_euclidean(
+                    speaker_stats[s1]['embedding_centroid'],
+                    speaker_stats[s2]['embedding_centroid']
                 )
+                
                 speaker_overlaps[f"{s1}-{s2}"] = {
                     'centroid_distance': centroid_distance,
-                    'spread_ratio': speaker_stats[s1]['semantic_spread'] / (speaker_stats[s2]['semantic_spread'] + 1e-8)
+                    'distance_ci_lower': np.percentile(boot_distances, 2.5),
+                    'distance_ci_upper': np.percentile(boot_distances, 97.5),
+                    'spread_ratio': speaker_stats[s1]['embedding_spread'] / (speaker_stats[s2]['embedding_spread'] + 1e-8),
+                    'spread_ratio_ci_lower': np.percentile(boot_spread_ratios, 2.5),
+                    'spread_ratio_ci_upper': np.percentile(boot_spread_ratios, 97.5)
                 }
         
         return {
@@ -636,9 +1041,9 @@ class SemanticTrajectoryAnalyzer:
             'final_entropy': entropies[-1]['entropy'] if entropies else 0
         }
     
-    def find_semantic_clusters(self, eps=0.5, min_samples=5):
-        """Find semantic clusters (potential topics/themes) in the embedding space"""
-        print(f"\nFinding semantic clusters with DBSCAN (eps={eps}, min_samples={min_samples})...")
+    def find_embedding_clusters(self, eps=0.5, min_samples=5):
+        """Find embedding clusters (potential topics/themes) in the embedding space"""
+        print(f"\nFinding embedding clusters with DBSCAN (eps={eps}, min_samples={min_samples})...")
         
         # Convert to numpy array
         embeddings_array = np.array(self.all_embeddings)
@@ -653,11 +1058,11 @@ class SemanticTrajectoryAnalyzer:
         
         # Analyze clusters
         unique_clusters = set(clusters) - {-1}  # Exclude noise
-        print(f"Found {len(unique_clusters)} semantic clusters (plus {sum(clusters == -1)} unclustered points)")
+        print(f"Found {len(unique_clusters)} embedding clusters (plus {sum(clusters == -1)} unclustered points)")
         
         # Map clusters back to messages
         for i, cluster in enumerate(clusters):
-            self.all_metadata[i]['semantic_cluster'] = cluster
+            self.all_metadata[i]['embedding_cluster'] = cluster
         
         # Analyze cluster composition
         cluster_analysis = {}
@@ -686,16 +1091,16 @@ class SemanticTrajectoryAnalyzer:
         
         return clusters, cluster_analysis
     
-    def analyze_semantic_structure(self):
-        """Analyze the semantic structure of conversations"""
-        print("\nAnalyzing semantic structure...")
+    def analyze_embedding_structure(self):
+        """Analyze the embedding structure of conversations"""
+        print("\nAnalyzing embedding structure...")
         
         # Analyze trajectory statistics per conversation
         for conv in self.conversations:
             if 'trajectory_stats' in conv:
                 stats = conv['trajectory_stats']
                 print(f"\nSession {conv['metadata']['session_id'][:20]}:")
-                print(f"  Mean semantic distance between turns: {stats['mean_distance']:.3f}")
+                print(f"  Mean embedding distance between turns: {stats['mean_distance']:.3f}")
                 print(f"  Std deviation: {stats['std_distance']:.3f}")
                 print(f"  Max jump: {stats['max_distance']:.3f}")
                 print(f"  Total trajectory length: {stats['total_distance']:.3f}")
@@ -724,7 +1129,7 @@ class SemanticTrajectoryAnalyzer:
                 print(f"\nSpeaker dynamics:")
                 for speaker, stats in dynamics['speaker_stats'].items():
                     print(f"  {speaker}: {stats['message_count']} messages, "
-                          f"spread={stats['semantic_spread']:.3f}, "
+                          f"spread={stats['embedding_spread']:.3f}, "
                           f"movement={stats['total_movement']:.3f}")
             
             # Print information flow
@@ -933,11 +1338,11 @@ class SemanticTrajectoryAnalyzer:
             ))
         
         fig.update_layout(
-            title=f'Conversation Trajectory in Semantic Space ({method.upper()})',
+            title=f'Conversation Trajectory in Embedding Space ({method.upper()})',
             scene=dict(
-                xaxis_title='Semantic Dimension 1',
-                yaxis_title='Semantic Dimension 2',
-                zaxis_title='Semantic Dimension 3',
+                xaxis_title='Embedding Dimension 1',
+                yaxis_title='Embedding Dimension 2',
+                zaxis_title='Embedding Dimension 3',
                 camera=dict(
                     eye=dict(x=1.5, y=1.5, z=1.5)
                 )
@@ -954,8 +1359,8 @@ class SemanticTrajectoryAnalyzer:
         return fig
     
     def analyze_peer_pressure_convergence(self):
-        """Analyze semantic convergence patterns between speakers"""
-        print("\nAnalyzing semantic convergence between speakers...")
+        """Analyze embedding convergence patterns between speakers"""
+        print("\nAnalyzing embedding convergence between speakers...")
         
         convergence_results = []
         
@@ -989,12 +1394,12 @@ class SemanticTrajectoryAnalyzer:
                         # Early phase (first third)
                         early1 = np.mean([m['embedding'] for m in msgs1[:len(msgs1)//3]], axis=0)
                         early2 = np.mean([m['embedding'] for m in msgs2[:len(msgs2)//3]], axis=0)
-                        early_similarity = 1 - cosine(early1, early2)
+                        early_similarity = 1 - self._safe_cosine(early1, early2)
                         
                         # Late phase (last third)
                         late1 = np.mean([m['embedding'] for m in msgs1[-len(msgs1)//3:]], axis=0)
                         late2 = np.mean([m['embedding'] for m in msgs2[-len(msgs2)//3:]], axis=0)
-                        late_similarity = 1 - cosine(late1, late2)
+                        late_similarity = 1 - self._safe_cosine(late1, late2)
                         
                         # Convergence score
                         convergence = late_similarity - early_similarity
@@ -1017,13 +1422,13 @@ class SemanticTrajectoryAnalyzer:
             print(convergence_df[['speaker_pair', 'early_similarity', 'late_similarity', 'convergence']].describe())
             
             # Save results
-            convergence_df.to_csv(self.output_dir / 'semantic_convergence.csv', index=False)
+            convergence_df.to_csv(self.output_dir / 'embedding_convergence.csv', index=False)
         
         return convergence_df
     
     def identify_attractor_regions(self, threshold_percentile=90):
-        """Identify semantic attractor regions where conversations tend to converge"""
-        print(f"\nIdentifying high-density semantic regions (top {100-threshold_percentile}% density)...")
+        """Identify embedding attractor regions where conversations tend to converge"""
+        print(f"\nIdentifying high-density embedding regions (top {100-threshold_percentile}% density)...")
         
         # Calculate local density for each point
         # Convert to numpy array
@@ -1072,43 +1477,178 @@ class SemanticTrajectoryAnalyzer:
         
         return high_density_mask, densities
     
-    def analyze_conversation_comprehensive(self, conversation, verbose=False):
-        """Run comprehensive analysis on a single conversation"""
-        # Existing analyses
-        conversation = self.embed_conversation(conversation, verbose=verbose)
-        conversation = self.calculate_trajectory_metrics(conversation)
+    def calculate_metric_reliability(self, conversation):
+        """Calculate reliability scores for each metric"""
+        reliability = {}
+        n_messages = len(conversation['embedded_messages'])
         
-        # New analyses
+        # Intrinsic dimension reliability
+        if 'full_dimensional_analysis' in conversation:
+            dim_analysis = conversation['full_dimensional_analysis']
+            if 'intrinsic_dimensionality' in dim_analysis:
+                id_data = dim_analysis['intrinsic_dimensionality']
+                
+                # Check convergence of estimates
+                if id_data.get('mle_dimension') and id_data.get('correlation_dimension'):
+                    relative_diff = abs(id_data['mle_dimension'] - id_data['correlation_dimension']) / id_data['mle_dimension']
+                    reliability['intrinsic_dim'] = 1.0 - min(relative_diff, 1.0)
+                elif id_data.get('consensus_dimension'):
+                    # Use consensus if available
+                    reliability['intrinsic_dim'] = 0.7
+                else:
+                    reliability['intrinsic_dim'] = 0.5
+                
+                # Boost reliability based on estimation quality
+                if id_data.get('estimation_quality') == 'high':
+                    reliability['intrinsic_dim'] = min(1.0, reliability['intrinsic_dim'] * 1.2)
+        
+        # Phase detection reliability (based on confidence of shifts)
+        if 'phase_metrics' in conversation:
+            transitions = conversation['phase_metrics'].get('transitions', [])
+            if transitions:
+                # High reliability if phase shifts are well-separated from background
+                shift_distances = [t['distance'] for t in transitions]
+                if len(shift_distances) > 1:
+                    mean_shift = np.mean(shift_distances)
+                    std_shift = np.std(shift_distances)
+                    z_scores = [(s - mean_shift) / std_shift for s in shift_distances] if std_shift > 0 else [0]
+                    reliability['phase_detection'] = min(np.mean(np.abs(z_scores)) / 2, 1.0)
+                else:
+                    reliability['phase_detection'] = 0.6
+            else:
+                reliability['phase_detection'] = 0.3
+        
+        # Distance metrics reliability (based on sample size)
+        if 'distance_analysis' in conversation:
+            # Reliability increases with conversation length
+            reliability['distance_metrics'] = min(1.0, n_messages / 200.0)
+        
+        # Trajectory metrics reliability
+        if 'trajectory_stats' in conversation:
+            # Check if trajectory is smooth vs erratic
+            traj = conversation['trajectory_stats']
+            if 'step_distances' in traj:
+                step_var = np.var(traj['step_distances'])
+                mean_step = np.mean(traj['step_distances'])
+                cv = np.sqrt(step_var) / mean_step if mean_step > 0 else 1.0
+                reliability['trajectory'] = max(0.3, 1.0 - min(cv, 1.0))
+        
+        # Add to conversation data
+        conversation['metric_reliability'] = reliability
+        
+        return reliability
+    
+    def analyze_conversation_comprehensive(self, conversation, verbose=False, use_checkpoint=True):
+        """Run comprehensive analysis on a single conversation with checkpoint support"""
+        session_id = conversation['metadata']['session_id']
+        
+        # Try to load existing checkpoint if enabled
+        if use_checkpoint:
+            checkpoint_conv = self.load_conversation_checkpoint(session_id)
+            if checkpoint_conv:
+                # Merge loaded data with current conversation
+                conversation.update(checkpoint_conv)
+                completed_steps = self.get_completed_analysis_steps(conversation)
+                if verbose:
+                    print(f"Loaded checkpoint with {len(completed_steps)} completed steps")
+            else:
+                completed_steps = set()
+        else:
+            completed_steps = set()
+        
+        # Define analysis steps in order
+        analysis_steps = [
+            ('embedding', lambda c: self.embed_conversation(c, verbose=verbose)),
+            ('trajectory_metrics', lambda c: self.calculate_trajectory_metrics(c)),
+            ('phase_metrics', lambda c: self._add_phase_metrics(c)),
+            ('curvature_metrics', lambda c: self._add_curvature_metrics(c)),
+            ('coherence_windows', lambda c: self._add_coherence_windows(c)),
+            ('convergence_analysis', lambda c: self._add_convergence_analysis(c)),
+            ('speaker_dynamics', lambda c: self._add_speaker_dynamics(c)),
+            ('information_flow', lambda c: self._add_information_flow(c)),
+            ('full_dimensional_analysis', lambda c: self._add_full_dimensional_analysis(c)),
+            ('distance_analysis', lambda c: self._add_distance_analysis(c)),
+            ('ensemble_invariants', lambda c: self._add_ensemble_invariants(c) if self.ensemble_mode else c),
+            ('metric_reliability', lambda c: self._add_metric_reliability(c))
+        ]
+        
+        # Run only the steps that haven't been completed
+        for step_name, step_func in analysis_steps:
+            if step_name not in completed_steps:
+                try:
+                    if verbose:
+                        print(f"Running {step_name}...")
+                    conversation = step_func(conversation)
+                    
+                    # Save checkpoint after each step
+                    if use_checkpoint:
+                        self.save_conversation_checkpoint(conversation, step_name)
+                        
+                except Exception as e:
+                    print(f"Error in {step_name}: {e}")
+                    # Save checkpoint even on error
+                    if use_checkpoint:
+                        self.save_conversation_checkpoint(conversation)
+                    raise
+            elif verbose:
+                print(f"Skipping {step_name} (already completed)")
+        
+        return conversation
+    
+    # Helper methods to wrap analysis functions
+    def _add_phase_metrics(self, conversation):
         phase_metrics = self.calculate_phase_transition_metrics(conversation)
         if phase_metrics:
             conversation['phase_metrics'] = phase_metrics
-        
+        return conversation
+    
+    def _add_curvature_metrics(self, conversation):
         curvature_metrics = self.calculate_trajectory_curvature(conversation)
         if curvature_metrics:
             conversation['curvature_metrics'] = curvature_metrics
-        
-        coherence_windows = self.calculate_semantic_coherence_windows(conversation)
+        return conversation
+    
+    def _add_coherence_windows(self, conversation):
+        coherence_windows = self.calculate_embedding_coherence_windows(conversation)
         conversation['coherence_windows'] = coherence_windows
-        
+        return conversation
+    
+    def _add_convergence_analysis(self, conversation):
+        convergence_analysis = self.detect_convergence_with_confidence(conversation)
+        if convergence_analysis:
+            conversation['convergence_analysis'] = convergence_analysis
+        return conversation
+    
+    def _add_speaker_dynamics(self, conversation):
         speaker_dynamics = self.analyze_speaker_dynamics(conversation)
         conversation['speaker_dynamics'] = speaker_dynamics
-        
+        return conversation
+    
+    def _add_information_flow(self, conversation):
         information_flow = self.calculate_information_flow(conversation)
         conversation['information_flow'] = information_flow
-        
-        # Full dimensional analysis
+        return conversation
+    
+    def _add_full_dimensional_analysis(self, conversation):
         full_dimensional = self.analyze_full_dimensional_structure(conversation)
         conversation['full_dimensional_analysis'] = full_dimensional
-        
-        # Distance matrix analysis
+        return conversation
+    
+    def _add_distance_analysis(self, conversation):
         distance_analysis = self.create_distance_matrices(conversation)
         conversation['distance_analysis'] = distance_analysis
-        
-        # Ensemble invariant analysis if enabled
-        if self.ensemble_mode:
-            invariant_patterns = self.find_ensemble_invariants(conversation)
-            conversation['invariant_patterns'] = invariant_patterns
-        
+        return conversation
+    
+    def _add_ensemble_invariants(self, conversation):
+        invariant_patterns = self.find_ensemble_invariants(conversation)
+        conversation['invariant_patterns'] = invariant_patterns
+        # Skip separate ensemble visualization - it's now included in the comprehensive figure
+        # self.visualize_ensemble_analysis(conversation)
+        return conversation
+    
+    def _add_metric_reliability(self, conversation):
+        reliability_scores = self.calculate_metric_reliability(conversation)
+        conversation['metric_reliability'] = reliability_scores
         return conversation
     
     def extract_feature_vector(self, conversation):
@@ -1128,22 +1668,33 @@ class SemanticTrajectoryAnalyzer:
             features['traj_total_distance'] = stats['total_distance']
             features['traj_acceleration'] = stats['distance_acceleration']
         
-        # Phase features
+        # Phase features with confidence intervals
         if 'phase_metrics' in conversation:
             phase_data = conversation['phase_metrics']
             features['num_phases'] = len(phase_data['phase_embeddings'])
             if phase_data['transitions']:
                 features['phase_mean_transition_dist'] = np.mean([t['distance'] for t in phase_data['transitions']])
                 features['phase_max_transition_dist'] = np.max([t['distance'] for t in phase_data['transitions']])
+                # Include confidence intervals if available
+                if 'distance_ci_lower' in phase_data['transitions'][0]:
+                    features['phase_mean_dist_ci_width'] = np.mean([
+                        t['distance_ci_upper'] - t['distance_ci_lower'] 
+                        for t in phase_data['transitions']
+                    ])
         
-        # Curvature features
+        # Curvature features with confidence intervals and normalization
         if 'curvature_metrics' in conversation:
             curv = conversation['curvature_metrics']
             features['curv_mean'] = curv['mean_curvature']
+            features['curv_mean_normalized'] = curv.get('mean_curvature_normalized', curv['mean_curvature'])
             features['curv_max'] = curv['max_curvature']
             features['curv_variance'] = curv['curvature_variance']
             features['accel_mean'] = curv['mean_acceleration']
             features['accel_variance'] = curv['acceleration_variance']
+            # Confidence interval widths
+            if 'mean_curvature_ci_lower' in curv:
+                features['curv_mean_ci_width'] = curv['mean_curvature_ci_upper'] - curv['mean_curvature_ci_lower']
+                features['curv_max_ci_width'] = curv['max_curvature_ci_upper'] - curv['max_curvature_ci_lower']
         
         # Coherence features
         if 'coherence_windows' in conversation:
@@ -1159,10 +1710,24 @@ class SemanticTrajectoryAnalyzer:
             features['turn_gap_mean'] = dynamics['mean_turn_gap'] or 0
             features['turn_gap_variance'] = dynamics['turn_gap_variance'] or 0
             
-            # Average semantic spread across speakers
-            spreads = [s['semantic_spread'] for s in dynamics['speaker_stats'].values()]
+            # Average embedding spread across speakers
+            spreads = [s['embedding_spread'] for s in dynamics['speaker_stats'].values()]
             features['speaker_spread_mean'] = np.mean(spreads)
-            features['speaker_spread_std'] = np.std(spreads)
+        
+        # Convergence features with confidence
+        if 'convergence_analysis' in conversation:
+            conv_analysis = conversation['convergence_analysis']
+            features['max_convergence_score'] = conv_analysis['max_convergence_score']
+            features['n_convergent_regions'] = conv_analysis['n_convergent_regions']
+            features['normalized_convergence_rate'] = conv_analysis['normalized_convergence_rate']
+            
+            # Average confidence interval width for convergence scores
+            if conv_analysis['convergence_scores']:
+                ci_widths = [s['score_ci_upper'] - s['score_ci_lower'] 
+                           for s in conv_analysis['convergence_scores'] 
+                           if s['score_ci_upper'] < float('inf')]
+                if ci_widths:
+                    features['convergence_ci_width_mean'] = np.mean(ci_widths)
         
         # Information flow features
         if 'information_flow' in conversation:
@@ -1199,7 +1764,7 @@ class SemanticTrajectoryAnalyzer:
         # Distance analysis features
         if 'distance_analysis' in conversation:
             dist = conversation['distance_analysis']
-            features['semantic_loops'] = dist['loop_count']
+            features['embedding_loops'] = dist['loop_count']
             features['recurrence_rate'] = dist['recurrence_stats']['recurrence_rate']
             features['determinism'] = dist['recurrence_stats']['determinism']
         
@@ -1215,11 +1780,726 @@ class SemanticTrajectoryAnalyzer:
         
         return features
     
+    def save_comprehensive_metadata(self):
+        """Save comprehensive metadata including all computed metrics and phase information"""
+        metadata_records = []
+        
+        for conv in self.conversations:
+            record = {
+                'session_id': conv['metadata']['session_id'],
+                'tier': conv.get('tier', 'unknown'),
+                'message_count': conv['metadata']['message_count'],
+                'speaker_count': len(set([m['speaker'] for m in conv['messages']])),
+                'phase_count': len(conv.get('phases', [])),
+                'selected_for_visualization': conv.get('selected_for_visualization', False)
+            }
+            
+            # Add phase names and transitions
+            if 'phases' in conv:
+                phase_names = [p['phase'] for p in conv['phases']]
+                record['phase_sequence'] = ' -> '.join(phase_names)
+                record['first_phase'] = phase_names[0] if phase_names else None
+                record['last_phase'] = phase_names[-1] if phase_names else None
+            
+            # Add key metrics if available
+            if 'trajectory_stats' in conv:
+                record['total_trajectory_distance'] = conv['trajectory_stats']['total_distance']
+                record['mean_turn_distance'] = conv['trajectory_stats']['mean_distance']
+            
+            if 'curvature_metrics' in conv:
+                record['mean_curvature'] = conv['curvature_metrics']['mean_curvature']
+                record['max_curvature'] = conv['curvature_metrics']['max_curvature']
+            
+            if 'full_dimensional_analysis' in conv:
+                fa = conv['full_dimensional_analysis']
+                if 'intrinsic_dimensionality' in fa and fa['intrinsic_dimensionality']['mle_dimension']:
+                    record['intrinsic_dimension'] = fa['intrinsic_dimensionality']['mle_dimension']
+                if 'dimensional_utilization' in fa:
+                    record['participation_ratio'] = fa['dimensional_utilization']['participation_ratio']
+            
+            if 'distance_matrix_stats' in conv:
+                dm = conv['distance_matrix_stats']
+                record['recurrence_rate'] = dm['recurrence_stats']['recurrence_rate']
+                record['embedding_loop_count'] = dm['loop_count']
+            
+            metadata_records.append(record)
+        
+        if metadata_records:
+            metadata_df = pd.DataFrame(metadata_records)
+            metadata_df.to_csv(self.output_dir / 'conversation_metadata.csv', index=False)
+            print(f"\nSaved comprehensive metadata for {len(metadata_df)} conversations")
+            
+            # Print summary statistics
+            print(f"  - Conversations with phases: {sum(1 for r in metadata_records if r['phase_count'] > 0)}")
+            print(f"  - Average phases per conversation: {metadata_df['phase_count'].mean():.1f}")
+            if 'intrinsic_dimension' in metadata_df.columns:
+                print(f"  - Average intrinsic dimension: {metadata_df['intrinsic_dimension'].mean():.2f}")
+    
+    def _calculate_adaptive_similarity_threshold(self, embeddings, percentile=90):
+        """Calculate model-specific similarity threshold"""
+        # Sample pairwise similarities
+        n = len(embeddings)
+        n_samples = min(1000, n * (n - 1) // 2)
+        
+        similarities = []
+        for _ in range(n_samples):
+            i, j = np.random.choice(n, 2, replace=False)
+            sim = 1 - self._safe_cosine(embeddings[i], embeddings[j])
+            similarities.append(sim)
+        
+        # Use percentile-based threshold
+        threshold = np.percentile(similarities, percentile)
+        
+        # Store model-specific statistics
+        self.similarity_stats = {
+            'mean': np.mean(similarities),
+            'std': np.std(similarities),
+            'percentiles': np.percentile(similarities, [10, 25, 50, 75, 90, 95, 99]),
+            'threshold': threshold
+        }
+        
+        return threshold
+    
+    def _calculate_ensemble_correlations(self, distance_matrices, self_similarities, model_names, n_messages):
+        """Calculate correlations between distance matrices"""
+        correlations = {}
+        for i in range(len(model_names)):
+            for j in range(i+1, len(model_names)):
+                model1, model2 = model_names[i], model_names[j]
+                triu_indices = np.triu_indices(n_messages, k=1)
+                dist1 = distance_matrices[model1][triu_indices]
+                dist2 = distance_matrices[model2][triu_indices]
+                
+                from scipy.stats import spearmanr
+                corr, p_value = spearmanr(dist1, dist2)
+                correlations[f'{model1}-{model2}'] = {
+                    'correlation': corr,
+                    'p_value': p_value
+                }
+        return correlations
+    
+    def _calculate_velocity_correlations(self, ensemble_embeddings, model_names):
+        """Calculate velocity profile correlations across models"""
+        velocity_profiles = {}
+        for model_name, embeddings in ensemble_embeddings.items():
+            if isinstance(embeddings, list) and embeddings and isinstance(embeddings[0], dict):
+                embeddings = [m['embedding'] for m in embeddings]
+            embeddings = np.array(embeddings)
+            
+            velocities = []
+            for i in range(1, len(embeddings)):
+                v = np.linalg.norm(embeddings[i] - embeddings[i-1])
+                velocities.append(v)
+            velocity_profiles[model_name] = velocities
+        
+        correlations = {}
+        for i in range(len(model_names)):
+            for j in range(i+1, len(model_names)):
+                model1, model2 = model_names[i], model_names[j]
+                from scipy.stats import pearsonr
+                corr, p_value = pearsonr(velocity_profiles[model1], velocity_profiles[model2])
+                correlations[f'{model1}-{model2}'] = {
+                    'correlation': corr,
+                    'p_value': p_value
+                }
+        return correlations
+    
+    def _calculate_topology_preservation(self, ensemble_embeddings, model_names):
+        """Calculate topology preservation between models"""
+        k = 10  # k-nearest neighbors
+        scores = {}
+        
+        # Convert embeddings to arrays
+        embeddings_arrays = {}
+        for model_name, embeddings in ensemble_embeddings.items():
+            if isinstance(embeddings, list) and embeddings and isinstance(embeddings[0], dict):
+                embeddings = [m['embedding'] for m in embeddings]
+            embeddings_arrays[model_name] = np.array(embeddings)
+        
+        for i in range(len(model_names)):
+            for j in range(i+1, len(model_names)):
+                model1, model2 = model_names[i], model_names[j]
+                
+                from sklearn.neighbors import NearestNeighbors
+                nbrs1 = NearestNeighbors(n_neighbors=min(k, len(embeddings_arrays[model1])))
+                nbrs2 = NearestNeighbors(n_neighbors=min(k, len(embeddings_arrays[model2])))
+                
+                nbrs1.fit(embeddings_arrays[model1])
+                nbrs2.fit(embeddings_arrays[model2])
+                
+                _, indices1 = nbrs1.kneighbors(embeddings_arrays[model1])
+                _, indices2 = nbrs2.kneighbors(embeddings_arrays[model2])
+                
+                preservation_scores = []
+                for idx in range(len(embeddings_arrays[model1])):
+                    neighbors1 = set(indices1[idx])
+                    neighbors2 = set(indices2[idx])
+                    preservation = len(neighbors1.intersection(neighbors2)) / min(k, len(embeddings_arrays[model1]))
+                    preservation_scores.append(preservation)
+                
+                scores[f'{model1}-{model2}'] = {
+                    'mean_preservation': np.mean(preservation_scores),
+                    'std_preservation': np.std(preservation_scores)
+                }
+        return scores
+    
+    def _create_correlation_matrix(self, correlations, model_names, metric_type):
+        """Create a symmetric correlation matrix from pairwise correlations"""
+        n = len(model_names)
+        matrix = np.eye(n)
+        
+        for i, m1 in enumerate(model_names):
+            for j, m2 in enumerate(model_names):
+                if i < j:
+                    key = f'{m1}-{m2}' if f'{m1}-{m2}' in correlations else f'{m2}-{m1}'
+                    if key in correlations:
+                        if metric_type == 'topology':
+                            value = correlations[key]['mean_preservation']
+                        else:
+                            value = correlations[key]['correlation']
+                        matrix[i, j] = matrix[j, i] = value
+        return matrix
+    
+    def _create_ensemble_summary_text(self, distance_corrs, velocity_corrs, topo_scores):
+        """Create summary text for ensemble analysis"""
+        all_dist_corrs = [v['correlation'] for v in distance_corrs.values()]
+        all_vel_corrs = [v['correlation'] for v in velocity_corrs.values()]
+        all_topo = [v['mean_preservation'] for v in topo_scores.values()]
+        
+        text = "Ensemble Summary\n" + "="*20 + "\n\n"
+        text += f"Distance Corr:\n  μ={np.mean(all_dist_corrs):.3f}\n  σ={np.std(all_dist_corrs):.3f}\n\n"
+        text += f"Velocity Corr:\n  μ={np.mean(all_vel_corrs):.3f}\n  σ={np.std(all_vel_corrs):.3f}\n\n"
+        text += f"Topology Pres:\n  μ={np.mean(all_topo):.3f}\n  σ={np.std(all_topo):.3f}\n"
+        return text
+    
+    def _add_phase_annotations_smart(self, ax, phase_info, n_messages):
+        """Add phase annotations with smart positioning to avoid overlap"""
+        if not phase_info:
+            return
+        
+        # Sort phases by start turn
+        sorted_phases = sorted(phase_info, key=lambda x: x['start_turn'])
+        
+        # Group phases that are close together
+        phase_groups = []
+        current_group = [sorted_phases[0]]
+        
+        for i in range(1, len(sorted_phases)):
+            # If phases are close (within 20 turns), group them
+            if sorted_phases[i]['start_turn'] - current_group[-1]['start_turn'] < 20:
+                current_group.append(sorted_phases[i])
+            else:
+                phase_groups.append(current_group)
+                current_group = [sorted_phases[i]]
+        phase_groups.append(current_group)
+        
+        # Add annotations for each group
+        for group_idx, group in enumerate(phase_groups):
+            # Calculate vertical positions for this group
+            group_y_start = n_messages - 10 - (group_idx * 15)
+            
+            for phase_idx, phase in enumerate(group):
+                start_turn = phase['start_turn']
+                if isinstance(phase['turn_range'], (list, tuple)) and len(phase['turn_range']) > 1:
+                    end_turn = min(phase['turn_range'][1], n_messages - 1)
+                else:
+                    end_turn = min(start_turn + 10, n_messages - 1)
+                
+                mid_turn = (start_turn + end_turn) // 2
+                phase_name = phase['name'].replace('_', ' ').title()
+                
+                # Alternate left/right positioning for adjacent phases
+                if phase_idx % 2 == 0:
+                    h_offset = -10
+                else:
+                    h_offset = 10
+                
+                annotation_x = mid_turn + h_offset
+                annotation_y = group_y_start - (phase_idx * 3)
+                
+                # Ensure annotation stays within plot bounds
+                annotation_x = max(5, min(annotation_x, n_messages - 5))
+                annotation_y = max(5, min(annotation_y, n_messages - 5))
+                
+                # Add connecting line
+                ax.plot([annotation_x, mid_turn], [annotation_y, start_turn],
+                       color='gray', linestyle=':', alpha=0.5, linewidth=1)
+                
+                # Add text annotation
+                ax.text(annotation_x, annotation_y, phase_name,
+                       ha='center', va='center', fontsize=10,
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='yellow', alpha=0.8),
+                       rotation=0, weight='bold')
+                
+                # Add colored bar to show phase extent
+                from matplotlib.patches import Rectangle
+                ax.add_patch(Rectangle((start_turn, start_turn),
+                                     end_turn - start_turn, 2,
+                                     facecolor=plt.cm.tab10(phase_idx % 10), alpha=0.7))
+    
+    def _add_phase_annotations_edges(self, ax, phase_info, n_messages):
+        """Add phase annotations on the edges (top and left) of the plot"""
+        if not phase_info:
+            return
+        
+        # Sort phases by start turn
+        sorted_phases = sorted(phase_info, key=lambda x: x['start_turn'])
+        
+        # Colors for phases
+        colors = plt.cm.tab10(np.linspace(0, 1, 10))
+        
+        for phase_idx, phase in enumerate(sorted_phases):
+            start_turn = phase['start_turn']
+            if start_turn >= n_messages or start_turn < 0:
+                continue
+                
+            phase_name = phase['name'].replace('_', ' ').title()
+            color = colors[phase_idx % 10]
+            
+            # Calculate phase end
+            if phase_idx < len(sorted_phases) - 1:
+                end_turn = sorted_phases[phase_idx + 1]['start_turn']
+            else:
+                end_turn = n_messages
+            
+            mid_turn = (start_turn + end_turn) / 2
+            
+            # Add annotation on top edge
+            ax.text(mid_turn, n_messages + 2, phase_name,
+                   ha='center', va='bottom', fontsize=10,
+                   bbox=dict(boxstyle="round,pad=0.3", facecolor=color, alpha=0.8),
+                   rotation=45, weight='bold')
+            
+            # Add annotation on left edge
+            ax.text(-2, mid_turn, phase_name,
+                   ha='right', va='center', fontsize=10,
+                   bbox=dict(boxstyle="round,pad=0.3", facecolor=color, alpha=0.8),
+                   rotation=0, weight='bold')
+            
+            # Add colored bars on the edges to show phase extent
+            # Top edge bar
+            from matplotlib.patches import Rectangle
+            ax.add_patch(Rectangle((start_turn, n_messages - 1),
+                                 end_turn - start_turn, 2,
+                                 facecolor=color, alpha=0.7,
+                                 transform=ax.transData))
+            # Left edge bar
+            ax.add_patch(Rectangle((-2, start_turn),
+                                 2, end_turn - start_turn,
+                                 facecolor=color, alpha=0.7,
+                                 transform=ax.transData))
+    
+    def create_ensemble_distance_matrices(self, conversation, save_individual=True):
+        """Create distance matrices for all ensemble models"""
+        ensemble_embeddings = conversation['ensemble_embeddings']
+        model_names = list(ensemble_embeddings.keys())
+        n_models = len(model_names)
+        n_messages = len(conversation['messages'])
+        
+        # Create a comprehensive figure with multiple sections
+        # Section 1: Distance matrices and trajectories (4 rows)
+        # Section 2: Ensemble analysis (1 row) - removed summary
+        # Section 3: Large annotated recurrence plot (4 rows - much larger)
+        total_rows = 9
+        fig = plt.figure(figsize=(5*n_models, 45))
+        
+        # Create GridSpec for flexible layout
+        from matplotlib.gridspec import GridSpec
+        gs = GridSpec(total_rows, n_models + 1, figure=fig, hspace=0.4, wspace=0.3)  # Added column for legend, more spacing
+        
+        # Store distance matrices for correlation analysis
+        distance_matrices = {}
+        self_similarities = {}
+        
+        # Get phase information if available
+        phase_info = []
+        if 'phase_metrics' in conversation and 'phase_embeddings' in conversation['phase_metrics']:
+            phase_embeddings = conversation['phase_metrics']['phase_embeddings']
+            for phase_name, phase_data in phase_embeddings.items():
+                phase_info.append({
+                    'name': phase_name,
+                    'start_turn': phase_data['start_turn'],
+                    'turn_range': phase_data['turn_range']
+                })
+            phase_info.sort(key=lambda x: x['start_turn'])
+        
+        # Create distance matrices for each model
+        for idx, (model_name, embeddings) in enumerate(ensemble_embeddings.items()):
+            # Handle different possible formats
+            if isinstance(embeddings, dict):
+                # If it's a dict, it might be the full embedded_messages structure
+                # Try to extract just the embeddings
+                if 'embedded_messages' in embeddings:
+                    embeddings = [m['embedding'] for m in embeddings['embedded_messages']]
+                else:
+                    # Unknown dict structure
+                    raise ValueError(f"Unexpected dict structure for {model_name} embeddings")
+            elif isinstance(embeddings, list) and embeddings and isinstance(embeddings[0], dict):
+                # List of embedded message dicts
+                embeddings = [m['embedding'] for m in embeddings]
+            
+            # Ensure embeddings is a proper 2D numpy array
+            embeddings = np.array(embeddings)
+            if embeddings.ndim == 3:
+                # If there's an extra dimension, squeeze it
+                embeddings = embeddings.squeeze()
+            # Ensure it's 2D (n_messages, embedding_dim)
+            if embeddings.ndim == 1:
+                embeddings = embeddings.reshape(1, -1)
+            
+            # Compute distances with GPU if available
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    device = torch.device('cuda')
+                    try:
+                        embeddings_tensor = torch.from_numpy(embeddings).float().to(device)
+                    except Exception as e:
+                        print(f"Error converting embeddings to tensor for {model_name}: {e}")
+                        print(f"Embeddings type: {type(embeddings)}, shape: {embeddings.shape if hasattr(embeddings, 'shape') else 'no shape'}")
+                        raise
+                    
+                    # Euclidean distances
+                    diff = embeddings_tensor.unsqueeze(0) - embeddings_tensor.unsqueeze(1)
+                    euclidean_distances = torch.norm(diff, dim=2).cpu().numpy()
+                    
+                    # Cosine distances
+                    norms = torch.norm(embeddings_tensor, dim=1, keepdim=True)
+                    # Avoid division by zero
+                    norms = torch.clamp(norms, min=1e-8)
+                    normalized = embeddings_tensor / norms
+                    try:
+                        cosine_sim = torch.mm(normalized, normalized.t())
+                    except Exception as e:
+                        print(f"Error in torch.mm for {model_name}: {e}")
+                        print(f"normalized type: {type(normalized)}, shape: {normalized.shape}")
+                        raise
+                    cosine_distances = (1 - cosine_sim).cpu().numpy()
+                else:
+                    raise RuntimeError("No GPU")
+            except Exception as e:
+                if "dict" in str(e):
+                    print(f"Dict error caught in GPU path for {model_name}")
+                    raise
+                # CPU fallback
+                euclidean_distances = np.zeros((n_messages, n_messages))
+                cosine_distances = np.zeros((n_messages, n_messages))
+                for i in range(n_messages):
+                    for j in range(n_messages):
+                        # Ensure vectors are 1-D for scipy distance functions
+                        vec_i = embeddings[i].flatten()
+                        vec_j = embeddings[j].flatten()
+                        euclidean_distances[i, j] = self._safe_euclidean(vec_i, vec_j)
+                        cosine_distances[i, j] = self._safe_cosine(vec_i, vec_j)
+            
+            # Store for correlation analysis
+            distance_matrices[model_name] = euclidean_distances
+            self_similarities[model_name] = 1 - cosine_distances
+            
+            # Create subplots for this model using GridSpec
+            ax1 = fig.add_subplot(gs[0, idx])  # Row 0: Euclidean distances
+            ax2 = fig.add_subplot(gs[1, idx])  # Row 1: Self-similarity
+            ax3 = fig.add_subplot(gs[2, idx])  # Row 2: Recurrence plots
+            ax4 = fig.add_subplot(gs[3, idx])  # Row 3: Trajectory
+            
+            # Plot euclidean distances
+            im1 = ax1.imshow(euclidean_distances, cmap='viridis', aspect='auto')
+            ax1.set_title(f'{model_name}\nEuclidean Distance')
+            ax1.set_xlabel('Turn')
+            if idx == 0:
+                ax1.set_ylabel('Turn')
+            
+            # Plot self-similarity
+            im2 = ax2.imshow(self_similarities[model_name], cmap='RdBu_r', aspect='auto', vmin=0, vmax=1)
+            ax2.set_title(f'Self-Similarity')
+            ax2.set_xlabel('Turn')
+            if idx == 0:
+                ax2.set_ylabel('Turn')
+            
+            # Add phase boundaries if available
+            if phase_info:
+                for phase in phase_info:
+                    start_turn = phase['start_turn']
+                    if start_turn < n_messages and start_turn > 0:
+                        ax1.axhline(y=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
+                        ax1.axvline(x=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
+                        ax2.axhline(y=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
+                        ax2.axvline(x=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
+            
+            # Create recurrence plot for third row
+            # Calculate adaptive threshold for this model
+            # Use a more permissive threshold to ensure we see patterns
+            sim_flat = self_similarities[model_name].flatten()
+            # Use 85th percentile instead of mean + 2*std which might be too strict
+            model_threshold = np.percentile(sim_flat, 85)
+            recurrence_matrix = self_similarities[model_name] > model_threshold
+            
+            # If still too few points, adjust threshold
+            recurrence_rate = np.sum(recurrence_matrix) / (n_messages * n_messages)
+            if recurrence_rate < 0.01:  # Less than 1% recurrence is too sparse
+                # Use 75th percentile instead
+                model_threshold = np.percentile(sim_flat, 75)
+                recurrence_matrix = self_similarities[model_name] > model_threshold
+            
+            # Plot recurrence
+            ax3.imshow(recurrence_matrix, cmap='binary', aspect='auto')
+            ax3.set_title(f'Recurrence Plot')
+            ax3.set_xlabel('Turn')
+            if idx == 0:
+                ax3.set_ylabel('Turn')
+            
+            # Phase boundaries omitted - shown in detail in the large bottom panel
+            
+            # Row 4: Add trajectory visualization
+            # Reduce to 2D for visualization
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=2)
+            reduced_embeddings = pca.fit_transform(embeddings)
+            
+            # Create trajectory plot
+            ax4.plot(reduced_embeddings[:, 0], reduced_embeddings[:, 1], 'b-', alpha=0.5, linewidth=1)
+            
+            # Color points by phase if available
+            if phase_info:
+                colors_traj = plt.cm.tab10(np.linspace(0, 1, 10))
+                sorted_phases_traj = sorted(phase_info, key=lambda x: x['start_turn'])
+                
+                for phase_idx, phase in enumerate(sorted_phases_traj):
+                    start_turn = phase['start_turn']
+                    if phase_idx < len(sorted_phases_traj) - 1:
+                        end_turn = sorted_phases_traj[phase_idx + 1]['start_turn']
+                    else:
+                        end_turn = n_messages
+                    
+                    # Use same distinct colors as the bottom plot
+                    distinct_colors_traj = plt.cm.tab20(np.linspace(0, 1, 20))
+                    phase_color = distinct_colors_traj[phase_idx % 20]
+                    # Plot points in this phase
+                    phase_points = reduced_embeddings[start_turn:end_turn]
+                    if len(phase_points) > 0:
+                        ax4.scatter(phase_points[:, 0], phase_points[:, 1], 
+                                  c=[phase_color], s=20, alpha=0.7, edgecolors='black', linewidth=0.5)
+            else:
+                # Just show all points colored by time
+                ax4.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], 
+                          c=range(n_messages), cmap='viridis', s=20, alpha=0.7)
+            
+            # Mark start and end
+            ax4.scatter(reduced_embeddings[0, 0], reduced_embeddings[0, 1], 
+                      c='green', s=80, marker='^', edgecolors='black', linewidth=1.5, zorder=5)
+            ax4.scatter(reduced_embeddings[-1, 0], reduced_embeddings[-1, 1], 
+                      c='red', s=80, marker='v', edgecolors='black', linewidth=1.5, zorder=5)
+            
+            ax4.set_title(f'Trajectory (PCA)')
+            ax4.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.0%})')
+            if idx == 0:
+                ax4.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.0%})')
+            
+            # Add grid for better readability
+            ax4.grid(True, alpha=0.3)
+            ax4.set_aspect('equal', adjustable='box')
+        
+        # Section 2: Ensemble Analysis Visualizations
+        # Row 4: Correlation matrices - make them all the same size
+        # Calculate positions to center the 3 correlation plots
+        corr_start_col = max(0, (n_models - 3) // 2)
+        ax_dist_corr = fig.add_subplot(gs[4, corr_start_col])
+        ax_vel_corr = fig.add_subplot(gs[4, corr_start_col + 1]) if n_models >= 2 else None
+        ax_topo = fig.add_subplot(gs[4, corr_start_col + 2]) if n_models >= 3 else None
+        
+        # Calculate and visualize ensemble metrics
+        correlations = self._calculate_ensemble_correlations(distance_matrices, self_similarities, 
+                                                           model_names, n_messages)
+        
+        # Distance correlations heatmap
+        corr_matrix = self._create_correlation_matrix(correlations, model_names, 'distance')
+        sns.heatmap(corr_matrix, annot=True, fmt='.3f', xticklabels=model_names,
+                   yticklabels=model_names, cmap='RdBu_r', center=0.5, ax=ax_dist_corr,
+                   vmin=0, vmax=1, cbar_kws={'label': 'Correlation'})
+        ax_dist_corr.set_title('Distance Matrix Correlations')
+        
+        # Velocity correlations
+        if ax_vel_corr is not None:
+            velocity_corrs = self._calculate_velocity_correlations(ensemble_embeddings, model_names)
+            vel_corr_matrix = self._create_correlation_matrix(velocity_corrs, model_names, 'velocity')
+            sns.heatmap(vel_corr_matrix, annot=True, fmt='.3f', xticklabels=model_names,
+                       yticklabels=model_names, cmap='RdBu_r', center=0.5, ax=ax_vel_corr,
+                       vmin=0, vmax=1, cbar_kws={'label': 'Correlation'})
+            ax_vel_corr.set_title('Velocity Profile Correlations')
+        
+        # Topology preservation
+        if ax_topo is not None:
+            topo_scores = self._calculate_topology_preservation(ensemble_embeddings, model_names)
+            topo_matrix = self._create_correlation_matrix(topo_scores, model_names, 'topology')
+            sns.heatmap(topo_matrix, annot=True, fmt='.3f', xticklabels=model_names,
+                       yticklabels=model_names, cmap='Greens', vmin=0, vmax=1,
+                       cbar_kws={'label': 'Preservation'}, ax=ax_topo)
+            ax_topo.set_title('Topology Preservation')
+        
+        # Summary statistics removed to avoid overlap
+        
+        # Section 3: Large annotated recurrence plot for primary model
+        # Use most of the remaining space (4 rows) for a large plot
+        # Leave last column for color key
+        ax_large = fig.add_subplot(gs[5:9, :n_models])  # Rows 5-8, all model columns
+        
+        # Get primary model data
+        primary_self_sim = self_similarities[self.model_name]
+        sim_flat = primary_self_sim.flatten()
+        threshold = np.percentile(sim_flat, 85)
+        recurrence_matrix = primary_self_sim > threshold
+        
+        # First add phase shading if available
+        if phase_info:
+            # Use more distinct colors for phases
+            distinct_colors = plt.cm.tab20(np.linspace(0, 1, 20))
+            
+            # Sort phases by start turn
+            sorted_phases = sorted(phase_info, key=lambda x: x['start_turn'])
+            
+            for phase_idx, phase in enumerate(sorted_phases):
+                start_turn = phase['start_turn']
+                if start_turn >= n_messages or start_turn < 0:
+                    continue
+                    
+                # Calculate phase end
+                if phase_idx < len(sorted_phases) - 1:
+                    end_turn = sorted_phases[phase_idx + 1]['start_turn']
+                else:
+                    end_turn = n_messages
+                
+                color = distinct_colors[phase_idx % 20]
+                
+                # Add shaded regions (rectangles) with higher opacity for visibility
+                from matplotlib.patches import Rectangle
+                # Horizontal band
+                ax_large.add_patch(Rectangle((0, start_turn), n_messages, end_turn - start_turn,
+                                           facecolor=color, alpha=0.35, zorder=1))
+                # Vertical band  
+                ax_large.add_patch(Rectangle((start_turn, 0), end_turn - start_turn, n_messages,
+                                           facecolor=color, alpha=0.35, zorder=1))
+        
+        # Now plot the recurrence matrix on top
+        ax_large.imshow(recurrence_matrix, cmap='binary', aspect='equal', interpolation='nearest',
+                       extent=[0, n_messages, n_messages, 0], zorder=2)
+        
+        # Add phase boundaries
+        if phase_info:
+            for phase in phase_info:
+                start_turn = phase['start_turn']
+                if start_turn < n_messages and start_turn > 0:
+                    ax_large.axhline(y=start_turn, color='red', linestyle='--', alpha=0.8, linewidth=2, zorder=3)
+                    ax_large.axvline(x=start_turn, color='red', linestyle='--', alpha=0.8, linewidth=2, zorder=3)
+        
+        ax_large.set_title(f'Detailed Recurrence Plot with Phase Regions ({self.model_name})', fontsize=16)
+        ax_large.set_xlabel('Turn', fontsize=14) 
+        ax_large.set_ylabel('Turn', fontsize=14)
+        ax_large.set_xlim(0, n_messages)
+        ax_large.set_ylim(0, n_messages)
+        ax_large.invert_yaxis()  # Match typical recurrence plot orientation
+        
+        # Add color key legend on the right
+        if phase_info:
+            ax_legend = fig.add_subplot(gs[5:9, n_models])  # Last column, rows 5-8
+            ax_legend.axis('off')
+            
+            # Create legend entries
+            from matplotlib.patches import Patch
+            legend_elements = []
+            sorted_phases = sorted(phase_info, key=lambda x: x['start_turn'])
+            
+            for phase_idx, phase in enumerate(sorted_phases):
+                phase_name = phase['name'].replace('_', ' ').title()
+                color = distinct_colors[phase_idx % 20]
+                legend_elements.append(Patch(facecolor=color, alpha=0.8, label=phase_name))
+            
+            # Add the legend
+            legend = ax_legend.legend(handles=legend_elements, loc='center', 
+                                    title='Conversation Phases', fontsize=12,
+                                    title_fontsize=14, frameon=True, fancybox=True,
+                                    shadow=True)
+            legend.get_frame().set_alpha(0.9)
+            legend.get_frame().set_facecolor('white')
+            legend.get_frame().set_edgecolor('gray')
+        
+        # Overall title
+        plt.suptitle(f"Comprehensive Ensemble Analysis - {conversation['metadata']['session_id'][:12]}", 
+                    fontsize=16, y=0.99)
+        
+        if save_individual:
+            distance_dir = self.output_dir / 'distance_matrices'
+            distance_dir.mkdir(exist_ok=True)
+            
+            session_id = conversation['metadata']['session_id']
+            tier = conversation.get('tier', 'unknown')
+            filename = f"{tier}_{session_id[:12]}_ensemble_comprehensive.png"
+            output_path = distance_dir / filename
+            
+            plt.savefig(output_path, dpi=300, bbox_inches='tight')
+            conversation['ensemble_distance_matrix_path'] = str(output_path)
+        
+        plt.close()
+        
+        # Calculate cross-model correlations
+        correlations = {}
+        model_pairs = [(model_names[i], model_names[j]) 
+                      for i in range(n_models) for j in range(i+1, n_models)]
+        
+        for model1, model2 in model_pairs:
+            # Compare distance matrices
+            triu_indices = np.triu_indices(n_messages, k=1)
+            dist1 = distance_matrices[model1][triu_indices]
+            dist2 = distance_matrices[model2][triu_indices]
+            
+            from scipy.stats import spearmanr
+            corr, p_value = spearmanr(dist1, dist2)
+            correlations[f'{model1}-{model2}'] = {
+                'correlation': corr,
+                'p_value': p_value
+            }
+        
+        # Analyze loops and patterns (using primary model for consistency)
+        primary_embeddings = np.array([m['embedding'] for m in conversation['embedded_messages']])
+        primary_self_sim = self_similarities[self.model_name]
+        
+        # Find loops with adaptive threshold
+        threshold = self._calculate_adaptive_similarity_threshold(primary_embeddings)
+        loops = []
+        min_loop_size = max(10, n_messages // 20)
+        
+        for i in range(n_messages):
+            for j in range(i + min_loop_size, n_messages):
+                if primary_self_sim[i, j] > threshold:
+                    loops.append({
+                        'start': i,
+                        'end': j,
+                        'similarity': primary_self_sim[i, j],
+                        'loop_size': j - i,
+                        'z_score': (primary_self_sim[i, j] - self.similarity_stats['mean']) / self.similarity_stats['std']
+                    })
+        
+        # Return comprehensive results
+        return {
+            'distance_matrices': distance_matrices,
+            'self_similarities': self_similarities,
+            'cross_model_correlations': correlations,
+            'mean_correlation': np.mean([c['correlation'] for c in correlations.values()]),
+            'embedding_loops': loops[:10],
+            'loop_count': len(loops),
+            'phase_info': phase_info
+        }
+    
     def create_distance_matrices(self, conversation, save_individual=True):
             """Create and analyze distance matrices in full embedding space"""
             messages = conversation['embedded_messages']
             embeddings = np.array([m['embedding'] for m in messages])
             n = len(embeddings)
+            
+            # If ensemble mode, create distance matrices for all models
+            if self.ensemble_mode and 'ensemble_embeddings' in conversation:
+                return self.create_ensemble_distance_matrices(conversation, save_individual)
+            
+            # Otherwise continue with single model analysis
             
             # Get phase information if available
             phase_info = []
@@ -1234,34 +2514,74 @@ class SemanticTrajectoryAnalyzer:
                 # Sort by start turn
                 phase_info.sort(key=lambda x: x['start_turn'])
             
-            # Compute full distance matrices
-            euclidean_distances = np.zeros((n, n))
-            cosine_distances = np.zeros((n, n))
-            
-            for i in range(n):
-                for j in range(n):
-                    euclidean_distances[i, j] = euclidean(embeddings[i], embeddings[j])
-                    cosine_distances[i, j] = cosine(embeddings[i], embeddings[j])
+            # Compute full distance matrices with GPU acceleration if available
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    # GPU-accelerated distance computation
+                    device = torch.device('cuda')
+                    embeddings_tensor = torch.from_numpy(embeddings).float().to(device)
+                    
+                    # Euclidean distances using broadcasting
+                    diff = embeddings_tensor.unsqueeze(0) - embeddings_tensor.unsqueeze(1)
+                    euclidean_distances = torch.norm(diff, dim=2).cpu().numpy()
+                    
+                    # Cosine distances
+                    # Normalize embeddings
+                    normalized = embeddings_tensor / torch.norm(embeddings_tensor, dim=1, keepdim=True)
+                    # Compute cosine similarity matrix
+                    cosine_sim = torch.mm(normalized, normalized.t())
+                    cosine_distances = (1 - cosine_sim).cpu().numpy()
+                else:
+                    raise RuntimeError("No GPU available")
+                    
+            except Exception as e:
+                # Fallback to CPU computation
+                euclidean_distances = np.zeros((n, n))
+                cosine_distances = np.zeros((n, n))
+                
+                for i in range(n):
+                    for j in range(n):
+                        # Ensure vectors are 1-D for scipy distance functions
+                        vec_i = embeddings[i].flatten()
+                        vec_j = embeddings[j].flatten()
+                        euclidean_distances[i, j] = self._safe_euclidean(vec_i, vec_j)
+                        cosine_distances[i, j] = self._safe_cosine(vec_i, vec_j)
             
             # Analyze distance patterns
             # 1. Self-similarity matrix (for detecting returns to topics)
             self_similarity = 1 - cosine_distances
             
-            # 2. Recurrence analysis
-            threshold = np.percentile(euclidean_distances[np.triu_indices(n, k=1)], 10)
-            recurrence_matrix = euclidean_distances < threshold
+            # 2. Recurrence analysis using FAN (Fixed Amount of Neighbors) method
+            # FAN method: each point has a fixed number of neighbors
+            # This is more robust than arbitrary threshold selection
+            k_neighbors = max(2, int(0.05 * n))  # 5% of points as neighbors, min 2
+            recurrence_matrix = np.zeros((n, n), dtype=bool)
             
-            # 3. Find semantic loops (returns to similar content)
+            for i in range(n):
+                # Find k nearest neighbors for each point
+                distances_from_i = euclidean_distances[i, :]
+                # Exclude self (distance 0)
+                neighbor_indices = np.argsort(distances_from_i)[1:k_neighbors+1]
+                recurrence_matrix[i, neighbor_indices] = True
+                recurrence_matrix[neighbor_indices, i] = True  # Symmetric
+            
+            # 3. Find embedding loops with adaptive threshold
+            # Calculate adaptive threshold
+            threshold = self._calculate_adaptive_similarity_threshold(embeddings)
+            
             loops = []
-            min_loop_size = 10  # Minimum turns between revisits
+            min_loop_size = max(10, n // 20)  # Dynamic min loop size
+            
             for i in range(n):
                 for j in range(i + min_loop_size, n):
-                    if self_similarity[i, j] > 0.9:  # High similarity
+                    if self_similarity[i, j] > threshold:
                         loops.append({
                             'start': i,
                             'end': j,
                             'similarity': self_similarity[i, j],
-                            'loop_size': j - i
+                            'loop_size': j - i,
+                            'z_score': (self_similarity[i, j] - self.similarity_stats['mean']) / self.similarity_stats['std']
                         })
             
             # 4. Analyze distance distribution
@@ -1362,7 +2682,7 @@ class SemanticTrajectoryAnalyzer:
                     'determinism': self._calculate_determinism(recurrence_matrix),
                     'max_diagonal_length': self._max_diagonal_length(recurrence_matrix)
                 },
-                'semantic_loops': loops[:10],  # Top 10 loops
+                'embedding_loops': loops[:10],  # Top 10 loops
                 'loop_count': len(loops)
             }
     
@@ -1458,14 +2778,14 @@ class SemanticTrajectoryAnalyzer:
         
         original_distances = []
         for i, j in sample_pairs:
-            original_distances.append(euclidean(embeddings[i], embeddings[j]))
+            original_distances.append(self._safe_euclidean(embeddings[i], embeddings[j]))
         original_distances = np.array(original_distances)
         
         # Calculate preservation for each method
         for method, projection in projections.items():
             projected_distances = []
             for i, j in sample_pairs:
-                projected_distances.append(euclidean(projection[i], projection[j]))
+                projected_distances.append(self._safe_euclidean(projection[i], projection[j]))
             projected_distances = np.array(projected_distances)
             
             # Spearman correlation
@@ -1508,15 +2828,15 @@ class SemanticTrajectoryAnalyzer:
         return preservation_metrics    
         
     def analyze_full_dimensional_structure(self, conversation):
-        """Analyze semantic structure in full embedding space (no dimensionality reduction)"""
+        """Analyze embedding structure in full embedding space (no dimensionality reduction)"""
         messages = conversation['embedded_messages']
         embeddings = np.array([m['embedding'] for m in messages])
         
         results = {
             'intrinsic_dimensionality': self._estimate_intrinsic_dimensionality(embeddings),
-            'semantic_axes': self._identify_semantic_axes(embeddings),
+            'embedding_axes': self._identify_embedding_axes(embeddings),
             'trajectory_smoothness': self._calculate_trajectory_smoothness(embeddings),
-            'semantic_velocity_profile': self._analyze_velocity_profile(embeddings),
+            'embedding_velocity_profile': self._analyze_velocity_profile(embeddings),
             'phase_separability': self._analyze_phase_separability(conversation),
             'dimensional_utilization': self._analyze_dimensional_utilization(embeddings)
         }
@@ -1524,42 +2844,140 @@ class SemanticTrajectoryAnalyzer:
         return results
     
     def _estimate_intrinsic_dimensionality(self, embeddings):
-        """Estimate the intrinsic dimensionality using MLE and correlation dimension"""
+        """Estimate the intrinsic dimensionality with confidence intervals"""
         from sklearn.neighbors import NearestNeighbors
+        from scipy import stats
         
-        k = min(20, len(embeddings) // 2)
+        n_samples = len(embeddings)
+        
+        # More robust k selection for 150-250 message conversations
+        k = min(50, n_samples // 3)  # Increased from 20 to 50
+        
+        # Add sample size validation
+        if n_samples < 100:
+            print(f"Warning: Sample size {n_samples} may be too small for reliable dimensionality estimation")
+        
         nbrs = NearestNeighbors(n_neighbors=k)
         nbrs.fit(embeddings)
         distances, _ = nbrs.kneighbors(embeddings)
         
-        # MLE estimate (Levina-Bickel method)
-        distances = distances[:, 1:]  # Exclude self
-        log_distances = np.log(distances + 1e-10)
+        # Use TWO-NN estimator (Facco et al. 2017) - more robust
+        distances_excl_self = distances[:, 1:]  # Exclude self
+        ratios = distances[:, 2] / distances[:, 1]  # ratio of 2nd to 1st neighbor
+        ratios = ratios[ratios > 1]  # Remove any numerical errors
+        
+        # MLE dimension estimate
+        if len(ratios) > 0:
+            mu = np.mean(np.log(ratios))
+            mle_dimension_twonn = 2 / mu
+        else:
+            mle_dimension_twonn = None
+        
+        # Original Levina-Bickel for comparison
+        log_distances = np.log(distances_excl_self + 1e-10)
         mle_dims = []
         
-        for i in range(len(embeddings)):
+        for i in range(n_samples):
             if np.max(log_distances[i]) > np.min(log_distances[i]):
                 dim_estimate = (k - 1) / np.sum(log_distances[i] - np.min(log_distances[i]))
                 if 0 < dim_estimate < self.embedding_dim:  # Sanity check
                     mle_dims.append(dim_estimate)
         
-        # Correlation dimension
-        r_values = np.logspace(-2, 0, 20)
-        correlation_dims = []
+        # Bootstrap for confidence intervals
+        n_bootstrap = 1000
+        bootstrap_estimates = []
         
-        for r in r_values:
-            count = np.sum(distances < r)
-            if count > 0:
-                correlation_dims.append(np.log(count) / np.log(r + 1e-10))
+        if mle_dims:
+            for _ in range(n_bootstrap):
+                # Resample with replacement
+                bootstrap_indices = np.random.choice(len(mle_dims), len(mle_dims), replace=True)
+                bootstrap_sample = [mle_dims[i] for i in bootstrap_indices]
+                bootstrap_estimates.append(np.median(bootstrap_sample))
+            
+            mle_median = np.median(mle_dims)
+            mle_ci_lower = np.percentile(bootstrap_estimates, 2.5)
+            mle_ci_upper = np.percentile(bootstrap_estimates, 97.5)
+        else:
+            mle_median = None
+            mle_ci_lower = None
+            mle_ci_upper = None
+        
+        # Use more robust correlation dimension estimation
+        # Increase sample size and points
+        n_pairs = min(5000, n_samples * (n_samples - 1) // 2)  # Increased from 1000
+        sampled_distances = []
+        
+        for _ in range(n_pairs):
+            i, j = np.random.choice(n_samples, 2, replace=False)
+            dist = np.linalg.norm(embeddings[i] - embeddings[j])
+            if dist > 0:
+                sampled_distances.append(dist)
+        
+        sampled_distances = np.array(sampled_distances)
+        
+        if len(sampled_distances) > 10:
+            # Find linear region in log-log plot
+            r_min, r_max = np.percentile(sampled_distances, [10, 90])
+            r_values = np.logspace(np.log10(r_min), np.log10(r_max), 15)
+            
+            correlation_counts = []
+            for r in r_values:
+                count = np.sum(sampled_distances < r) / len(sampled_distances)
+                correlation_counts.append(count)
+            
+            # Fit in linear region only
+            log_r = np.log(r_values)
+            log_counts = np.log(np.array(correlation_counts) + 1e-10)
+            
+            # Find region with best linear fit
+            valid_mask = (np.array(correlation_counts) > 0.1) & (np.array(correlation_counts) < 0.9)
+            
+            if np.sum(valid_mask) > 3:
+                slope, intercept, r_value, p_value, std_err = stats.linregress(
+                    log_r[valid_mask], log_counts[valid_mask]
+                )
+                
+                # 95% confidence interval
+                t_value = stats.t.ppf(0.975, np.sum(valid_mask) - 2)
+                correlation_dim = slope
+                correlation_ci_lower = slope - t_value * std_err
+                correlation_ci_upper = slope + t_value * std_err
+            else:
+                correlation_dim = None
+                correlation_ci_lower = None
+                correlation_ci_upper = None
+        else:
+            correlation_dim = None
+            correlation_ci_lower = None
+            correlation_ci_upper = None
+        
+        # Add consensus estimate
+        estimates = []
+        if mle_dimension_twonn and mle_dimension_twonn < self.embedding_dim:
+            estimates.append(mle_dimension_twonn)
+        if mle_median:
+            estimates.append(mle_median)
+        if correlation_dim and correlation_dim < self.embedding_dim:
+            estimates.append(correlation_dim)
+        
+        consensus_estimate = np.median(estimates) if estimates else None
         
         return {
-            'mle_dimension': np.median(mle_dims) if mle_dims else None,
-            'correlation_dimension': np.median(correlation_dims) if correlation_dims else None,
-            'effective_rank': np.linalg.matrix_rank(embeddings - embeddings.mean(axis=0))
+            'mle_dimension': mle_median,
+            'mle_dimension_twonn': mle_dimension_twonn,  # New, more robust
+            'consensus_dimension': consensus_estimate,    # New
+            'estimation_quality': 'high' if n_samples > 150 else 'moderate',
+            'mle_ci_lower': mle_ci_lower,
+            'mle_ci_upper': mle_ci_upper,
+            'correlation_dimension': correlation_dim,
+            'correlation_ci_lower': correlation_ci_lower,
+            'correlation_ci_upper': correlation_ci_upper,
+            'effective_rank': np.linalg.matrix_rank(embeddings - embeddings.mean(axis=0)),
+            'n_samples': n_samples
         }
     
-    def _identify_semantic_axes(self, embeddings):
-        """Identify primary semantic axes using PCA in full space"""
+    def _identify_embedding_axes(self, embeddings):
+        """Identify primary embedding axes using PCA in full space"""
         from sklearn.decomposition import PCA
         
         # Center the embeddings
@@ -1645,7 +3063,7 @@ class SemanticTrajectoryAnalyzer:
         }
     
     def _analyze_velocity_profile(self, embeddings):
-        """Analyze how semantic velocity changes over conversation"""
+        """Analyze how embedding velocity changes over conversation"""
         if len(embeddings) < 2:
             return None
         
@@ -1800,8 +3218,8 @@ class SemanticTrajectoryAnalyzer:
             ax.set_title('Dimensional Variance Distribution')
         
         # 2. Velocity profile
-        if 'semantic_velocity_profile' in full_analysis:
-            vel_profile = full_analysis['semantic_velocity_profile']
+        if 'embedding_velocity_profile' in full_analysis:
+            vel_profile = full_analysis['embedding_velocity_profile']
             ax = axes[0, 1]
             quarters = vel_profile['velocity_quarters']
             x = [q['quarter'] for q in quarters]
@@ -1809,7 +3227,7 @@ class SemanticTrajectoryAnalyzer:
             err = [q['std_velocity'] for q in quarters]
             ax.errorbar(x, y, yerr=err, marker='o')
             ax.set_xlabel('Conversation Quarter')
-            ax.set_ylabel('Mean Semantic Velocity')
+            ax.set_ylabel('Mean Embedding Velocity')
             ax.set_title('Velocity Profile Over Time')
         
         # 3. Phase separability
@@ -1848,8 +3266,8 @@ class SemanticTrajectoryAnalyzer:
             ax.legend()
         
         # 5. Explained variance curve
-        if 'semantic_axes' in full_analysis:
-            axes_data = full_analysis['semantic_axes']
+        if 'embedding_axes' in full_analysis:
+            axes_data = full_analysis['embedding_axes']
             ax = axes[1, 1]
             components = [c['component'] for c in axes_data['top_components']]
             variance = [c['variance_explained'] for c in axes_data['top_components']]
@@ -1883,16 +3301,580 @@ class SemanticTrajectoryAnalyzer:
         plt.close()
         
         return full_analysis
+    
+    def create_synthetic_validation(self):
+        """Create synthetic conversations with known properties for validation"""
+        print("\n" + "="*70)
+        print("SYNTHETIC VALIDATION")
+        print("="*70)
+        
+        synthetic_conversations = []
+        
+        # 1. Linear trajectory (no breakdown)
+        print("Creating synthetic linear trajectory...")
+        linear_points = []
+        direction = np.random.randn(self.embedding_dim)
+        direction = direction / np.linalg.norm(direction)
+        
+        for i in range(50):
+            point = i * 0.1 * direction + np.random.randn(self.embedding_dim) * 0.01
+            linear_points.append(point)
+        
+        synthetic_conversations.append({
+            'type': 'linear',
+            'embeddings': np.array(linear_points),
+            'expected_curvature': 'low',
+            'expected_phases': 1,
+            'expected_dimension': 1,
+            'expected_convergence': False
+        })
+        
+        # 2. Spiral trajectory (gradual drift)
+        print("Creating synthetic spiral trajectory...")
+        spiral_points = []
+        for i in range(50):
+            t = i * 0.2
+            # Spiral in 3D subspace
+            point = np.zeros(self.embedding_dim)
+            point[0] = t * np.cos(t) * 0.1
+            point[1] = t * np.sin(t) * 0.1
+            point[2] = t * 0.05
+            point += np.random.randn(self.embedding_dim) * 0.01
+            spiral_points.append(point)
+        
+        synthetic_conversations.append({
+            'type': 'spiral',
+            'embeddings': np.array(spiral_points),
+            'expected_curvature': 'medium',
+            'expected_phases': 2,
+            'expected_dimension': 3,
+            'expected_convergence': False
+        })
+        
+        # 3. Convergent trajectory (attractor)
+        print("Creating synthetic convergent trajectory...")
+        convergent_points = []
+        attractor = np.random.randn(self.embedding_dim)
+        
+        for i in range(50):
+            if i < 20:
+                # Random walk phase
+                if i == 0:
+                    point = np.random.randn(self.embedding_dim)
+                else:
+                    point = convergent_points[-1] + np.random.randn(self.embedding_dim) * 0.1
+            else:
+                # Convergence phase
+                alpha = 0.9  # Convergence rate
+                point = alpha * convergent_points[-1] + (1 - alpha) * attractor
+                point += np.random.randn(self.embedding_dim) * 0.01
+            convergent_points.append(point)
+        
+        synthetic_conversations.append({
+            'type': 'convergent',
+            'embeddings': np.array(convergent_points),
+            'expected_curvature': 'high',
+            'expected_phases': 2,
+            'expected_dimension': 2,
+            'expected_convergence': True
+        })
+        
+        # 4. Phase transition trajectory
+        print("Creating synthetic phase transition trajectory...")
+        phase_points = []
+        phase_centers = [np.random.randn(self.embedding_dim) for _ in range(3)]
+        
+        for i in range(50):
+            if i < 17:
+                center = phase_centers[0]
+            elif i < 34:
+                center = phase_centers[1]
+            else:
+                center = phase_centers[2]
+            
+            point = center + np.random.randn(self.embedding_dim) * 0.05
+            phase_points.append(point)
+        
+        synthetic_conversations.append({
+            'type': 'phase_transition',
+            'embeddings': np.array(phase_points),
+            'expected_curvature': 'low',
+            'expected_phases': 3,
+            'expected_dimension': 2,
+            'expected_convergence': False
+        })
+        
+        # Analyze synthetic conversations
+        print("\nAnalyzing synthetic conversations...")
+        validation_results = []
+        
+        for synth_conv in synthetic_conversations:
+            # Create conversation-like structure
+            conv = {
+                'embedded_messages': [{'embedding': emb, 'turn': i, 'speaker': 'synthetic'} 
+                                    for i, emb in enumerate(synth_conv['embeddings'])],
+                'metadata': {'session_id': f"synthetic_{synth_conv['type']}", 'message_count': len(synth_conv['embeddings'])}
+            }
+            
+            # Run analyses
+            conv = self.calculate_trajectory_metrics(conv)
+            conv = self.calculate_trajectory_curvature(conv)
+            
+            # Simplified phase detection
+            detected_phases = self.detect_embedding_phases(conv)
+            
+            # Extract metrics
+            actual_curvature = conv['curvature_metrics']['mean_curvature']
+            actual_phases = len(detected_phases)
+            
+            # Compare with expected
+            result = {
+                'type': synth_conv['type'],
+                'expected_curvature': synth_conv['expected_curvature'],
+                'actual_curvature': actual_curvature,
+                'curvature_category': 'low' if actual_curvature < 0.5 else 'medium' if actual_curvature < 1.0 else 'high',
+                'expected_phases': synth_conv['expected_phases'],
+                'actual_phases': actual_phases,
+                'phase_detection_accurate': abs(actual_phases - synth_conv['expected_phases']) <= 1
+            }
+            
+            validation_results.append(result)
+            
+        # Report results
+        print("\nSynthetic Validation Results:")
+        print("-" * 50)
+        for result in validation_results:
+            print(f"\n{result['type'].upper()}:")
+            print(f"  Curvature: expected={result['expected_curvature']}, actual={result['curvature_category']} ({result['actual_curvature']:.3f})")
+            print(f"  Phases: expected={result['expected_phases']}, actual={result['actual_phases']}, accurate={result['phase_detection_accurate']}")
+        
+        # Save results
+        pd.DataFrame(validation_results).to_csv(self.output_dir / 'synthetic_validation_results.csv', index=False)
+        print("\nSaved synthetic validation results")
+        
+        return validation_results
+    
+    def generate_null_model_conversations(self, n_conversations=100, conversation_length=100):
+        """Generate null model conversations for hypothesis testing
+        
+        Null models test whether observed patterns could arise by chance.
+        We create several types of null models:
+        1. Random walk in embedding space
+        2. Shuffled real embeddings (preserves distribution)
+        3. Markov chain based on transition probabilities
+        """
+        null_conversations = []
+        
+        # Get distribution of real embeddings if available
+        real_embeddings = []
+        if hasattr(self, 'conversations') and self.conversations:
+            for conv in self.conversations[:50]:  # Sample from first 50
+                if 'embedded_messages' in conv:
+                    real_embeddings.extend([m['embedding'] for m in conv['embedded_messages']])
+        real_embeddings = np.array(real_embeddings) if real_embeddings else None
+        
+        for i in range(n_conversations):
+            null_type = i % 3  # Cycle through null model types
+            
+            if null_type == 0:
+                # Type 1: Random walk in embedding space
+                embeddings = []
+                current_point = np.random.randn(self.embedding_dim)
+                
+                for _ in range(conversation_length):
+                    # Random step with controlled magnitude
+                    step = np.random.randn(self.embedding_dim) * 0.1
+                    current_point = current_point + step
+                    # Normalize to unit sphere (like many embedding models)
+                    current_point = current_point / np.linalg.norm(current_point)
+                    embeddings.append(current_point.copy())
+                    
+                conv_type = 'random_walk'
+                
+            elif null_type == 1 and real_embeddings is not None:
+                # Type 2: Shuffled real embeddings
+                indices = np.random.choice(len(real_embeddings), conversation_length, replace=True)
+                embeddings = [real_embeddings[idx].copy() for idx in indices]
+                np.random.shuffle(embeddings)  # Break temporal structure
+                conv_type = 'shuffled_real'
+                
+            else:
+                # Type 3: Markov chain (simple transition model)
+                embeddings = []
+                
+                if real_embeddings is not None and len(real_embeddings) > 10:
+                    # Create simple clusters
+                    from sklearn.cluster import KMeans
+                    n_states = min(5, len(real_embeddings) // 20)
+                    kmeans = KMeans(n_clusters=n_states, n_init=3)
+                    kmeans.fit(real_embeddings[:1000])  # Fit on subset
+                    
+                    # Transition matrix (random)
+                    transition_matrix = np.random.dirichlet(np.ones(n_states), size=n_states)
+                    
+                    # Generate sequence
+                    current_state = np.random.randint(n_states)
+                    for _ in range(conversation_length):
+                        # Sample from current cluster with noise
+                        center = kmeans.cluster_centers_[current_state]
+                        noise = np.random.randn(self.embedding_dim) * 0.1
+                        embeddings.append(center + noise)
+                        
+                        # Transition to next state
+                        current_state = np.random.choice(n_states, p=transition_matrix[current_state])
+                else:
+                    # Fallback to random walk
+                    current_point = np.random.randn(self.embedding_dim)
+                    for _ in range(conversation_length):
+                        step = np.random.randn(self.embedding_dim) * 0.1
+                        current_point = current_point + step
+                        embeddings.append(current_point.copy())
+                
+                conv_type = 'markov_chain'
+            
+            # Create conversation structure
+            null_conv = {
+                'metadata': {
+                    'session_id': f'null_{conv_type}_{i}',
+                    'message_count': conversation_length,
+                    'null_model_type': conv_type
+                },
+                'messages': [{'content': f'null_msg_{j}', 'speaker': 'null'} 
+                           for j in range(conversation_length)],
+                'embedded_messages': [{'embedding': emb, 'turn': j} 
+                                    for j, emb in enumerate(embeddings)],
+                'is_null_model': True
+            }
+            
+            null_conversations.append(null_conv)
+        
+        return null_conversations
+    
+    def validate_length_normalization(self):
+        """Validate that length normalization removes conversation length bias"""
+        print("\n" + "="*70)
+        print("VALIDATING LENGTH NORMALIZATION")
+        print("="*70)
+        
+        # Group conversations by length bins
+        length_bins = [(0, 50), (50, 100), (100, 150), (150, 200), (200, float('inf'))]
+        bin_stats = {f"{low}-{high}": [] for low, high in length_bins}
+        
+        for conv in self.conversations:
+            if 'trajectory_stats' not in conv:
+                continue
+                
+            length = conv['trajectory_stats']['conversation_length']
+            total_dist = conv['trajectory_stats']['total_distance']
+            total_dist_norm = conv['trajectory_stats']['total_distance_normalized']
+            
+            # Find appropriate bin
+            for low, high in length_bins:
+                if low <= length < high:
+                    bin_name = f"{low}-{high if high != float('inf') else '+'}"
+                    bin_stats[bin_name].append({
+                        'length': length,
+                        'total_distance': total_dist,
+                        'normalized_distance': total_dist_norm
+                    })
+                    break
+        
+        # Calculate correlations
+        all_lengths = []
+        all_distances = []
+        all_normalized = []
+        
+        for bin_data in bin_stats.values():
+            for item in bin_data:
+                all_lengths.append(item['length'])
+                all_distances.append(item['total_distance'])
+                all_normalized.append(item['normalized_distance'])
+        
+        if len(all_lengths) > 10:
+            # Correlation before normalization
+            corr_before, p_before = pearsonr(all_lengths, all_distances)
+            # Correlation after normalization
+            corr_after, p_after = pearsonr(all_lengths, all_normalized)
+            
+            print(f"\nLength-Distance Correlation:")
+            print(f"  Before normalization: r={corr_before:.3f} (p={p_before:.6f})")
+            print(f"  After normalization: r={corr_after:.3f} (p={p_after:.6f})")
+            
+            if abs(corr_after) < abs(corr_before) * 0.5:
+                print("✓ Normalization successfully reduces length bias")
+            else:
+                print("⚠️  WARNING: Normalization may not be adequately removing length bias")
+            
+            # Print bin statistics
+            print("\nMean normalized distance by conversation length:")
+            for bin_name, bin_data in bin_stats.items():
+                if bin_data:
+                    mean_norm = np.mean([d['normalized_distance'] for d in bin_data])
+                    std_norm = np.std([d['normalized_distance'] for d in bin_data])
+                    n = len(bin_data)
+                    print(f"  {bin_name} messages (n={n}): {mean_norm:.3f} ± {std_norm:.3f}")
+    
+    def compare_to_null_models(self, real_conversations, n_null=100):
+        """Compare real conversation metrics to null models"""
+        print("\n" + "="*70)
+        print("NULL MODEL COMPARISON")
+        print("="*70)
+        
+        # Generate null conversations
+        avg_length = int(np.mean([len(c['embedded_messages']) for c in real_conversations[:20]]))
+        null_conversations = self.generate_null_model_conversations(n_null, avg_length)
+        
+        # Analyze null conversations
+        print("Analyzing null model conversations...")
+        null_analyzed = []
+        for null_conv in tqdm(null_conversations, desc="Processing null models"):
+            analyzed = self.embed_conversation(null_conv)
+            analyzed = self.calculate_trajectory_metrics(analyzed)
+            analyzed = self.calculate_trajectory_curvature(analyzed)
+            analyzed = self.detect_convergence_with_confidence(analyzed)
+            null_analyzed.append(analyzed)
+        
+        # Extract metrics for comparison
+        metrics_to_compare = [
+            ('mean_curvature', 'curvature_metrics'),
+            ('total_distance_normalized', 'trajectory_stats'),
+            ('normalized_convergence_rate', 'convergence_analysis')
+        ]
+        
+        comparison_results = {}
+        
+        for metric_name, metric_location in metrics_to_compare:
+            # Extract real values
+            real_values = []
+            for conv in real_conversations:
+                if metric_location in conv and conv[metric_location]:
+                    if metric_name in conv[metric_location]:
+                        real_values.append(conv[metric_location][metric_name])
+            
+            # Extract null values
+            null_values = []
+            for conv in null_analyzed:
+                if metric_location in conv and conv[metric_location]:
+                    if metric_name in conv[metric_location]:
+                        null_values.append(conv[metric_location][metric_name])
+            
+            if real_values and null_values:
+                # Statistical comparison
+                from scipy.stats import mannwhitneyu, ks_2samp
+                
+                # Mann-Whitney U test
+                u_stat, p_mw = mannwhitneyu(real_values, null_values, alternative='two-sided')
+                
+                # Kolmogorov-Smirnov test
+                ks_stat, p_ks = ks_2samp(real_values, null_values)
+                
+                # Effect size (Cohen's d)
+                mean_real = np.mean(real_values)
+                mean_null = np.mean(null_values)
+                std_pooled = np.sqrt((np.var(real_values) + np.var(null_values)) / 2)
+                cohens_d = (mean_real - mean_null) / std_pooled if std_pooled > 0 else 0
+                
+                comparison_results[metric_name] = {
+                    'mean_real': mean_real,
+                    'mean_null': mean_null,
+                    'std_real': np.std(real_values),
+                    'std_null': np.std(null_values),
+                    'mann_whitney_u': u_stat,
+                    'p_value_mw': p_mw,
+                    'ks_statistic': ks_stat,
+                    'p_value_ks': p_ks,
+                    'cohens_d': cohens_d,
+                    'n_real': len(real_values),
+                    'n_null': len(null_values),
+                    'significantly_different': p_mw < 0.05
+                }
+                
+                print(f"\n{metric_name}:")
+                print(f"  Real: {mean_real:.3f} ± {np.std(real_values):.3f}")
+                print(f"  Null: {mean_null:.3f} ± {np.std(null_values):.3f}")
+                print(f"  Mann-Whitney p-value: {p_mw:.6f}")
+                print(f"  Effect size (Cohen's d): {cohens_d:.3f}")
+                print(f"  Significantly different from null: {p_mw < 0.05}")
+        
+        # Save results
+        comparison_df = pd.DataFrame(comparison_results).T
+        comparison_df.to_csv(self.output_dir / 'null_model_comparison.csv')
+        print("\nSaved null model comparison results")
+        
+        return comparison_results, null_analyzed
+    
+    def perturbation_analysis(self, conversation, n_perturbations=10):
+        """Analyze trajectory stability under message perturbations"""
+        messages = conversation['messages']
+        original_embeddings = np.array([m['embedding'] for m in conversation['embedded_messages']])
+        
+        perturbation_results = []
+        
+        # Different perturbation types
+        perturbation_types = [
+            ('paraphrase', 0.1),  # Small embedding shift
+            ('noise', 0.05),      # Random noise
+            ('synonym', 0.15),    # Larger embedding shift
+        ]
+        
+        for perturb_type, perturb_strength in perturbation_types:
+            for _ in range(n_perturbations):
+                # Create perturbed embeddings
+                perturbed_embeddings = original_embeddings.copy()
+                
+                if perturb_type == 'noise':
+                    # Add Gaussian noise
+                    noise = np.random.randn(*original_embeddings.shape) * perturb_strength
+                    perturbed_embeddings += noise
+                    
+                elif perturb_type == 'paraphrase':
+                    # Simulate paraphrase by small directed perturbation
+                    for i in range(len(perturbed_embeddings)):
+                        direction = np.random.randn(self.embedding_dim)
+                        direction = direction / np.linalg.norm(direction)
+                        perturbed_embeddings[i] += direction * perturb_strength
+                        
+                elif perturb_type == 'synonym':
+                    # Simulate synonym replacement by larger perturbation
+                    # Randomly perturb 20% of messages
+                    n_perturb = int(0.2 * len(perturbed_embeddings))
+                    indices = np.random.choice(len(perturbed_embeddings), n_perturb, replace=False)
+                    for idx in indices:
+                        direction = np.random.randn(self.embedding_dim)
+                        direction = direction / np.linalg.norm(direction)
+                        perturbed_embeddings[idx] += direction * perturb_strength
+                
+                # Calculate trajectory differences
+                # 1. Point-wise distances
+                point_distances = np.array([np.linalg.norm(original_embeddings[i] - perturbed_embeddings[i]) 
+                                          for i in range(len(original_embeddings))])
+                
+                # 2. Trajectory shape similarity (Procrustes distance)
+                # Center both trajectories
+                orig_centered = original_embeddings - original_embeddings.mean(axis=0)
+                pert_centered = perturbed_embeddings - perturbed_embeddings.mean(axis=0)
+                
+                # Optimal rotation via SVD
+                H = orig_centered.T @ pert_centered
+                U, _, Vt = np.linalg.svd(H)
+                R = Vt.T @ U.T
+                
+                # Apply rotation and calculate residual
+                pert_aligned = pert_centered @ R
+                procrustes_dist = np.linalg.norm(orig_centered - pert_aligned) / np.linalg.norm(orig_centered)
+                
+                # 3. Phase preservation
+                orig_phases = self.detect_embedding_phases({'embedded_messages': [{'embedding': e} for e in original_embeddings]})
+                pert_phases = self.detect_embedding_phases({'embedded_messages': [{'embedding': e} for e in perturbed_embeddings]})
+                
+                phase_preservation = 1.0 - abs(len(orig_phases) - len(pert_phases)) / max(len(orig_phases), 1)
+                
+                perturbation_results.append({
+                    'perturbation_type': perturb_type,
+                    'perturbation_strength': perturb_strength,
+                    'mean_point_distance': np.mean(point_distances),
+                    'max_point_distance': np.max(point_distances),
+                    'procrustes_distance': procrustes_dist,
+                    'phase_preservation': phase_preservation,
+                    'n_original_phases': len(orig_phases),
+                    'n_perturbed_phases': len(pert_phases)
+                })
+        
+        return pd.DataFrame(perturbation_results)
 
-    def detect_semantic_phases(self, conversation, window_size=10, threshold_percentile=75):
-        """Automatically detect conversation phases based on semantic shifts"""
+    def phase_detection_sensitivity_analysis(self, conversation):
+        """Analyze sensitivity of phase detection to parameter choices"""
+        messages = conversation['embedded_messages']
+        manual_phases = conversation.get('phases', [])
+        
+        # Use dynamic tolerance based on conversation length
+        conversation_length = len(messages)
+        tolerance = max(5, int(conversation_length * 0.03))  # 3% of conversation length
+        
+        # Test different parameter combinations
+        window_sizes = [10, 15, 20, 25]  # Added 25 for longer conversations
+        threshold_percentiles = [60, 70, 75, 80, 85, 90]
+        
+        results = []
+        
+        for window_size in window_sizes:
+            for threshold_percentile in threshold_percentiles:
+                detected_phases = self.detect_embedding_phases(
+                    conversation, 
+                    window_size=window_size,
+                    threshold_percentile=threshold_percentile
+                )
+                
+                # Improved phase matching with Hungarian algorithm
+                if manual_phases and detected_phases:
+                    from scipy.optimize import linear_sum_assignment
+                    
+                    # Create cost matrix based on turn distances
+                    manual_turns = [p['turn'] for p in manual_phases]
+                    detected_turns = [p['turn'] for p in detected_phases]
+                    
+                    cost_matrix = np.zeros((len(manual_turns), len(detected_turns)))
+                    for i, mt in enumerate(manual_turns):
+                        for j, dt in enumerate(detected_turns):
+                            cost_matrix[i, j] = abs(mt - dt)
+                    
+                    # Find optimal assignment
+                    row_ind, col_ind = linear_sum_assignment(cost_matrix)
+                    
+                    # Count matches within tolerance
+                    matches = 0
+                    for i, j in zip(row_ind, col_ind):
+                        if cost_matrix[i, j] <= tolerance:
+                            matches += 1
+                    
+                    # Calculate metrics based on optimal matching
+                    precision = matches / len(detected_turns) if detected_turns else 0
+                    recall = matches / len(manual_turns) if manual_turns else 0
+                    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+                    
+                    # Add temporal accuracy metric
+                    if matches > 0:
+                        matched_distances = [cost_matrix[i, j] for i, j in zip(row_ind, col_ind) 
+                                           if cost_matrix[i, j] <= tolerance]
+                        avg_temporal_error = np.mean(matched_distances)
+                    else:
+                        avg_temporal_error = conversation_length  # Max penalty
+                    
+                    results.append({
+                        'window_size': window_size,
+                        'threshold_percentile': threshold_percentile,
+                        'n_detected': len(detected_phases),
+                        'n_manual': len(manual_phases),
+                        'precision': precision,
+                        'recall': recall,
+                        'f1_score': f1_score,
+                        'avg_temporal_error': avg_temporal_error,
+                        'tolerance_used': tolerance
+                    })
+                else:
+                    results.append({
+                        'window_size': window_size,
+                        'threshold_percentile': threshold_percentile,
+                        'n_detected': len(detected_phases),
+                        'n_manual': len(manual_phases),
+                        'precision': 0,
+                        'recall': 0,
+                        'f1_score': 0,
+                        'avg_temporal_error': conversation_length,
+                        'tolerance_used': tolerance
+                    })
+        
+        return pd.DataFrame(results)
+    
+    def detect_embedding_phases(self, conversation, window_size=10, threshold_percentile=75):
+        """Automatically detect conversation phases based on embedding shifts"""
         messages = conversation['embedded_messages']
         
         if len(messages) < window_size * 2:
             return []
         
-        # Calculate semantic shift at each point
-        semantic_shifts = []
+        # Calculate embedding shift at each point
+        embedding_shifts = []
         for i in range(window_size, len(messages) - window_size):
             # Compare windows before and after this point
             before_window = [m['embedding'] for m in messages[i-window_size:i]]
@@ -1903,28 +3885,28 @@ class SemanticTrajectoryAnalyzer:
             after_centroid = np.mean(after_window, axis=0)
             
             # Measure shift
-            shift = euclidean(before_centroid, after_centroid)
-            semantic_shifts.append({
+            shift = self._safe_euclidean(before_centroid, after_centroid)
+            embedding_shifts.append({
                 'turn': i,
                 'shift': shift
             })
         
         # Find significant shifts (peaks above threshold)
-        if semantic_shifts:
-            shifts_array = np.array([s['shift'] for s in semantic_shifts])
+        if embedding_shifts:
+            shifts_array = np.array([s['shift'] for s in embedding_shifts])
             threshold = np.percentile(shifts_array, threshold_percentile)
             
             # Find local maxima above threshold
             detected_phases = []
-            for i in range(1, len(semantic_shifts) - 1):
-                if (semantic_shifts[i]['shift'] > threshold and
-                    semantic_shifts[i]['shift'] > semantic_shifts[i-1]['shift'] and
-                    semantic_shifts[i]['shift'] > semantic_shifts[i+1]['shift']):
+            for i in range(1, len(embedding_shifts) - 1):
+                if (embedding_shifts[i]['shift'] > threshold and
+                    embedding_shifts[i]['shift'] > embedding_shifts[i-1]['shift'] and
+                    embedding_shifts[i]['shift'] > embedding_shifts[i+1]['shift']):
                     
                     detected_phases.append({
-                        'turn': semantic_shifts[i]['turn'],
+                        'turn': embedding_shifts[i]['turn'],
                         'phase': f'auto_phase_{len(detected_phases)+1}',
-                        'shift_magnitude': semantic_shifts[i]['shift']
+                        'shift_magnitude': embedding_shifts[i]['shift']
                     })
             
             # Add labels based on conversation position
@@ -1965,11 +3947,68 @@ class SemanticTrajectoryAnalyzer:
             dist_matrix = np.zeros((n_messages, n_messages))
             for i in range(n_messages):
                 for j in range(n_messages):
-                    dist_matrix[i, j] = euclidean(embeddings[i], embeddings[j])
+                    dist_matrix[i, j] = self._safe_euclidean(embeddings[i], embeddings[j])
             distance_matrices[model_name] = dist_matrix
         
-        # Compare all pairs
-        from scipy.stats import spearmanr
+        # Compare all pairs with baseline random correlations
+        from scipy.stats import spearmanr, permutation_test
+        
+        # Generate random baseline by shuffling embeddings
+        def generate_random_baseline(embeddings, n_permutations=100):
+            """Generate stronger baseline that preserves some temporal structure"""
+            n = len(embeddings)
+            random_correlations = []
+            
+            for _ in range(n_permutations):
+                # Method 1: Block shuffle (preserves local structure)
+                block_size = 10
+                n_blocks = n // block_size
+                blocks = [embeddings[i*block_size:(i+1)*block_size] for i in range(n_blocks)]
+                if n % block_size > 0:
+                    blocks.append(embeddings[n_blocks*block_size:])
+                
+                np.random.shuffle(blocks)
+                block_shuffled = np.vstack(blocks)
+                
+                # Method 2: AR(1) surrogate (preserves autocorrelation)
+                # Generate surrogate that matches mean, std, and autocorrelation
+                mean = np.mean(embeddings, axis=0)
+                std = np.std(embeddings, axis=0)
+                
+                # Estimate AR(1) coefficient
+                autocorr = np.mean([np.corrcoef(embeddings[:-1, i], embeddings[1:, i])[0, 1] 
+                                   for i in range(embeddings.shape[1]) 
+                                   if np.std(embeddings[:, i]) > 0])
+                
+                # Generate AR(1) process
+                ar1_surrogate = np.zeros_like(embeddings)
+                ar1_surrogate[0] = np.random.randn(embeddings.shape[1]) * std + mean
+                
+                for t in range(1, n):
+                    innovation = np.random.randn(embeddings.shape[1]) * std * np.sqrt(max(0, 1 - autocorr**2))
+                    ar1_surrogate[t] = autocorr * (ar1_surrogate[t-1] - mean) + mean + innovation
+                
+                # Use both baselines
+                for surrogate in [block_shuffled, ar1_surrogate]:
+                    dist_surrogate = np.zeros((n, n))
+                    for i in range(n):
+                        for j in range(n):
+                            dist_surrogate[i, j] = self._safe_euclidean(surrogate[i], surrogate[j])
+                    
+                    triu_indices = np.triu_indices(n, k=1)
+                    original_dist = distance_matrices[model_names[0]][triu_indices]
+                    surrogate_dist = dist_surrogate[triu_indices]
+                    corr, _ = spearmanr(original_dist, surrogate_dist)
+                    random_correlations.append(corr)
+            
+            return np.array(random_correlations)
+        
+        # Get baseline correlations
+        baseline_embeddings = list(embeddings_dict.values())[0]
+        baseline_correlations = generate_random_baseline(baseline_embeddings, n_permutations=100)
+        baseline_mean = np.mean(baseline_correlations)
+        baseline_std = np.std(baseline_correlations)
+        
         for i in range(n_models):
             for j in range(i+1, n_models):
                 model1, model2 = model_names[i], model_names[j]
@@ -1977,9 +4016,23 @@ class SemanticTrajectoryAnalyzer:
                 dist1 = distance_matrices[model1][triu_indices]
                 dist2 = distance_matrices[model2][triu_indices]
                 corr, p_value = spearmanr(dist1, dist2)
+                
+                # Normalize by baseline
+                normalized_corr = (corr - baseline_mean) / baseline_std
+                
+                # Test if correlation is significantly different from random baseline
+                z_score = (corr - baseline_mean) / baseline_std
+                from scipy.stats import norm
+                significance = 2 * (1 - norm.cdf(abs(z_score)))
+                
                 invariants['distance_correlations'][f'{model1}-{model2}'] = {
                     'correlation': corr,
-                    'p_value': p_value
+                    'normalized_correlation': normalized_corr,
+                    'p_value': p_value,
+                    'baseline_mean': baseline_mean,
+                    'baseline_std': baseline_std,
+                    'z_score': z_score,
+                    'significant_vs_baseline': significance < 0.05
                 }
         
         # 2. Velocity Profile Correlations
@@ -2124,8 +4177,8 @@ class SemanticTrajectoryAnalyzer:
                         late1 = np.mean(traj1[-len(traj1)//3:], axis=0)
                         late2 = np.mean(traj2[-len(traj2)//3:], axis=0)
                         
-                        early_sim = 1 - cosine(early1, early2)
-                        late_sim = 1 - cosine(late1, late2)
+                        early_sim = 1 - self._safe_cosine(early1, early2)
+                        late_sim = 1 - self._safe_cosine(late1, late2)
                         convergence = late_sim - early_sim
                         
                         model_convergence[f'{s1}-{s2}'] = convergence
@@ -2276,10 +4329,10 @@ class SemanticTrajectoryAnalyzer:
 
     def generate_report(self):
         """Generate a comprehensive analysis report"""
-        report_path = self.output_dir / 'semantic_trajectory_report.txt'
+        report_path = self.output_dir / 'embedding_trajectory_report.txt'
         
         with open(report_path, 'w') as f:
-            f.write("SEMANTIC TRAJECTORY ANALYSIS REPORT\n")
+            f.write("EMBEDDING TRAJECTORY ANALYSIS REPORT\n")
             f.write("="*50 + "\n\n")
             
             f.write(f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -2300,7 +4353,7 @@ class SemanticTrajectoryAnalyzer:
                 f.write(f"    Messages: {conv['metadata']['message_count']}\n")
                 if 'trajectory_stats' in conv:
                     stats = conv['trajectory_stats']
-                    f.write(f"    Mean semantic distance: {stats['mean_distance']:.3f}\n")
+                    f.write(f"    Mean embedding distance: {stats['mean_distance']:.3f}\n")
                     f.write(f"    Total trajectory length: {stats['total_distance']:.3f}\n")
                 if 'curvature_metrics' in conv:
                     curv = conv['curvature_metrics']
@@ -2384,10 +4437,10 @@ class SemanticTrajectoryAnalyzer:
                     avg_corr = np.mean(all_dist_corrs)
                     if avg_corr > 0.8:
                         f.write("  • HIGH INVARIANCE: Strong consensus across models (>0.8)\n")
-                        f.write("    → Detected patterns likely represent true semantic structure\n")
+                        f.write("    → Detected patterns likely represent true embedding structure\n")
                     elif avg_corr > 0.6:
                         f.write("  • MODERATE INVARIANCE: Fair consensus across models (0.6-0.8)\n")
-                        f.write("    → Core semantic patterns preserved, some model-specific artifacts\n")
+                        f.write("    → Core embedding patterns preserved, some model-specific artifacts\n")
                     else:
                         f.write("  • LOW INVARIANCE: Weak consensus across models (<0.6)\n")
                         f.write("    → High model dependence, interpret with caution\n")
@@ -2396,7 +4449,7 @@ class SemanticTrajectoryAnalyzer:
             f.write("\nVisualization files generated:\n")
             f.write(f"  - trajectories_3d_pca.html\n")
             f.write(f"  - trajectories_3d_tsne.html\n")
-            f.write(f"  - semantic_convergence.csv\n")
+            f.write(f"  - embedding_convergence.csv\n")
             f.write(f"  - trajectory_comparison.png\n")
             f.write(f"  - dimensional_analysis_summary.png\n")
             f.write(f"  - projection_comparison_all.png\n")
@@ -2431,6 +4484,21 @@ class SemanticTrajectoryAnalyzer:
                     if 'effect_size' in results:
                         f.write(f"  Effect size (Cohen's d): {results['effect_size']:.3f}\n")
             
+            # Null Model Comparison Results
+            if hasattr(self, 'null_model_results') and self.null_model_results:
+                f.write("\n" + "="*50 + "\n")
+                f.write("NULL MODEL COMPARISON\n")
+                f.write("-"*30 + "\n")
+                
+                f.write("Metrics significantly different from random null models:\n\n")
+                for metric, results in self.null_model_results.items():
+                    if results['significantly_different']:
+                        f.write(f"{metric}:\n")
+                        f.write(f"  Real conversations: {results['mean_real']:.3f} ± {results['std_real']:.3f}\n")
+                        f.write(f"  Null models: {results['mean_null']:.3f} ± {results['std_null']:.3f}\n")
+                        f.write(f"  Effect size (Cohen's d): {results['cohens_d']:.3f}\n")
+                        f.write(f"  p-value: {results['p_value_mw']:.6f}\n\n")
+            
             # Topic Analysis Results
             if hasattr(self, 'topic_analysis') and self.topic_analysis:
                 f.write("\n" + "="*50 + "\n")
@@ -2446,7 +4514,7 @@ class SemanticTrajectoryAnalyzer:
                     distances = self.topic_analysis['topic_attractor_distances']
                     if distances:
                         f.write(f"\nAverage topic distance to attractors: {np.mean(distances):.3f}\n")
-                        f.write("Topics appear to cluster around semantic attractors\n")
+                        f.write("Topics appear to cluster around embedding attractors\n")
             
             # Predictive Model Results
             if hasattr(self, 'predictive_results') and self.predictive_results:
@@ -2549,15 +4617,256 @@ class SemanticTrajectoryAnalyzer:
                     f.write(f"   {pair}: {data['mean']:.3f} ({data['direction']})\n")
             
             f.write("\n" + "="*50 + "\n")
-            f.write("IMPLICATIONS FOR SEMANTIC VS FEATURE SPACE\n")
+            f.write("IMPLICATIONS FOR EMBEDDING VS FEATURE SPACE\n")
             f.write("-"*30 + "\n")
             f.write("\nHigh correlations (>0.8) across models suggest we are capturing\n")
-            f.write("genuine semantic structure rather than model-specific artifacts.\n")
+            f.write("genuine embedding structure rather than model-specific artifacts.\n")
             f.write("\nPatterns that show consensus across diverse embedding models\n")
             f.write("(trained on different objectives) are more likely to represent\n")
-            f.write("true conversational dynamics in semantic space.\n")
+            f.write("true conversational dynamics in embedding space.\n")
         
         print(f"Generated ensemble report: {report_path}")
+    
+    def create_ensemble_summary_visualization(self):
+        """Create a comprehensive visualization summarizing ensemble analysis across all conversations"""
+        if not self.ensemble_mode:
+            return
+        
+        # Collect all conversations with ensemble analysis
+        ensemble_conversations = [c for c in self.conversations if 'invariant_patterns' in c]
+        if not ensemble_conversations:
+            print("No conversations with ensemble analysis found.")
+            return
+        
+        print(f"\nCreating ensemble summary visualization for {len(ensemble_conversations)} conversations...")
+        
+        # Aggregate metrics across all conversations
+        all_dist_corrs = []
+        all_vel_corrs = []
+        all_topo_pres = []
+        all_phase_consensus = []
+        all_curv_agree = []
+        all_convergences = []
+        
+        # Collect per-conversation metrics
+        conv_metrics = []
+        
+        for conv in ensemble_conversations:
+            summary = conv['invariant_patterns']['summary']
+            all_dist_corrs.append(summary['mean_distance_correlation'])
+            all_vel_corrs.append(summary['mean_velocity_correlation'])
+            all_topo_pres.append(summary['mean_topology_preservation'])
+            all_phase_consensus.append(summary['phase_consensus_rate'])
+            all_curv_agree.append(summary['curvature_agreement_rate'])
+            all_convergences.append(summary['n_consensus_convergences'])
+            
+            # Store per-conversation metrics
+            conv_metrics.append({
+                'session_id': conv['metadata']['session_id'][:12],
+                'tier': conv.get('tier', 'unknown'),
+                'distance_corr': summary['mean_distance_correlation'],
+                'velocity_corr': summary['mean_velocity_correlation'],
+                'topology_pres': summary['mean_topology_preservation'],
+                'phase_consensus': summary['phase_consensus_rate'],
+                'curvature_agree': summary['curvature_agreement_rate']
+            })
+        
+        # Create comprehensive figure
+        fig = plt.figure(figsize=(20, 16))
+        
+        # 1. Distribution of correlations across conversations
+        ax1 = plt.subplot(3, 3, 1)
+        data = [all_dist_corrs, all_vel_corrs, all_topo_pres]
+        labels = ['Distance\nCorrelation', 'Velocity\nCorrelation', 'Topology\nPreservation']
+        bp = ax1.boxplot(data, labels=labels, patch_artist=True)
+        colors = ['lightblue', 'lightgreen', 'lightcoral']
+        for patch, color in zip(bp['boxes'], colors):
+            patch.set_facecolor(color)
+        ax1.set_ylabel('Correlation')
+        ax1.set_title('Cross-Model Agreement Distributions')
+        ax1.axhline(y=0.8, color='red', linestyle='--', alpha=0.5, label='High agreement threshold')
+        ax1.legend()
+        
+        # 2. Consensus rates
+        ax2 = plt.subplot(3, 3, 2)
+        consensus_data = [all_phase_consensus, all_curv_agree]
+        consensus_labels = ['Phase\nBoundaries', 'High\nCurvature']
+        bp2 = ax2.boxplot(consensus_data, labels=consensus_labels, patch_artist=True)
+        for patch in bp2['boxes']:
+            patch.set_facecolor('lightyellow')
+        ax2.set_ylabel('Consensus Rate')
+        ax2.set_title('Multi-Model Consensus Rates')
+        ax2.set_ylim(0, 1)
+        
+        # 3. Correlation by tier (if tier information available)
+        ax3 = plt.subplot(3, 3, 3)
+        tiers = set(m['tier'] for m in conv_metrics if m['tier'] != 'unknown')
+        if tiers:
+            tier_data = {tier: [] for tier in tiers}
+            for m in conv_metrics:
+                if m['tier'] != 'unknown':
+                    tier_data[m['tier']].append(m['distance_corr'])
+            
+            positions = range(1, len(tiers) + 1)
+            tier_names = list(tier_data.keys())
+            tier_values = [tier_data[t] for t in tier_names]
+            
+            bp3 = ax3.boxplot(tier_values, positions=positions, labels=tier_names, patch_artist=True)
+            tier_colors = {'full_reasoning': 'darkblue', 'light_reasoning': 'blue', 'non_reasoning': 'lightblue'}
+            for patch, tier in zip(bp3['boxes'], tier_names):
+                patch.set_facecolor(tier_colors.get(tier, 'gray'))
+            
+            ax3.set_ylabel('Distance Correlation')
+            ax3.set_title('Distance Correlations by Model Tier')
+        else:
+            ax3.text(0.5, 0.5, 'No tier information available', 
+                    transform=ax3.transAxes, ha='center', va='center')
+            ax3.set_xlim(0, 1)
+            ax3.set_ylim(0, 1)
+        
+        # 4. Scatter plot: Distance vs Velocity correlations
+        ax4 = plt.subplot(3, 3, 4)
+        scatter = ax4.scatter(all_dist_corrs, all_vel_corrs, 
+                             c=[m['topology_pres'] for m in conv_metrics],
+                             cmap='viridis', s=100, alpha=0.6, edgecolors='black')
+        ax4.set_xlabel('Distance Correlation')
+        ax4.set_ylabel('Velocity Correlation')
+        ax4.set_title('Distance vs Velocity Correlations')
+        ax4.axhline(y=0.8, color='red', linestyle='--', alpha=0.3)
+        ax4.axvline(x=0.8, color='red', linestyle='--', alpha=0.3)
+        cbar = plt.colorbar(scatter, ax=ax4)
+        cbar.set_label('Topology Preservation')
+        
+        # 5. Histogram of all correlation values
+        ax5 = plt.subplot(3, 3, 5)
+        all_corrs = all_dist_corrs + all_vel_corrs + all_topo_pres
+        ax5.hist(all_corrs, bins=20, alpha=0.7, color='purple', edgecolor='black')
+        ax5.axvline(x=np.mean(all_corrs), color='red', linestyle='--', 
+                   label=f'Mean: {np.mean(all_corrs):.3f}')
+        ax5.axvline(x=0.8, color='green', linestyle='--', alpha=0.5, label='High agreement')
+        ax5.set_xlabel('Correlation Value')
+        ax5.set_ylabel('Frequency')
+        ax5.set_title('Distribution of All Correlation Values')
+        ax5.legend()
+        
+        # 6. Phase consensus vs curvature agreement
+        ax6 = plt.subplot(3, 3, 6)
+        ax6.scatter(all_phase_consensus, all_curv_agree, s=100, alpha=0.6, edgecolors='black')
+        ax6.set_xlabel('Phase Consensus Rate')
+        ax6.set_ylabel('Curvature Agreement Rate')
+        ax6.set_title('Phase vs Curvature Consensus')
+        ax6.set_xlim(0, 1)
+        ax6.set_ylim(0, 1)
+        # Add diagonal line
+        ax6.plot([0, 1], [0, 1], 'k--', alpha=0.3)
+        
+        # 7. Summary statistics table
+        ax7 = plt.subplot(3, 3, 7)
+        ax7.axis('off')
+        summary_text = "ENSEMBLE INVARIANT SUMMARY\n" + "="*35 + "\n\n"
+        summary_text += f"Total Conversations: {len(ensemble_conversations)}\n\n"
+        summary_text += "Mean Correlations:\n"
+        summary_text += f"  Distance: {np.mean(all_dist_corrs):.3f} (±{np.std(all_dist_corrs):.3f})\n"
+        summary_text += f"  Velocity: {np.mean(all_vel_corrs):.3f} (±{np.std(all_vel_corrs):.3f})\n"
+        summary_text += f"  Topology: {np.mean(all_topo_pres):.3f} (±{np.std(all_topo_pres):.3f})\n\n"
+        summary_text += "Consensus Rates:\n"
+        summary_text += f"  Phase Boundaries: {np.mean(all_phase_consensus):.1%}\n"
+        summary_text += f"  Curvature Points: {np.mean(all_curv_agree):.1%}\n\n"
+        
+        # Interpretation
+        avg_corr = np.mean(all_dist_corrs)
+        if avg_corr > 0.8:
+            interpretation = "HIGH INVARIANCE (>0.8)\nStrong cross-model consensus"
+        elif avg_corr > 0.6:
+            interpretation = "MODERATE INVARIANCE (0.6-0.8)\nCore patterns preserved"
+        else:
+            interpretation = "LOW INVARIANCE (<0.6)\nModel-dependent patterns"
+        summary_text += f"Overall Assessment:\n{interpretation}"
+        
+        ax7.text(0.1, 0.9, summary_text, transform=ax7.transAxes,
+                fontsize=11, verticalalignment='top', fontfamily='monospace',
+                bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgray", alpha=0.5))
+        
+        # 8. Individual conversation performance
+        ax8 = plt.subplot(3, 3, 8)
+        conv_ids = [m['session_id'] for m in conv_metrics[:20]]  # Show first 20
+        conv_dist_corrs = [m['distance_corr'] for m in conv_metrics[:20]]
+        
+        y_pos = np.arange(len(conv_ids))
+        bars = ax8.barh(y_pos, conv_dist_corrs)
+        
+        # Color bars by value
+        for i, bar in enumerate(bars):
+            if conv_dist_corrs[i] > 0.8:
+                bar.set_color('darkgreen')
+            elif conv_dist_corrs[i] > 0.6:
+                bar.set_color('orange')
+            else:
+                bar.set_color('red')
+        
+        ax8.set_yticks(y_pos)
+        ax8.set_yticklabels(conv_ids, fontsize=8)
+        ax8.set_xlabel('Distance Correlation')
+        ax8.set_title('Per-Conversation Distance Correlations')
+        ax8.axvline(x=0.8, color='green', linestyle='--', alpha=0.5)
+        ax8.axvline(x=0.6, color='orange', linestyle='--', alpha=0.5)
+        ax8.set_xlim(0, 1)
+        
+        # 9. Model comparison matrix (if we have detailed model data)
+        ax9 = plt.subplot(3, 3, 9)
+        if ensemble_conversations and 'invariant_patterns' in ensemble_conversations[0]:
+            # Get model names from first conversation
+            first_conv = ensemble_conversations[0]
+            model_names = list(first_conv['ensemble_embeddings'].keys())
+            
+            # Aggregate distance correlations across all conversations
+            aggregated_correlations = {}
+            for i, m1 in enumerate(model_names):
+                for j, m2 in enumerate(model_names):
+                    if i < j:
+                        key = f'{m1}-{m2}'
+                        corrs = []
+                        for conv in ensemble_conversations:
+                            inv = conv['invariant_patterns']
+                            if key in inv['distance_correlations']:
+                                corrs.append(inv['distance_correlations'][key]['correlation'])
+                            elif f'{m2}-{m1}' in inv['distance_correlations']:
+                                corrs.append(inv['distance_correlations'][f'{m2}-{m1}']['correlation'])
+                        if corrs:
+                            aggregated_correlations[key] = np.mean(corrs)
+            
+            # Create correlation matrix
+            n_models = len(model_names)
+            corr_matrix = np.eye(n_models)
+            for i, m1 in enumerate(model_names):
+                for j, m2 in enumerate(model_names):
+                    if i < j:
+                        key = f'{m1}-{m2}' if f'{m1}-{m2}' in aggregated_correlations else f'{m2}-{m1}'
+                        if key in aggregated_correlations:
+                            corr_matrix[i, j] = corr_matrix[j, i] = aggregated_correlations[key]
+            
+            sns.heatmap(corr_matrix, annot=True, fmt='.3f', xticklabels=model_names,
+                       yticklabels=model_names, cmap='RdBu_r', center=0.5, ax=ax9, vmin=0, vmax=1)
+            ax9.set_title('Average Model-to-Model Correlations')
+        else:
+            ax9.text(0.5, 0.5, 'No detailed model data available', 
+                    transform=ax9.transAxes, ha='center', va='center')
+        
+        plt.suptitle('Ensemble Analysis Summary - Cross-Model Invariant Patterns', fontsize=16)
+        plt.tight_layout()
+        
+        output_path = self.output_dir / 'ensemble_summary_visualization.png'
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        print(f"Saved ensemble summary visualization to {output_path}")
+        
+        # Also save detailed metrics to CSV
+        import pandas as pd
+        metrics_df = pd.DataFrame(conv_metrics)
+        csv_path = self.output_dir / 'ensemble_metrics_summary.csv'
+        metrics_df.to_csv(csv_path, index=False)
+        print(f"Saved detailed metrics to {csv_path}")
     
     def analyze_tier_differences(self):
         """Analyze differences in trajectory patterns across model tiers"""
@@ -2582,7 +4891,7 @@ class SemanticTrajectoryAnalyzer:
                 'entropy_means': [],
                 'convergence_rates': [],
                 'phase_counts': [],
-                'semantic_spreads': []
+                'embedding_spreads': []
             }
             
             for conv in conversations:
@@ -2607,11 +4916,11 @@ class SemanticTrajectoryAnalyzer:
                     metrics['phase_counts'].append(len(conv['phase_metrics']['phase_embeddings']))
                 
                 if 'speaker_dynamics' in conv:
-                    spreads = [s['semantic_spread'] for s in conv['speaker_dynamics']['speaker_stats'].values()]
-                    metrics['semantic_spreads'].append(np.mean(spreads))
+                    spreads = [s['embedding_spread'] for s in conv['speaker_dynamics']['speaker_stats'].values()]
+                    metrics['embedding_spreads'].append(np.mean(spreads))
             
-            # Calculate tier statistics
-            tier_metrics[tier_name] = {
+            # Calculate tier statistics with bootstrap confidence intervals
+            tier_data = {
                 'n_conversations': metrics['n_conversations'],
                 'mean_trajectory_length': np.mean(metrics['trajectory_lengths']) if metrics['trajectory_lengths'] else 0,
                 'std_trajectory_length': np.std(metrics['trajectory_lengths']) if metrics['trajectory_lengths'] else 0,
@@ -2621,8 +4930,24 @@ class SemanticTrajectoryAnalyzer:
                 'mean_participation_ratio': np.mean(metrics['participation_ratios']) if metrics['participation_ratios'] else 0,
                 'mean_entropy': np.mean(metrics['entropy_means']) if metrics['entropy_means'] else 0,
                 'mean_phase_count': np.mean(metrics['phase_counts']) if metrics['phase_counts'] else 0,
-                'mean_semantic_spread': np.mean(metrics['semantic_spreads']) if metrics['semantic_spreads'] else 0
+                'mean_embedding_spread': np.mean(metrics['embedding_spreads']) if metrics['embedding_spreads'] else 0
             }
+            
+            # Add bootstrap confidence intervals for speaker dynamics
+            if metrics['embedding_spreads']:
+                n_bootstrap = 1000
+                bootstrap_spreads = []
+                data = metrics['embedding_spreads']
+                
+                for _ in range(n_bootstrap):
+                    bootstrap_sample = np.random.choice(data, len(data), replace=True)
+                    bootstrap_spreads.append(np.mean(bootstrap_sample))
+                
+                tier_data['embedding_spread_ci_lower'] = np.percentile(bootstrap_spreads, 2.5)
+                tier_data['embedding_spread_ci_upper'] = np.percentile(bootstrap_spreads, 97.5)
+                tier_data['embedding_spread_std'] = np.std(bootstrap_spreads)
+            
+            tier_metrics[tier_name] = tier_data
         
         # Store for visualization
         self.tier_metrics = tier_metrics
@@ -2634,13 +4959,19 @@ class SemanticTrajectoryAnalyzer:
         # Create comparison table
         metric_names = ['n_conversations', 'mean_trajectory_length', 'mean_distance', 
                        'mean_curvature', 'mean_intrinsic_dim', 'mean_participation_ratio',
-                       'mean_entropy', 'mean_phase_count', 'mean_semantic_spread']
+                       'mean_entropy', 'mean_phase_count', 'mean_embedding_spread']
         
         for metric in metric_names:
             print(f"\n{metric}:")
             for tier_name, metrics in tier_metrics.items():
                 value = metrics.get(metric, 0)
-                print(f"  {tier_name}: {value:.3f}" if isinstance(value, float) else f"  {tier_name}: {value}")
+                # Special handling for embedding spread to show CI
+                if metric == 'mean_embedding_spread' and 'embedding_spread_ci_lower' in metrics:
+                    ci_lower = metrics['embedding_spread_ci_lower']
+                    ci_upper = metrics['embedding_spread_ci_upper']
+                    print(f"  {tier_name}: {value:.3f} (95% CI: [{ci_lower:.3f}, {ci_upper:.3f}])")
+                else:
+                    print(f"  {tier_name}: {value:.3f}" if isinstance(value, float) else f"  {tier_name}: {value}")
     
     def visualize_tier_trajectories(self):
         """Create visualizations comparing trajectories across tiers"""
@@ -2676,7 +5007,7 @@ class SemanticTrajectoryAnalyzer:
         ax.set_xticks(x_pos)
         ax.set_xticklabels(tier_names)
         ax.set_ylabel('Mean Distance Between Turns')
-        ax.set_title('Average Semantic Step Size')
+        ax.set_title('Average Embedding Step Size')
         
         # 3. Intrinsic Dimensionality
         ax = axes[0, 2]
@@ -2685,7 +5016,7 @@ class SemanticTrajectoryAnalyzer:
         ax.set_xticks(x_pos)
         ax.set_xticklabels(tier_names)
         ax.set_ylabel('Intrinsic Dimensionality')
-        ax.set_title('Semantic Space Complexity')
+        ax.set_title('Embedding Space Complexity')
         
         # 4. Curvature Distribution
         ax = axes[1, 0]
@@ -2728,13 +5059,13 @@ class SemanticTrajectoryAnalyzer:
         ax.set_ylabel('Average Phase Count')
         ax.set_title('Conversation Structure Complexity')
         
-        # 8. Semantic Spread
+        # 8. Embedding Spread
         ax = axes[2, 1]
-        spreads = [self.tier_metrics[t]['mean_semantic_spread'] for t in tier_names]
+        spreads = [self.tier_metrics[t]['mean_embedding_spread'] for t in tier_names]
         ax.bar(x_pos, spreads, color=colors[:len(tier_names)])
         ax.set_xticks(x_pos)
         ax.set_xticklabels(tier_names)
-        ax.set_ylabel('Semantic Spread')
+        ax.set_ylabel('Embedding Spread')
         ax.set_title('Speaker Territory Size')
         
         # 9. Summary Statistics
@@ -3016,8 +5347,12 @@ class SemanticTrajectoryAnalyzer:
             ('phase_count', 'Number of Phases'),
             ('entropy_mean', 'Mean Entropy'),
             ('participation_ratio', 'Participation Ratio'),
-            ('semantic_loops', 'Semantic Loop Count')
+            ('embedding_loops', 'Embedding Loop Count')
         ]
+        
+        # Store all p-values for multiple comparison correction
+        all_p_values = []
+        all_test_info = []
         
         for metric_key, metric_name in metrics_to_test:
             print(f"\n{metric_name}:")
@@ -3053,7 +5388,7 @@ class SemanticTrajectoryAnalyzer:
                             fa = conv['full_dimensional_analysis']
                             if 'dimensional_utilization' in fa:
                                 value = fa['dimensional_utilization'].get('participation_ratio')
-                    elif metric_key == 'semantic_loops':
+                    elif metric_key == 'embedding_loops':
                         if 'distance_analysis' in conv:
                             value = conv['distance_analysis'].get('loop_count')
                     
@@ -3074,6 +5409,7 @@ class SemanticTrajectoryAnalyzer:
                 
                 # Check normality with Shapiro-Wilk test
                 normality_passed = True
+                from scipy.stats import shapiro
                 for tier_name, values in tier_data.items():
                     if len(values) >= 3:
                         from scipy.stats import shapiro
@@ -3118,11 +5454,15 @@ class SemanticTrajectoryAnalyzer:
                     'test_name': test_name,
                     'statistic': f_stat if normality_passed else h_stat,
                     'p_value': p_value,
-                    'significant': p_value < 0.05,
+                    'significant': p_value < 0.05,  # Will be updated after correction
                     'tier_means': {t: np.mean(v) for t, v in tier_data.items()},
                     'tier_stds': {t: np.std(v) for t, v in tier_data.items()},
                     'tier_ns': {t: len(v) for t, v in tier_data.items()}
                 }
+                
+                # Store for multiple comparison correction
+                all_p_values.append(p_value)
+                all_test_info.append((metric_key, metric_name))
                 
                 # Effect size calculation
                 if len(tier_data) == 2:
@@ -3171,11 +5511,193 @@ class SemanticTrajectoryAnalyzer:
                                                    alpha=0.05, 
                                                    k_groups=n_groups)
             print(f"Required total n for 0.8 power: {required_n:.0f} ({required_n/n_groups:.0f} per tier)")
+            
+            # Power warning
+            if power < 0.8:
+                print(f"\n⚠️  WARNING: Statistical power ({power:.3f}) is below recommended threshold of 0.8")
+                print(f"   This means there is a {(1-power)*100:.1f}% chance of missing true effects")
+                print(f"   Consider collecting more data or focusing on larger effect sizes")
+            
+            # Store power analysis results
+            self.power_analysis = {
+                'achieved_power': power,
+                'average_effect_size': avg_effect_size,
+                'total_n': avg_n_per_group * n_groups,
+                'n_per_group': avg_n_per_group,
+                'required_n_for_80_power': required_n,
+                'alpha': 0.05,
+                'n_groups': n_groups
+            }
+        
+        # Apply hierarchical FDR correction
+        print("\n\nHIERARCHICAL MULTIPLE COMPARISON CORRECTION")
+        print("-" * 50)
+        
+        if all_p_values:
+            from statsmodels.stats.multitest import multipletests
+            
+            # Group p-values by metric type
+            grouped_tests = {
+                'trajectory': ['mean_distance', 'total_distance'],
+                'complexity': ['intrinsic_dim', 'participation_ratio'],
+                'dynamics': ['mean_curvature', 'entropy_mean'],
+                'structure': ['phase_count', 'embedding_loops']
+            }
+            
+            # Apply two-stage FDR
+            # Stage 1: Correct within groups
+            stage1_results = {}
+            for group_name, metrics in grouped_tests.items():
+                group_p_values = []
+                group_indices = []
+                for i, (metric_key, metric_name) in enumerate(all_test_info):
+                    if metric_key in metrics:
+                        group_p_values.append(all_p_values[i])
+                        group_indices.append(i)
+                
+                if group_p_values:
+                    rejected, corrected_p, _, _ = multipletests(group_p_values, alpha=0.05, method='fdr_bh')
+                    for j, idx in enumerate(group_indices):
+                        stage1_results[idx] = corrected_p[j]
+            
+            # Stage 2: Correct across groups
+            if stage1_results:
+                all_corrected_p = list(stage1_results.values())
+                rejected_final, corrected_final, _, _ = multipletests(all_corrected_p, alpha=0.05, method='fdr_bh')
+                
+                # Update results with hierarchical correction
+                idx_to_final = dict(zip(stage1_results.keys(), range(len(stage1_results))))
+                
+                for i, (metric_key, metric_name) in enumerate(all_test_info):
+                    if metric_key in test_results and i in stage1_results:
+                        final_idx = idx_to_final[i]
+                        test_results[metric_key]['p_value_hierarchical'] = corrected_final[final_idx]
+                        test_results[metric_key]['significant_hierarchical'] = rejected_final[final_idx]
+                        test_results[metric_key]['p_value_stage1'] = stage1_results[i]
+            
+            # Also apply standard FDR for comparison
+            rejected_standard, corrected_standard, _, _ = multipletests(
+                all_p_values, alpha=0.05, method='fdr_bh'
+            )
+            
+            # Update test results with both corrections
+            print("\nHierarchical FDR Results:")
+            print("Group -> Metric: Original p -> Stage 1 p -> Final p (Significant?)")
+            print("-" * 70)
+            
+            for group_name, metrics in grouped_tests.items():
+                for i, (metric_key, metric_name) in enumerate(all_test_info):
+                    if metric_key in metrics and metric_key in test_results:
+                        test_results[metric_key]['p_value_corrected'] = corrected_standard[i]
+                        test_results[metric_key]['significant_corrected'] = rejected_standard[i]
+                        
+                        orig_p = all_p_values[i]
+                        stage1_p = test_results[metric_key].get('p_value_stage1', orig_p)
+                        hier_p = test_results[metric_key].get('p_value_hierarchical', orig_p)
+                        sig = test_results[metric_key].get('significant_hierarchical', False)
+                        
+                        print(f"{group_name} -> {metric_name}: {orig_p:.4f} -> {stage1_p:.4f} -> {hier_p:.4f} ({'*' if sig else ' '})")
+            
+            # Summary
+            n_sig_original = sum(1 for p in all_p_values if p < 0.05)
+            n_sig_standard = sum(rejected_standard)
+            n_sig_hierarchical = sum(1 for r in test_results.values() if r.get('significant_hierarchical', False))
+            
+            print(f"\nSummary:")
+            print(f"  Significant before correction: {n_sig_original}/{len(all_p_values)}")
+            print(f"  Significant after standard FDR: {n_sig_standard}/{len(all_p_values)}")
+            print(f"  Significant after hierarchical FDR: {n_sig_hierarchical}/{len(all_p_values)}")
+            print(f"  Bonferroni alpha would be: {0.05/len(all_p_values):.6f}")
+        
+        # Interpret effect sizes
+        self.interpret_effect_sizes(test_results)
         
         # Create visualization
         self.visualize_statistical_results(test_results)
         
         return test_results
+    
+    def interpret_effect_sizes(self, test_results):
+        """Add practical interpretation to effect sizes"""
+        
+        print("\n\nEFFECT SIZE INTERPRETATION")
+        print("-" * 50)
+        
+        interpretations = {
+            'small': (0, 0.2),
+            'medium': (0.2, 0.5),
+            'large': (0.5, 0.8),
+            'very_large': (0.8, float('inf'))
+        }
+        
+        # Add domain-specific interpretations
+        for metric, results in test_results.items():
+            if 'effect_size' in results:
+                d = results['effect_size']
+                
+                # Find category
+                for category, (low, high) in interpretations.items():
+                    if low <= d < high:
+                        results['effect_category'] = category
+                        break
+                
+                # Add practical significance based on metric type
+                if metric == 'intrinsic_dim':
+                    # Even small differences in dimensionality matter
+                    results['practical_significance'] = d > 0.3
+                    interpretation = (
+                        "Intrinsic dimensionality differences indicate fundamentally different "
+                        "conversation structures. Even small effects (d>0.3) are practically meaningful."
+                    )
+                elif metric in ['mean_distance', 'total_distance']:
+                    # Need medium effect for trajectory differences
+                    results['practical_significance'] = d > 0.5
+                    interpretation = (
+                        "Trajectory distance differences require medium effects (d>0.5) to be "
+                        "practically meaningful, as small variations are expected."
+                    )
+                elif metric == 'embedding_loops':
+                    # Loop counts need larger differences
+                    results['practical_significance'] = d > 0.6
+                    interpretation = (
+                        "Embedding loop differences need to be substantial (d>0.6) to indicate "
+                        "different conversational patterns."
+                    )
+                elif metric == 'phase_count':
+                    # Phase differences are meaningful at medium effect sizes
+                    results['practical_significance'] = d > 0.4
+                    interpretation = (
+                        "Phase count differences at medium effect sizes (d>0.4) suggest "
+                        "different conversation structures."
+                    )
+                else:
+                    # Default threshold
+                    results['practical_significance'] = d > 0.4
+                    interpretation = "Standard interpretation applies."
+                
+                # Print interpretation
+                print(f"\n{metric}:")
+                print(f"  Effect size (Cohen's d): {d:.3f} ({results['effect_category']})")
+                print(f"  Practically significant: {'Yes' if results['practical_significance'] else 'No'}")
+                print(f"  Interpretation: {interpretation}")
+                
+                # Add warning if statistically significant but not practically significant
+                if results.get('significant_hierarchical', False) and not results['practical_significance']:
+                    print(f"  ⚠️  Warning: Statistically significant but may not be practically meaningful")
+        
+        # Summary of practical significance
+        n_practical = sum(1 for r in test_results.values() 
+                         if r.get('practical_significance', False))
+        n_statistical = sum(1 for r in test_results.values() 
+                           if r.get('significant_hierarchical', False))
+        
+        print(f"\n\nSUMMARY:")
+        print(f"  Statistically significant (after correction): {n_statistical}/{len(test_results)}")
+        print(f"  Practically significant: {n_practical}/{len(test_results)}")
+        
+        if n_statistical > n_practical:
+            print("\n⚠️  Some results are statistically significant but may not be practically meaningful.")
+            print("   Consider focusing on metrics with both statistical and practical significance.")
     
     def visualize_statistical_results(self, test_results):
         """Create visualization of statistical test results"""
@@ -3268,7 +5790,12 @@ class SemanticTrajectoryAnalyzer:
         
         # Power analysis summary if available
         if hasattr(self, 'power_analysis'):
-            summary_text += f"\nStatistical power: {self.power_analysis['power']:.3f}\n"
+            summary_text += f"\n\nPower Analysis:\n"
+            summary_text += f"Achieved power: {self.power_analysis['achieved_power']:.3f}\n"
+            if self.power_analysis['achieved_power'] < 0.8:
+                summary_text += "⚠️  WARNING: Power is below 0.8 - results may miss true effects\n"
+            summary_text += f"Sample size: {self.power_analysis['total_n']:.0f} total ({self.power_analysis['n_per_group']:.0f} per group)\n"
+            summary_text += f"Required n for 0.8 power: {self.power_analysis['required_n_for_80_power']:.0f}\n"
         
         ax.text(0.1, 0.9, summary_text, transform=ax.transAxes,
                fontsize=12, verticalalignment='top', fontfamily='monospace')
@@ -3357,7 +5884,7 @@ class SemanticTrajectoryAnalyzer:
                     if conv_idx == 0:
                         ax.set_ylabel(tier_name.replace('_', ' ').title(), fontsize=12)
         
-        plt.suptitle('Semantic Trajectory Comparison Across Tiers', fontsize=16)
+        plt.suptitle('Embedding Trajectory Comparison Across Tiers', fontsize=16)
         output_path = self.output_dir / 'trajectory_comparison.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -3741,7 +6268,7 @@ class SemanticTrajectoryAnalyzer:
                 if sorted_by_rr[0]['conv'] not in tier_selected:
                     tier_selected.append(sorted_by_rr[0]['conv'])
                 
-                # 4. Most semantic loops
+                # 4. Most embedding loops
                 sorted_by_loops = sorted(metrics, key=lambda x: x['loop_count'], reverse=True)
                 if sorted_by_loops[0]['conv'] not in tier_selected:
                     tier_selected.append(sorted_by_loops[0]['conv'])
@@ -3765,17 +6292,26 @@ class SemanticTrajectoryAnalyzer:
         n_tiers = len(selected_convs)
         n_cols = 5  # 5 conversations per tier
         
-        # Calculate figure size based on loaded images
-        fig_width = 25  # 5 inches per column
-        fig_height = 5 * n_tiers  # 5 inches per row
+        # Larger figure size for better visibility
+        fig_width = 40  # 8 inches per column
+        fig_height = 12 * n_tiers  # 12 inches per row for 3 tiers = 36 inches total
         
         fig = plt.figure(figsize=(fig_width, fig_height))
-        gs = GridSpec(n_tiers, n_cols, figure=fig, hspace=0.3, wspace=0.2)
+        gs = GridSpec(n_tiers, n_cols, figure=fig, hspace=0.4, wspace=0.1)
         
         tier_colors = {'full_reasoning': 'blue', 'light_reasoning': 'orange', 'non_reasoning': 'green'}
         
         # Load and display saved distance matrix images
         for tier_idx, (tier_name, tier_convs) in enumerate(selected_convs):
+            # Add tier label directly on the figure
+            tier_y_position = 1 - (tier_idx + 0.5) / n_tiers
+            fig.text(0.02, tier_y_position, tier_name.replace('_', ' ').title(), 
+                    fontsize=28, fontweight='bold',
+                    verticalalignment='center',
+                    horizontalalignment='left',
+                    color=tier_colors.get(tier_name, 'gray'),
+                    rotation=90)
+            
             for conv_idx, conv in enumerate(tier_convs[:5]):  # Max 5 per tier
                 ax = fig.add_subplot(gs[tier_idx, conv_idx])
                 
@@ -3783,30 +6319,35 @@ class SemanticTrajectoryAnalyzer:
                 img_path = conv['distance_matrix_path']
                 try:
                     img = Image.open(img_path)
-                    ax.imshow(img)
+                    ax.imshow(img, aspect='auto')
                     ax.axis('off')
                     
-                    # Add tier label and metrics
-                    title = f"{tier_name.replace('_', ' ').title()}\n"
+                    # Add metrics as subtitle with larger font
+                    metrics_text = []
                     
-                    # Add key metrics as subtitle
                     if 'full_dimensional_analysis' in conv:
                         fa = conv['full_dimensional_analysis']
                         if 'intrinsic_dimensionality' in fa and fa['intrinsic_dimensionality']['mle_dimension']:
-                            title += f"Dim: {fa['intrinsic_dimensionality']['mle_dimension']:.1f}, "
+                            metrics_text.append(f"Dim: {fa['intrinsic_dimensionality']['mle_dimension']:.1f}")
                     
-                    if 'distance_analysis' in conv:
-                        da = conv['distance_analysis']
-                        title += f"RR: {da['recurrence_stats']['recurrence_rate']:.2f}, "
-                        title += f"Loops: {da['loop_count']}"
+                    if 'distance_matrix_stats' in conv:
+                        dm = conv['distance_matrix_stats']
+                        metrics_text.append(f"RR: {dm['recurrence_stats']['recurrence_rate']:.2f}")
+                        metrics_text.append(f"Loops: {dm['loop_count']}")
                     
-                    ax.set_title(title, fontsize=10, pad=5)
+                    # Place metrics below the image
+                    metrics_str = " | ".join(metrics_text)
+                    ax.text(0.5, -0.05, metrics_str, 
+                           transform=ax.transAxes,
+                           fontsize=14, 
+                           horizontalalignment='center',
+                           verticalalignment='top')
                     
                     # Add colored border to indicate tier
                     color = tier_colors.get(tier_name, 'gray')
                     for spine in ax.spines.values():
                         spine.set_edgecolor(color)
-                        spine.set_linewidth(3)
+                        spine.set_linewidth(4)
                     
                 except Exception as e:
                     print(f"Error loading image {img_path}: {e}")
@@ -3814,12 +6355,18 @@ class SemanticTrajectoryAnalyzer:
                            transform=ax.transAxes, fontsize=12)
                     ax.axis('off')
         
-        plt.suptitle('Distance Matrices Comparison: Showing Variance Within Each Tier', fontsize=18, y=0.995)
+        plt.suptitle('Distance Matrices Comparison: Showing Variance Within Each Tier', 
+                    fontsize=28, fontweight='bold', y=0.98)
         
-        # Add explanation text at bottom
-        fig.text(0.5, 0.01, 
-                'Selected conversations show diversity in: intrinsic dimensionality, recurrence rate, and semantic loops',
-                ha='center', fontsize=12, style='italic')
+        # Add explanation text at bottom with larger font
+        fig.text(0.5, 0.02, 
+                'Selected conversations show diversity in: intrinsic dimensionality (Dim), recurrence rate (RR), and embedding loops',
+                ha='center', fontsize=18, style='italic')
+        
+        # Add legend for the three plots in each image
+        fig.text(0.5, 0.04,
+                'Each image shows: Euclidean Distance (left), Self-Similarity (center), Recurrence Plot with phase annotations (right)',
+                ha='center', fontsize=16)
         
         output_path = self.output_dir / 'distance_matrices_tier_comparison.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -3880,7 +6427,7 @@ class SemanticTrajectoryAnalyzer:
             patch.set_facecolor(color)
             patch.set_alpha(0.6)
         ax.set_ylabel('Mean Pairwise Distance')
-        ax.set_title('Semantic Distances')
+        ax.set_title('Embedding Distances')
         
         # 3. Loop counts
         ax = axes[1, 0]
@@ -3888,9 +6435,9 @@ class SemanticTrajectoryAnalyzer:
             if stats_by_tier[tier]['loop_counts']:
                 ax.hist(stats_by_tier[tier]['loop_counts'], bins=10, alpha=0.6, 
                        label=tier.replace('_', ' ').title(), color=colors[i])
-        ax.set_xlabel('Number of Semantic Loops')
+        ax.set_xlabel('Number of Embedding Loops')
         ax.set_ylabel('Count')
-        ax.set_title('Distribution of Semantic Returns')
+        ax.set_title('Distribution of Embedding Returns')
         ax.legend()
         
         # 4. Summary statistics
@@ -4032,7 +6579,7 @@ class SemanticTrajectoryAnalyzer:
             topics.append(top_words)
             print(f"\nTopic {topic_idx}: {', '.join(top_words[:5])}")
         
-        # Map topics to semantic space (vectorized for performance)
+        # Map topics to embedding space (vectorized for performance)
         print("\n  Computing topic embeddings...")
         message_embeddings_array = np.array(message_embeddings)
         
@@ -4054,31 +6601,63 @@ class SemanticTrajectoryAnalyzer:
                 # Fallback to mean of all embeddings
                 topic_embeddings.append(np.mean(message_embeddings_array, axis=0))
         
-        # Find attractor states (high-density regions)
-        print("  Identifying attractor states...")
-        if hasattr(self, 'density_attractors'):
-            # Use previously identified attractors
-            attractors = self.density_attractors
-        else:
-            # Identify attractors from a sample of embeddings for performance
-            from sklearn.neighbors import KernelDensity
+        # Find attractor states using convergent dynamics
+        print("  Identifying attractor states through convergent dynamics...")
+        
+        # True attractors show convergent dynamics - trajectories that slow down and stabilize
+        # We'll identify these by looking for regions where consecutive embeddings have low velocity
+        
+        attractors = []
+        convergence_regions = []
+        
+        # Analyze each conversation's trajectory
+        for conv_idx in conversation_ids[:100]:  # Sample for efficiency
+            conv = self.conversations[conv_idx]
+            if 'embedded_messages' not in conv:
+                continue
+                
+            embeddings = np.array([m['embedding'] for m in conv['embedded_messages']])
+            if len(embeddings) < 5:
+                continue
             
-            # Sample embeddings if dataset is large
-            if len(message_embeddings_array) > 5000:
-                sample_indices = np.random.choice(len(message_embeddings_array), 5000, replace=False)
-                sample_embeddings = message_embeddings_array[sample_indices]
-            else:
-                sample_embeddings = message_embeddings_array
+            # Calculate velocities (changes between consecutive points)
+            velocities = np.array([np.linalg.norm(embeddings[i+1] - embeddings[i]) 
+                                  for i in range(len(embeddings)-1)])
             
-            kde = KernelDensity(bandwidth=0.5)
-            kde.fit(sample_embeddings)
+            # Find regions of low velocity (potential convergence)
+            # Use adaptive threshold based on velocity distribution
+            velocity_threshold = np.percentile(velocities, 25)
             
-            densities = kde.score_samples(sample_embeddings)
-            threshold = np.percentile(densities, 90)
-            attractor_mask = densities > threshold
-            attractors = sample_embeddings[attractor_mask]
+            # Find sustained low-velocity regions (at least 3 consecutive low velocities)
+            for i in range(len(velocities)-2):
+                if all(velocities[i:i+3] < velocity_threshold):
+                    # This is a convergence region
+                    convergence_point = np.mean(embeddings[i:i+4], axis=0)
+                    convergence_regions.append({
+                        'point': convergence_point,
+                        'velocity': np.mean(velocities[i:i+3]),
+                        'duration': 3  # Could extend to find longer convergences
+                    })
+        
+        if convergence_regions:
+            # Cluster convergence points to find attractor basins
+            from sklearn.cluster import DBSCAN
+            convergence_points = np.array([cr['point'] for cr in convergence_regions])
             
-            print(f"  Found {len(attractors)} attractor regions")
+            # Use DBSCAN to find clusters of convergence points
+            clustering = DBSCAN(eps=0.5, min_samples=3)
+            labels = clustering.fit_predict(convergence_points)
+            
+            # Extract attractor centers from clusters
+            unique_labels = set(labels) - {-1}  # Exclude noise
+            for label in unique_labels:
+                cluster_mask = labels == label
+                cluster_points = convergence_points[cluster_mask]
+                attractor_center = np.mean(cluster_points, axis=0)
+                attractors.append(attractor_center)
+            
+            attractors = np.array(attractors)
+            print(f"  Found {len(attractors)} attractor basins through convergent dynamics")
         
         # Correlate topics with attractors
         print("\n\nTOPIC-ATTRACTOR CORRELATIONS")
@@ -4133,41 +6712,97 @@ class SemanticTrajectoryAnalyzer:
         }
     
     def build_predictive_model(self):
-        """Build predictive model for conversation outcomes using geometric features"""
+        """Demonstrate predictive modeling framework for conversation outcomes
+        
+        This method shows how embedding space features could be used for outcome
+        prediction IF appropriate labels were available. The Academy dataset does
+        not include outcome labels, as these would require:
+        
+        1. Human annotation of conversation quality/success
+        2. Objective task completion metrics  
+        3. User satisfaction ratings
+        4. Validated behavioral indicators
+        
+        The geometric features extracted from embedding trajectories could
+        potentially predict outcomes such as:
+        - Conversation coherence and flow
+        - Topic drift and recovery patterns
+        - Collaborative vs adversarial dynamics
+        - Information exchange efficiency
+        - Task completion likelihood
+        
+        Returns:
+            None if no labels found (expected for Academy data)
+            dict with model results if labels are present
+        """
         print("\n" + "="*70)
-        print("PREDICTIVE VALIDATION")
+        print("PREDICTIVE FRAMEWORK DEMONSTRATION")
         print("="*70)
+        print("\nNOTE: This is a conceptual demonstration of how geometric features")
+        print("could be used for outcome prediction with properly labeled data.")
         
         # Extract features and labels
         feature_matrix = []
         labels = []
         session_ids = []
         
+        # Check if outcome labels are available in the data
+        has_labels = False
+        label_key = None
+        
+        # Check various possible label locations
+        for conv in self.conversations[:10]:  # Check first 10 conversations
+            if 'outcome' in conv['metadata']:
+                has_labels = True
+                label_key = 'outcome'
+                break
+            elif 'breakdown' in conv['metadata']:
+                has_labels = True
+                label_key = 'breakdown'
+                break
+            elif 'label' in conv['metadata']:
+                has_labels = True
+                label_key = 'label'
+                break
+        
+        if not has_labels:
+            print("\nNo outcome labels found in conversation metadata.")
+            print("This is expected - proper outcome labels would require:")
+            print("  1. Human annotation of conversation quality/success")
+            print("  2. Objective criteria (e.g., task completion, user satisfaction)")
+            print("  3. Validated behavioral indicators")
+            print("\nThe geometric features extracted could predict outcomes such as:")
+            print("  - Conversation coherence and flow")
+            print("  - Topic drift and recovery patterns")
+            print("  - Collaborative vs. adversarial dynamics")
+            print("  - Information exchange efficiency")
+            
+            # Show what features would be available
+            if self.conversations:
+                sample_features = self.extract_feature_vector(self.conversations[0])
+                print(f"\nAvailable geometric features ({len(sample_features)} total):")
+                for key in list(sample_features.keys())[:10]:
+                    print(f"  - {key}")
+                print("  ...")
+            
+            return None
+        
+        # Extract features and actual labels
         for conv in self.conversations:
             features = self.extract_feature_vector(conv)
             
-            # Define outcome (breakdown) - you'll need to adjust this based on your data
-            # For now, using heuristics based on trajectory features
-            breakdown = False
-            
-            # Heuristic 1: High final distance from start
-            if 'trajectory_stats' in conv and conv['trajectory_stats']['max_distance'] > 2.0:
-                breakdown = True
-            
-            # Heuristic 2: High entropy at end
-            if 'information_flow' in conv and conv['information_flow']['final_entropy'] > 0.8:
-                breakdown = True
-            
-            # Heuristic 3: Many phases (instability)
-            if 'phase_metrics' in conv and len(conv['phase_metrics'].get('phase_embeddings', [])) > 5:
-                breakdown = True
-            
-            # You should replace these heuristics with actual outcome labels if available
-            # For example: breakdown = conv['metadata'].get('breakdown', False)
-            
-            feature_matrix.append(features)
-            labels.append(breakdown)
-            session_ids.append(conv['metadata']['session_id'])
+            # Get actual label from metadata
+            if label_key in conv['metadata']:
+                label = conv['metadata'][label_key]
+                # Convert to binary if needed
+                if isinstance(label, str):
+                    label = label.lower() in ['true', 'yes', 'breakdown', 'failed', '1']
+                elif isinstance(label, (int, float)):
+                    label = bool(label)
+                
+                feature_matrix.append(features)
+                labels.append(label)
+                session_ids.append(conv['metadata']['session_id'])
         
         if not feature_matrix:
             print("No features extracted for predictive modeling")
@@ -4280,7 +6915,7 @@ class SemanticTrajectoryAnalyzer:
     
     def run_full_analysis(self, tier_directories, resume_from_checkpoint=True):
         """
-        Run complete semantic trajectory analysis on conversations by tier.
+        Run complete embedding trajectory analysis on conversations by tier.
         
         Args:
             tier_directories: Dict mapping tier names to directories containing conversations
@@ -4290,7 +6925,7 @@ class SemanticTrajectoryAnalyzer:
             resume_from_checkpoint: Whether to attempt resuming from a checkpoint
         """
         print("="*70)
-        print("SEMANTIC TRAJECTORY ANALYSIS")
+        print("EMBEDDING TRAJECTORY ANALYSIS")
         if self.ensemble_mode:
             print(f"WITH ENSEMBLE INVARIANT DETECTION ({len(self.ensemble_models)} models)")
         print(f"ANALYZING {len(tier_directories)} MODEL TIERS")
@@ -4309,8 +6944,12 @@ class SemanticTrajectoryAnalyzer:
                 print(f"Found {len(self.conversations)} already processed conversations")
             else:
                 processed_files = set()
+            
+            # Load all conversation checkpoints into memory cache
+            self.load_all_conversation_checkpoints()
         else:
             processed_files = set()
+            self._checkpoint_cache = {}
         
         # Store tier information
         if not checkpoint_data:
@@ -4348,45 +6987,92 @@ class SemanticTrajectoryAnalyzer:
                     'n_conversations': 0
                 }
             
-            # Process each conversation in tier
+            # Process conversations in batches for GPU efficiency
+            batch_size = 10  # Process 10 conversations at a time
             checkpoint_counter = 0
+            
             # Use a cleaner progress bar
             with tqdm(total=len(tier_files_to_process), 
                      desc=f"{tier_name.replace('_', ' ').title()}", 
                      unit="conv",
                      bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]') as pbar:
-                for conv_file in tier_files_to_process:
-                    try:
-                        conv = self.load_conversation(conv_file, verbose=False)
-                        conv['tier'] = tier_name  # Add tier information
-                        conv = self.analyze_conversation_comprehensive(conv, verbose=False)
-                        self.conversations.append(conv)
-                        tier_conversations.append(conv)
-                        all_conversation_files.append(conv_file)
-                        processed_files.add(str(conv_file))
-                        pbar.update(1)
+                
+                # Process in batches
+                for i in range(0, len(tier_files_to_process), batch_size):
+                    batch_files = tier_files_to_process[i:i + batch_size]
+                    batch_conversations = []
+                    
+                    # Load batch of conversations
+                    for conv_file in batch_files:
+                        try:
+                            conv = self.load_conversation(conv_file, verbose=False)
+                            conv['tier'] = tier_name
+                            batch_conversations.append(conv)
+                        except Exception as e:
+                            pbar.write(f"Error loading {conv_file.name}: {e}")
+                            pbar.update(1)
+                            continue
+                    
+                    # Process conversations
+                    if batch_conversations:
+                        # First check if any need embedding
+                        need_embedding = []
+                        already_embedded = []
                         
-                        # Save checkpoint every 10 conversations
-                        checkpoint_counter += 1
-                        if checkpoint_counter % 10 == 0:
-                            checkpoint_state = {
-                                'conversations': self.conversations,
-                                'tier_results': self.tier_results,
-                                'processed_files': list(processed_files)
-                            }
-                            self.save_checkpoint('analysis_state', checkpoint_state)
+                        for conv in batch_conversations:
+                            session_id = conv['metadata']['session_id']
+                            checkpoint_conv = self.load_conversation_checkpoint(session_id)
                             
-                    except Exception as e:
-                        pbar.write(f"Error processing {conv_file.name}: {e}")
-                        pbar.write("Saving checkpoint before continuing...")
+                            if checkpoint_conv and 'embedding' in checkpoint_conv.get('analysis_completed', set()):
+                                # Use checkpoint data
+                                conv.update(checkpoint_conv)
+                                already_embedded.append(conv)
+                            else:
+                                need_embedding.append(conv)
+                        
+                        # Batch embed only those that need it
+                        if need_embedding:
+                            need_embedding = self.embed_conversations_batch(need_embedding, verbose=False)
+                            # Mark embedding as complete for these
+                            for conv in need_embedding:
+                                self.save_conversation_checkpoint(conv, 'embedding')
+                        
+                        # Combine all conversations
+                        all_convs = already_embedded + need_embedding
+                        
+                        # Now analyze each conversation individually
+                        for j, conv in enumerate(all_convs):
+                            try:
+                                # Use checkpoint-aware comprehensive analysis
+                                # Skip re-embedding since we handled it above
+                                completed_steps = self.get_completed_analysis_steps(conv)
+                                if 'embedding' not in completed_steps:
+                                    completed_steps.add('embedding')
+                                    if 'analysis_completed' not in conv:
+                                        conv['analysis_completed'] = set()
+                                    conv['analysis_completed'].add('embedding')
+                                
+                                # Run comprehensive analysis with checkpointing
+                                conv = self.analyze_conversation_comprehensive(conv, verbose=False, use_checkpoint=True)
+                                
+                                self.conversations.append(conv)
+                                tier_conversations.append(conv)
+                                all_conversation_files.append(batch_files[j])
+                                processed_files.add(str(batch_files[j]))
+                                
+                            except Exception as e:
+                                pbar.write(f"Error analyzing conversation: {e}")
+                            
+                            pbar.update(1)
+                        
+                        # Save checkpoint after each batch
+                        checkpoint_counter += len(batch_conversations)
                         checkpoint_state = {
                             'conversations': self.conversations,
                             'tier_results': self.tier_results,
                             'processed_files': list(processed_files)
                         }
                         self.save_checkpoint('analysis_state', checkpoint_state)
-                        pbar.update(1)  # Still count it as processed
-                        continue
             
             # Update tier results count
             self.tier_results[tier_name]['n_conversations'] = len(tier_conversations)
@@ -4402,14 +7088,14 @@ class SemanticTrajectoryAnalyzer:
         
         # Analyze patterns
         print("\n" + "="*70)
-        print("ANALYZING SEMANTIC PATTERNS")
+        print("ANALYZING EMBEDDING PATTERNS")
         print("="*70)
         
-        # Find semantic clusters
-        clusters, cluster_analysis = self.find_semantic_clusters()
+        # Find embedding clusters
+        clusters, cluster_analysis = self.find_embedding_clusters()
         
-        # Analyze semantic structure
-        self.analyze_semantic_structure()
+        # Analyze embedding structure
+        self.analyze_embedding_structure()
         
         # Analyze peer pressure convergence
         convergence_df = self.analyze_peer_pressure_convergence()
@@ -4437,18 +7123,126 @@ class SemanticTrajectoryAnalyzer:
         
         # Extract features for all conversations (for ML applications)
         feature_matrix = []
+        phase_details = []  # Separate list for detailed phase information
+        
         for conv in self.conversations:
             features = self.extract_feature_vector(conv)
             # Add tier information if available
             if 'tier' in conv:
                 features['tier'] = conv['tier']
+            
+            # Add session ID for joining datasets
+            features['session_id'] = conv['metadata']['session_id']
             feature_matrix.append(features)
+            
+            # Extract detailed phase information
+            if 'phases' in conv:
+                for phase in conv['phases']:
+                    phase_detail = {
+                        'session_id': conv['metadata']['session_id'],
+                        'tier': conv.get('tier', 'unknown'),
+                        'phase_turn': phase['turn'],
+                        'phase_name': phase['phase'],
+                        'analysis_time': phase.get('analysis_time', None)
+                    }
+                    phase_details.append(phase_detail)
         
         if feature_matrix:
             # Save feature matrix
             feature_df = pd.DataFrame(feature_matrix)
             feature_df.to_csv(self.output_dir / 'conversation_features.csv', index=False)
             print(f"\nSaved feature matrix ({len(feature_df)} conversations, {len(feature_df.columns)} features)")
+            
+            # Save detailed phase information
+            if phase_details:
+                phase_df = pd.DataFrame(phase_details)
+                phase_df.to_csv(self.output_dir / 'conversation_phases.csv', index=False)
+                print(f"Saved phase details ({len(phase_df)} phase transitions across {phase_df['session_id'].nunique()} conversations)")
+        
+        # Save comprehensive conversation metadata
+        self.save_comprehensive_metadata()
+        
+        # Validate phase detection against manual annotations
+        print("\n" + "="*70)
+        print("PHASE DETECTION VALIDATION")
+        print("="*70)
+        
+        # Run phase detection validation on conversations with manual phases
+        conversations_with_phases = [c for c in self.conversations if c.get('phases')]
+        
+        if conversations_with_phases:
+            print(f"Found {len(conversations_with_phases)} conversations with manual phase annotations")
+            
+            # Run sensitivity analysis on a sample
+            sample_size = min(20, len(conversations_with_phases))
+            sample_convs = np.random.choice(conversations_with_phases, sample_size, replace=False)
+            
+            all_results = []
+            for conv in tqdm(sample_convs, desc="Validating phase detection"):
+                sensitivity_results = self.phase_detection_sensitivity_analysis(conv)
+                sensitivity_results['session_id'] = conv['metadata']['session_id']
+                all_results.append(sensitivity_results)
+            
+            # Aggregate results
+            combined_results = pd.concat(all_results)
+            
+            # Find best parameters
+            best_params = combined_results.groupby(['window_size', 'threshold_percentile'])['f1_score'].mean()
+            best_idx = best_params.idxmax()
+            best_window, best_threshold = best_idx
+            
+            print(f"\nBest parameters:")
+            print(f"  Window size: {best_window}")
+            print(f"  Threshold percentile: {best_threshold}")
+            print(f"  Average F1 score: {best_params.max():.3f}")
+            
+            # Save validation results
+            validation_summary = combined_results.groupby(['window_size', 'threshold_percentile']).agg({
+                'f1_score': ['mean', 'std'],
+                'precision': 'mean',
+                'recall': 'mean',
+                'n_detected': 'mean',
+                'n_manual': 'mean'
+            }).round(3)
+            
+            validation_summary.to_csv(self.output_dir / 'phase_detection_validation.csv')
+            print("\nSaved phase detection validation results to phase_detection_validation.csv")
+        else:
+            print("No conversations with manual phase annotations found for validation")
+        
+        # Run synthetic validation
+        synthetic_results = self.create_synthetic_validation()
+        
+        # Run perturbation analysis on a sample of conversations
+        print("\n" + "="*70)
+        print("PERTURBATION ANALYSIS")
+        print("="*70)
+        
+        sample_size = min(10, len(self.conversations))
+        sample_convs = np.random.choice(self.conversations, sample_size, replace=False)
+        
+        all_perturbation_results = []
+        for conv in tqdm(sample_convs, desc="Running perturbation analysis"):
+            pert_results = self.perturbation_analysis(conv, n_perturbations=5)
+            pert_results['session_id'] = conv['metadata']['session_id']
+            all_perturbation_results.append(pert_results)
+        
+        if all_perturbation_results:
+            combined_pert_results = pd.concat(all_perturbation_results)
+            
+            # Summarize by perturbation type
+            summary = combined_pert_results.groupby('perturbation_type').agg({
+                'procrustes_distance': ['mean', 'std'],
+                'phase_preservation': ['mean', 'std'],
+                'mean_point_distance': 'mean'
+            }).round(3)
+            
+            print("\nPerturbation Analysis Summary:")
+            print(summary)
+            
+            # Save results
+            combined_pert_results.to_csv(self.output_dir / 'perturbation_analysis.csv', index=False)
+            print("\nSaved perturbation analysis results")
         
         # Generate additional analyses
         print("\n" + "="*70)
@@ -4554,11 +7348,35 @@ class SemanticTrajectoryAnalyzer:
         if self.tier_results:
             statistical_results = self.perform_statistical_tests()
         
+        # Validate length normalization
+        self.validate_length_normalization()
+        
+        # Run null model comparison on a sample
+        print("\n" + "="*70)
+        print("NULL MODEL COMPARISON") 
+        print("="*70)
+        
+        sample_size = min(50, len(self.conversations))
+        sample_convs = np.random.choice(self.conversations, sample_size, replace=False).tolist()
+        null_results = self.compare_to_null_models(sample_convs, n_null=100)
+        
+        # Store null model results
+        self.null_model_results = null_results
+        
         # Identify conversation topics and map to attractors
         topic_analysis = self.identify_conversation_topics()
         
-        # Build predictive model
+        # Build predictive model (only if outcome labels are available)
+        print("\n" + "="*70)
+        print("CHECKING FOR PREDICTIVE MODELING CAPABILITY")
+        print("="*70)
+        
         predictive_results = self.build_predictive_model()
+        
+        if predictive_results is None:
+            print("\nNOTE: Predictive modeling was skipped because no outcome labels were found.")
+            print("To enable predictive modeling, ensure your conversation data includes")
+            print("outcome labels in the metadata (e.g., 'outcome', 'breakdown', 'label').")
         
         # Store results for report
         self.statistical_results = statistical_results
@@ -4567,6 +7385,10 @@ class SemanticTrajectoryAnalyzer:
         
         # Generate report
         self.generate_report()
+        
+        # Create ensemble summary visualization if in ensemble mode
+        if self.ensemble_mode:
+            self.create_ensemble_summary_visualization()
         
         print("\n" + "="*70)
         print("ANALYSIS COMPLETE")
@@ -4588,14 +7410,30 @@ class SemanticTrajectoryAnalyzer:
             print("  - conversation_trajectory_space.html")
             print("  - tier_trajectory_comparison.html")
         
-        # Clean up checkpoint on successful completion
+        # Clean up checkpoints on successful completion
+        print("\nCleaning up checkpoints...")
+        
+        # Remove individual conversation checkpoints
+        self.cleanup_conversation_checkpoints(self.conversations)
+        
+        # Remove main analysis checkpoint
         checkpoint_path = self.checkpoint_dir / 'analysis_state.pkl'
         if checkpoint_path.exists():
             checkpoint_path.unlink()
-            print("\nAnalysis completed successfully - checkpoint removed")
+            print("Analysis completed successfully - main checkpoint removed")
+        
+        # Save final analysis state for future reference
+        final_checkpoint = {
+            'conversations': self.conversations,
+            'tier_results': self.tier_results,
+            'analysis_complete': True,
+            'completion_time': datetime.now().isoformat(),
+            'total_conversations': len(self.conversations)
+        }
+        self.save_checkpoint('analysis_state_final', final_checkpoint)
         
         # Clean up old checkpoints
-        self.cleanup_old_checkpoints()
+        self.cleanup_old_checkpoints(keep_latest=3)
         
         return {
             'conversations': self.conversations,
@@ -4617,10 +7455,10 @@ if __name__ == "__main__":
     ]
     
     # Standard analysis for single conversation
-    # analyzer = SemanticTrajectoryAnalyzer()
+    # analyzer = EmbeddingTrajectoryAnalyzer()
     
     # Ensemble analysis for invariant patterns
-    analyzer = SemanticTrajectoryAnalyzer(
+    analyzer = EmbeddingTrajectoryAnalyzer(
         model_name='all-MiniLM-L6-v2',
         ensemble_models=ensemble_models
     )
@@ -4638,7 +7476,7 @@ if __name__ == "__main__":
     # To force a fresh start, use: resume_from_checkpoint=False
     results = analyzer.run_full_analysis(tier_directories)
     
-    print("\nAnalysis complete! Check the 'semantic_analysis' directory for results.")
+    print("\nAnalysis complete! Check the 'embedding_analysis' directory for results.")
     
     # Access tier-specific results
     if results.get('tier_results'):

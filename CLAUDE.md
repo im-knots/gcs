@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a research project analyzing AI conversation dynamics through geometric and semantic trajectory analysis. It combines Python-based data analysis with an academic LaTeX paper documenting the findings.
+This is a research project analyzing AI conversation dynamics through geometric and embedding trajectory analysis. It combines Python-based data analysis with an academic LaTeX paper documenting the findings.
 
 ## Key Commands
 
@@ -39,10 +39,10 @@ latexmk -pdf paper.tex
 
 ### Analysis Pipeline (`analysis/analysis.py`)
 
-The `SemanticTrajectoryAnalyzer` class orchestrates the entire analysis:
+The `EmbeddingTrajectoryAnalyzer` class orchestrates the entire analysis:
 
-1. **Embedding Generation**: Uses sentence transformers to convert conversation text into high-dimensional semantic vectors
-2. **Trajectory Analysis**: Tracks how conversations move through semantic space over time
+1. **Embedding Generation**: Uses sentence transformers to convert conversation text into high-dimensional embedding vectors
+2. **Trajectory Analysis**: Tracks how conversations move through embedding space over time
 3. **Pattern Detection**: Identifies breakdown patterns, clusters, and phase transitions
 4. **Ensemble Mode**: Supports multiple embedding models to find invariant patterns across different representations
 
@@ -52,22 +52,13 @@ Key analysis modes:
 - Model tier analysis: `analyze_model_tiers()` - compares full reasoning, light reasoning, and no reasoning models
 - Bootstrap analysis for statistical validation
 
-### Output Structure
-
-The analyzer generates outputs in multiple directories:
-- `tier_analysis/`: Comparative analysis across model tiers
-- `figures/`: Various visualizations (phase space, trajectories, dimensions)
-- `bootstrap/`: Statistical validation results
-- `manifold/`: Geometric analysis of conversation spaces
-- `validation/`: Predictive model results
-
 ### Data Processing Flow
 
 1. **Input**: JSON conversation files containing agent interactions
-2. **Embedding**: Text converted to semantic vectors (384 or 768 dimensions)
+2. **Embedding**: Text converted to embedding vectors (384 or 768 dimensions)
 3. **Dimensionality Reduction**: PCA, t-SNE for visualization
 4. **Analysis**: Multiple geometric and statistical methods:
-   - Velocity and acceleration in semantic space
+   - Velocity and acceleration in embedding space
    - Divergence metrics between trajectories
    - Clustering and phase identification
    - Topological analysis (persistence diagrams)
