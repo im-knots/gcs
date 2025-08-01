@@ -14,6 +14,7 @@ from sklearn.decomposition import PCA
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 import logging
+from ..utils import calculate_phase_correlation, calculate_model_agreement
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +59,13 @@ class EnsembleVisualizer:
             
         # Calculate optimal figure size - increased width to prevent compression
         fig_width = 7 * n_models  # 7 per model
-        fig_height = 28  # Slightly increased for better proportions
+        fig_height = 32  # Increased to accommodate statistics row
         logger.info(f"Creating figure ({fig_width}x{fig_height})...")
         fig = plt.figure(figsize=(fig_width, fig_height))
         
         # Create GridSpec for flexible layout
-        # Total rows: 4 (section 1) + 1 (correlation tables) + 3 (phase diagram) = 8
-        total_rows = 8
+        # Total rows: 4 (section 1) + 1 (correlation tables) + 3 (phase diagram) + 1 (stats) = 9
+        total_rows = 9
         gs = gridspec.GridSpec(total_rows, n_models, figure=fig, hspace=0.35, wspace=0.25)
         
         # Process phase information - separate detected and annotated
@@ -316,17 +317,27 @@ class EnsembleVisualizer:
         # Create a subplot spanning all columns for the phase diagram
         ax_phase = fig.add_subplot(gs[5:8, :])
         
+        # Get model-specific phase detections if available
+        model_phases = {}
+        if phase_info and 'model_phases' in phase_info:
+            model_phases = phase_info['model_phases']
+        
         # Create phase transition timeline
-        if detected_phases or annotated_phases:
-            # Determine timeline positions
-            show_both = len(detected_phases) > 0 and len(annotated_phases) > 0
-            annotated_y = 0.7 if show_both else 0.5
-            detected_y = 0.3 if show_both else 0.5
+        if model_phases or annotated_phases:
+            # Setup layout - annotated on top, then each model
+            n_models_with_phases = len(model_phases)
+            total_rows = 1 + n_models_with_phases  # 1 for annotated + n models
             
-            # Draw timeline base lines
-            ax_phase.axhline(y=annotated_y, color='gray', linewidth=1, alpha=0.5)
-            if show_both:
-                ax_phase.axhline(y=detected_y, color='gray', linewidth=1, alpha=0.5)
+            # Calculate y positions
+            y_positions = np.linspace(0.9, 0.1, total_rows)
+            annotated_y = y_positions[0] if annotated_phases else None
+            
+            # Model colors
+            model_colors = plt.cm.tab10(np.linspace(0, 1, 10))[:n_models_with_phases]
+            
+            # Draw base lines
+            for i, y in enumerate(y_positions[:len(y_positions) if annotated_phases else n_models_with_phases]):
+                ax_phase.axhline(y=y, color='gray', linewidth=1, alpha=0.3)
             
             # Draw annotated phase transitions if available
             if annotated_phases:
@@ -398,42 +409,40 @@ class EnsembleVisualizer:
                             transform=ax_phase.transAxes, ha='right', va='center',
                             fontsize=12, fontweight='bold', color='darkred')
             
-            # Draw detected phase transitions if available
-            if detected_phases:
-                sorted_detected = sorted(detected_phases, key=lambda x: x['start_turn'])
-                
-                # Filter to only show actual transitions (skip turn 0 as it's not a transition)
-                actual_transitions = [p for p in sorted_detected if p['start_turn'] > 0]
-                
-                # Draw vertical lines for each detected transition
-                for phase_idx, phase in enumerate(actual_transitions):
-                    turn = phase['start_turn']
-                    confidence = phase.get('confidence', 0.5)
-                    phase_type = phase.get('type', f'Phase {phase_idx+1}')
+            # Draw model-specific phase transitions
+            if model_phases:
+                model_idx = 0
+                for model_name, phases in model_phases.items():
+                    if annotated_phases:
+                        y_pos = y_positions[model_idx + 1]  # Skip first position for annotated
+                    else:
+                        y_pos = y_positions[model_idx]
+                        
+                    color = model_colors[model_idx]
                     
-                    if 0 < turn <= n_messages:  # Skip turn 0
-                        # Draw vertical line with confidence-based styling
-                        ax_phase.axvline(x=turn, ymin=detected_y-0.15, ymax=detected_y+0.15, 
-                                       color='blue', linewidth=2, 
-                                       alpha=0.3 + 0.7 * confidence,
-                                       linestyle='--' if confidence < 0.7 else '-')
+                    # Draw phase transitions for this model
+                    for phase in phases:
+                        turn = phase['turn']
+                        confidence = phase.get('confidence', 0.5)
                         
-                        # Add phase type and confidence above
-                        label_text = f'{phase_type}\n({confidence:.2f})'
-                        ax_phase.text(turn, detected_y-0.2, label_text, 
-                                    rotation=45, ha='right', va='top', fontsize=9,
-                                    color='darkblue', fontweight='bold' if confidence > 0.7 else 'normal',
-                                    alpha=0.5 + 0.5 * confidence)
-                        
-                        # Add turn number below
-                        ax_phase.text(turn, detected_y+0.15, f'T{turn}', 
-                                    ha='center', va='bottom', fontsize=8,
-                                    color='blue', alpha=0.5 + 0.5 * confidence)
-                
-                # Add label for detected transitions
-                ax_phase.text(-0.05, detected_y, 'Detected\nTransitions', 
-                            transform=ax_phase.transAxes, ha='right', va='center',
-                            fontsize=12, fontweight='bold', color='darkblue')
+                        if 0 < turn < n_messages:
+                            # Draw vertical line
+                            ax_phase.axvline(x=turn, ymin=y_pos-0.08, ymax=y_pos+0.08,
+                                           color=color, linewidth=2,
+                                           alpha=0.3 + 0.7 * confidence,
+                                           linestyle='-' if confidence > 0.7 else '--')
+                            
+                            # Add turn number
+                            ax_phase.text(turn, y_pos+0.1, f'{turn}',
+                                        ha='center', va='bottom', fontsize=7,
+                                        color=color, alpha=0.7)
+                    
+                    # Add model label
+                    ax_phase.text(-0.02, y_pos, model_name.replace('all-', '').replace('-v2', ''),
+                                transform=ax_phase.transAxes, ha='right', va='center',
+                                fontsize=10, color=color, fontweight='bold')
+                    
+                    model_idx += 1
             
             # Set up the axis
             ax_phase.set_xlim(-5, n_messages + 5)  # Add some padding
@@ -441,10 +450,10 @@ class EnsembleVisualizer:
             ax_phase.set_xlabel('Conversation Turn', fontsize=14)
             
             # Update title based on what we're showing
-            if show_both:
-                ax_phase.set_title('Phase Transitions: Annotated vs Detected', fontsize=16)
-            elif detected_phases:
-                ax_phase.set_title('Detected Phase Transitions', fontsize=16)
+            if annotated_phases and model_phases:
+                ax_phase.set_title('Phase Transitions: Annotated vs Model-Specific Detections', fontsize=16)
+            elif model_phases:
+                ax_phase.set_title('Model-Specific Phase Detections', fontsize=16)
             else:
                 ax_phase.set_title('Annotated Phase Transitions', fontsize=16)
             
@@ -455,14 +464,19 @@ class EnsembleVisualizer:
             # Add grid for x-axis only
             ax_phase.grid(True, axis='x', alpha=0.3)
             
-            # Add annotations explaining the visualization
-            if show_both:
-                # Add legend explaining confidence visualization
-                legend_text = 'Detected transitions: Line opacity & style indicate confidence\nSolid line = high confidence (>0.7), Dashed = lower confidence'
-                ax_phase.text(0.98, 0.05, legend_text, 
-                            transform=ax_phase.transAxes, ha='right', va='bottom',
-                            fontsize=9, style='italic', color='darkblue',
-                            bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.8))
+            # Add legend for model colors if showing model phases
+            if model_phases:
+                # Create color legend
+                legend_elements = []
+                model_idx = 0
+                for model_name in model_phases.keys():
+                    color = model_colors[model_idx]
+                    legend_elements.append(Patch(facecolor=color, label=model_name.replace('all-', '').replace('-v2', '')))
+                    model_idx += 1
+                    
+                ax_phase.legend(handles=legend_elements, loc='upper right', 
+                              bbox_to_anchor=(0.98, 0.98), ncol=1,
+                              frameon=True, fancybox=True, shadow=True, fontsize=9)
         else:
             # If no phase info, just show a message
             ax_phase.text(0.5, 0.5, 'No phase information available', 
@@ -470,12 +484,51 @@ class EnsembleVisualizer:
             ax_phase.set_xlim(0, 1)
             ax_phase.set_ylim(0, 1)
             ax_phase.axis('off')
+            
+        # Section 4: Phase correlation statistics (Row 8)
+        if annotated_phases and model_phases:
+            ax_stats = fig.add_subplot(gs[8, :])
+            
+            # Calculate correlations for each model
+            stats_text = []
+            for model_name, phases in model_phases.items():
+                correlation_stats = calculate_phase_correlation(
+                    annotated_phases, phases, n_messages, tolerance=5
+                )
+                
+                model_short = model_name.replace('all-', '').replace('-v2', '')
+                stats_text.append(
+                    f"{model_short}: Correlation={correlation_stats['correlation']:.3f} "
+                    f"(p={correlation_stats['p_value']:.3f}), "
+                    f"F1={correlation_stats['f1_score']:.3f}, "
+                    f"Precision={correlation_stats['precision']:.3f}, "
+                    f"Recall={correlation_stats['recall']:.3f}"
+                )
+                
+            # Calculate model agreement
+            agreement_stats = calculate_model_agreement(model_phases, n_messages)
+            stats_text.append(f"\nModel Agreement: {agreement_stats['mean_agreement']:.3f} ± {agreement_stats['std_agreement']:.3f}")
+            
+            # Display statistics
+            ax_stats.text(0.5, 0.5, '\n'.join(stats_text), 
+                         transform=ax_stats.transAxes,
+                         ha='center', va='center', fontsize=10,
+                         bbox=dict(boxstyle='round,pad=0.5', facecolor='lightyellow', alpha=0.8))
+            
+            ax_stats.set_title('Phase Detection Correlation Statistics', fontsize=14)
+            ax_stats.axis('off')
         
         # Overall title
         session_id = conversation.get('metadata', {}).get('session_id', 'Unknown')
         filename = conversation.get('metadata', {}).get('filename', 'unknown.json')
-        plt.suptitle(f"Ensemble Analysis - {session_id[:12]}\n{filename}", 
-                    fontsize=16, y=0.98)
+        
+        # Check if we have annotated outcome
+        title_lines = [f"Ensemble Analysis - {session_id[:12]}", filename]
+        if 'metadata' in conversation and 'annotated_outcome' in conversation['metadata']:
+            outcome = conversation['metadata']['annotated_outcome']
+            title_lines.append(f"Annotated Outcome: {outcome}")
+            
+        plt.suptitle('\n'.join(title_lines), fontsize=16, y=0.98)
         
         # Save figure
         if save_path:

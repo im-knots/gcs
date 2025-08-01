@@ -11,6 +11,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 from tqdm import tqdm
+import pandas as pd
 
 from embedding_analysis import (
     EnsembleEmbedder,
@@ -33,7 +34,8 @@ class ConversationAnalysisPipeline:
                  output_dir: str = "analysis_output",
                  checkpoint_enabled: bool = True,
                  log_level: str = "INFO",
-                 batch_size: int = 25):
+                 batch_size: int = 25,
+                 outcome_csv_paths: Optional[Dict[str, str]] = None):
         """
         Initialize analysis pipeline.
         
@@ -42,6 +44,7 @@ class ConversationAnalysisPipeline:
             checkpoint_enabled: Whether to enable checkpointing
             log_level: Logging level
             batch_size: Number of conversations to process in each GPU batch
+            outcome_csv_paths: Optional dict mapping tier names to CSV paths
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
@@ -73,6 +76,68 @@ class ConversationAnalysisPipeline:
         
         # Batch size for GPU processing
         self.batch_size = batch_size
+        
+        # Cache for outcome data
+        self.outcome_data_cache = {}
+        
+        # Store CSV paths if provided, otherwise use defaults
+        self.outcome_csv_paths = outcome_csv_paths or {}
+        
+        # Default CSV paths (highest n directories)
+        self.default_csv_paths = {
+            'full_reasoning': 'n67/conversation_analysis_enhanced.csv',
+            'light_reasoning': 'n61/conversation_analysis_enhanced.csv',
+            'non_reasoning': 'n100/conversation_analysis_enhanced.csv'
+        }
+        
+    def _load_outcome_data(self, tier_name: str, tier_dir: Path) -> Optional[Dict[str, str]]:
+        """
+        Load conversation outcomes from CSV files.
+        
+        Args:
+            tier_name: Name of the tier
+            tier_dir: Directory containing tier data
+            
+        Returns:
+            Dictionary mapping filename to conversation outcome, or None if no CSV available
+        """
+        # Check if we've already cached this data
+        cache_key = f"{tier_name}_{tier_dir}"
+        if cache_key in self.outcome_data_cache:
+            return self.outcome_data_cache[cache_key]
+            
+        csv_path = None
+        
+        # Check if user provided a specific CSV path for this tier
+        if tier_name in self.outcome_csv_paths:
+            csv_path = Path(self.outcome_csv_paths[tier_name])
+        else:
+            # Use default path
+            if tier_name in self.default_csv_paths:
+                csv_path = tier_dir / self.default_csv_paths[tier_name]
+                
+        if not csv_path or not csv_path.exists():
+            self.logger.info(f"No outcome CSV available for {tier_name}")
+            return None
+            
+        outcome_map = {}
+        
+        try:
+            df = pd.read_csv(csv_path)
+            # Create mapping from filename to conversation_outcome
+            for _, row in df.iterrows():
+                filename = row['filename']
+                outcome = row.get('conversation_outcome', 'unknown')
+                outcome_map[filename] = outcome
+                
+            self.logger.info(f"Loaded {len(outcome_map)} outcomes from {csv_path}")
+        except Exception as e:
+            self.logger.warning(f"Failed to load outcomes from {csv_path}: {e}")
+            return None
+                
+        # Cache the results
+        self.outcome_data_cache[cache_key] = outcome_map
+        return outcome_map
         
     def analyze_tier(self, 
                     tier_name: str,
@@ -113,6 +178,16 @@ class ConversationAnalysisPipeline:
         )
         
         self.logger.info(f"Processing {len(conversations)} conversations")
+        
+        # Load outcome data from CSV files
+        outcome_map = self._load_outcome_data(tier_name, tier_dir)
+        
+        # Add outcome data to conversations if available
+        if outcome_map:
+            for conv in conversations:
+                filename = conv['metadata'].get('filename', '')
+                if filename in outcome_map:
+                    conv['metadata']['annotated_outcome'] = outcome_map[filename]
         
         tier_results = {
             'tier_name': tier_name,
@@ -487,6 +562,27 @@ def main():
         help="Number of conversations to process in each GPU batch (default: 25)"
     )
     
+    parser.add_argument(
+        "--phase1-csv",
+        type=str,
+        default=None,
+        help="Path to CSV file with outcomes for phase-1-premium (default: phase-1-premium/n67/conversation_analysis_enhanced.csv)"
+    )
+    
+    parser.add_argument(
+        "--phase2-csv",
+        type=str,
+        default=None,
+        help="Path to CSV file with outcomes for phase-2-efficient (default: phase-2-efficient/n61/conversation_analysis_enhanced.csv)"
+    )
+    
+    parser.add_argument(
+        "--phase3-csv",
+        type=str,
+        default=None,
+        help="Path to CSV file with outcomes for phase-3-no-reasoning (default: phase-3-no-reasoning/n100/conversation_analysis_enhanced.csv)"
+    )
+    
     args = parser.parse_args()
     
     # Define tier directories
@@ -496,12 +592,22 @@ def main():
         'non_reasoning': args.data_dir / 'phase-3-no-reasoning'
     }
     
+    # Build outcome CSV paths if provided
+    outcome_csv_paths = {}
+    if args.phase1_csv:
+        outcome_csv_paths['full_reasoning'] = args.phase1_csv
+    if args.phase2_csv:
+        outcome_csv_paths['light_reasoning'] = args.phase2_csv
+    if args.phase3_csv:
+        outcome_csv_paths['non_reasoning'] = args.phase3_csv
+    
     # Initialize pipeline
     pipeline = ConversationAnalysisPipeline(
         output_dir=str(args.output_dir),
         checkpoint_enabled=not args.no_checkpoint,
         log_level=args.log_level,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        outcome_csv_paths=outcome_csv_paths if outcome_csv_paths else None
     )
     
     # Run analysis
