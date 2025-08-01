@@ -3,6 +3,8 @@ Comprehensive ensemble visualization for conversation analysis.
 """
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for parallel processing
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Rectangle, Patch
@@ -354,6 +356,13 @@ class EnsembleVisualizer:
                     
                     # Remove common prefixes and suffixes
                     phase_name = phase_name.replace('deep ', '').replace(' phase', '').strip()
+                    
+                    # Check for core phase types in complex names
+                    core_phases = ['exploration', 'synthesis', 'conclusion', 'introduction', 'opening']
+                    for core_phase in core_phases:
+                        if core_phase in phase_name:
+                            phase_name = core_phase
+                            break
                     
                     # Only add if it's different from the last phase
                     if phase_name != last_phase and phase_name:

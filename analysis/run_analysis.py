@@ -32,7 +32,8 @@ class ConversationAnalysisPipeline:
     def __init__(self, 
                  output_dir: str = "analysis_output",
                  checkpoint_enabled: bool = True,
-                 log_level: str = "INFO"):
+                 log_level: str = "INFO",
+                 batch_size: int = 25):
         """
         Initialize analysis pipeline.
         
@@ -40,6 +41,7 @@ class ConversationAnalysisPipeline:
             output_dir: Directory for outputs
             checkpoint_enabled: Whether to enable checkpointing
             log_level: Logging level
+            batch_size: Number of conversations to process in each GPU batch
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
@@ -68,6 +70,9 @@ class ConversationAnalysisPipeline:
         # Results storage
         self.tier_results = {}
         self.analysis_results = {}
+        
+        # Batch size for GPU processing
+        self.batch_size = batch_size
         
     def analyze_tier(self, 
                     tier_name: str,
@@ -119,7 +124,7 @@ class ConversationAnalysisPipeline:
         }
         
         # Process conversations in batches for GPU efficiency
-        batch_size = 10
+        batch_size = self.batch_size
         n_batches = (len(conversations) + batch_size - 1) // batch_size
         
         self.logger.info(f"Processing {len(conversations)} conversations in {n_batches} batches of {batch_size}")
@@ -475,6 +480,13 @@ def main():
         help="Logging level"
     )
     
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=25,
+        help="Number of conversations to process in each GPU batch (default: 25)"
+    )
+    
     args = parser.parse_args()
     
     # Define tier directories
@@ -488,7 +500,8 @@ def main():
     pipeline = ConversationAnalysisPipeline(
         output_dir=str(args.output_dir),
         checkpoint_enabled=not args.no_checkpoint,
-        log_level=args.log_level
+        log_level=args.log_level,
+        batch_size=args.batch_size
     )
     
     # Run analysis
