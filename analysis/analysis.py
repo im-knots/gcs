@@ -1540,6 +1540,11 @@ class EmbeddingTrajectoryAnalyzer:
         """Find embedding clusters (potential topics/themes) in the embedding space"""
         print(f"\nFinding embedding clusters with DBSCAN (eps={eps}, min_samples={min_samples})...")
         
+        # Check if we have embeddings
+        if not self.all_embeddings:
+            print("No embeddings found for clustering. Skipping cluster analysis.")
+            return None, {}
+        
         # Convert to numpy array
         embeddings_array = np.array(self.all_embeddings)
         
@@ -2062,6 +2067,13 @@ class EmbeddingTrajectoryAnalyzer:
         # Step 5: Run other analyses that can be batched
         conversations = self._batch_analyze_trajectories(conversations, verbose)
         
+        # Step 5b: Add phase metrics for each conversation
+        for i, conv in enumerate(conversations):
+            # Add phase metrics if phases exist
+            phase_metrics = self.calculate_phase_transition_metrics(conv)
+            if phase_metrics:
+                conv['phase_metrics'] = phase_metrics
+        
         # Step 6: Create visualizations (still per conversation due to plotting constraints)
         for i, conv in enumerate(conversations):
             if verbose:
@@ -2135,6 +2147,16 @@ class EmbeddingTrajectoryAnalyzer:
             
             conv['embedded_messages'] = embedded_messages
             conv['embedding_model'] = self.model_name
+            
+            # Add to global collections for clustering analysis
+            for j, (msg, emb) in enumerate(zip(conv['messages'], conv_embeddings)):
+                self.all_embeddings.append(emb)
+                self.all_metadata.append({
+                    'session_id': msg['session_id'],
+                    'turn': msg['turn'],
+                    'speaker': msg['speaker']
+                })
+            
             start_idx = end_idx
         
         # Encode with ensemble models
@@ -3070,6 +3092,17 @@ class EmbeddingTrajectoryAnalyzer:
         # Batch calculate all distance matrices at once
         distance_matrices, self_similarities = self._batch_calculate_distances(standardized_embeddings, n_messages)
         
+        # Add row labels on the left side
+        row_labels = [
+            'Euclidean\nDistance',
+            'Self-Similarity\n(Cosine)',
+            'Recurrence\nPlot',
+            'Embedding\nTrajectory (PCA)'
+        ]
+        
+        # Import for colorbars
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+        
         # Create visualizations for each model
         for idx, model_name in enumerate(model_names):
             embeddings = standardized_embeddings[model_name]
@@ -3085,17 +3118,40 @@ class EmbeddingTrajectoryAnalyzer:
             
             # Plot euclidean distances
             im1 = ax1.imshow(euclidean_distances, cmap='viridis', aspect='auto')
-            ax1.set_title(f'{model_name}\nEuclidean Distance', fontsize=12)
+            ax1.set_title(f'{model_name}', fontsize=12)
             ax1.set_xlabel('Turn', fontsize=10)
             if idx == 0:
                 ax1.set_ylabel('Turn', fontsize=10)
+                # Add row label
+                ax1.text(-0.3, 0.5, row_labels[0], transform=ax1.transAxes, 
+                        fontsize=12, fontweight='bold', ha='right', va='center',
+                        rotation=0)
+            
+            # Add colorbar for the last column only
+            if idx == n_models - 1:
+                divider = make_axes_locatable(ax1)
+                cax1 = divider.append_axes("right", size="5%", pad=0.05)
+                cbar1 = plt.colorbar(im1, cax=cax1)
+                cbar1.ax.tick_params(labelsize=8)
+                cbar1.set_label('Distance', fontsize=8)
             
             # Plot self-similarity
             im2 = ax2.imshow(self_similarities[model_name], cmap='RdBu_r', aspect='auto', vmin=0, vmax=1)
-            ax2.set_title(f'Self-Similarity', fontsize=12)
             ax2.set_xlabel('Turn', fontsize=10)
             if idx == 0:
                 ax2.set_ylabel('Turn', fontsize=10)
+                # Add row label
+                ax2.text(-0.3, 0.5, row_labels[1], transform=ax2.transAxes,
+                        fontsize=12, fontweight='bold', ha='right', va='center',
+                        rotation=0)
+            
+            # Add colorbar for the last column only
+            if idx == n_models - 1:
+                divider = make_axes_locatable(ax2)
+                cax2 = divider.append_axes("right", size="5%", pad=0.05)
+                cbar2 = plt.colorbar(im2, cax=cax2)
+                cbar2.ax.tick_params(labelsize=8)
+                cbar2.set_label('Similarity', fontsize=8)
             
             # Add phase boundaries if available
             if phase_info:
@@ -3123,11 +3179,22 @@ class EmbeddingTrajectoryAnalyzer:
                 recurrence_matrix = self_similarities[model_name] > model_threshold
             
             # Plot recurrence
-            ax3.imshow(recurrence_matrix, cmap='binary', aspect='auto')
-            ax3.set_title(f'Recurrence Plot', fontsize=12)
+            im3 = ax3.imshow(recurrence_matrix, cmap='binary', aspect='auto')
             ax3.set_xlabel('Turn', fontsize=10)
             if idx == 0:
                 ax3.set_ylabel('Turn', fontsize=10)
+                # Add row label
+                ax3.text(-0.3, 0.5, row_labels[2], transform=ax3.transAxes,
+                        fontsize=12, fontweight='bold', ha='right', va='center',
+                        rotation=0)
+            
+            # Add colorbar for the last column only
+            if idx == n_models - 1:
+                divider = make_axes_locatable(ax3)
+                cax3 = divider.append_axes("right", size="5%", pad=0.05)
+                cbar3 = plt.colorbar(im3, cax=cax3)
+                cbar3.ax.tick_params(labelsize=8)
+                cbar3.set_label('Recurrence', fontsize=8)
             
             # Just add phase boundaries without annotations (save those for the large plot)
             if phase_info:
@@ -3174,14 +3241,27 @@ class EmbeddingTrajectoryAnalyzer:
             ax4.scatter(reduced_embeddings[-1, 0], reduced_embeddings[-1, 1], 
                       c='red', s=80, marker='v', edgecolors='black', linewidth=1.5, zorder=5)
             
-            ax4.set_title(f'Trajectory (PCA)', fontsize=12)
             ax4.set_xlabel(f'PC1 ({pca_result["explained_variance_ratio"][0]:.0%})', fontsize=10)
             if idx == 0:
                 ax4.set_ylabel(f'PC2 ({pca_result["explained_variance_ratio"][1]:.0%})', fontsize=10)
+                # Add row label
+                ax4.text(-0.3, 0.5, row_labels[3], transform=ax4.transAxes,
+                        fontsize=12, fontweight='bold', ha='right', va='center',
+                        rotation=0)
+                # Add trajectory explanation
+                ax4.text(-0.3, 0.2, '▲ = Start', transform=ax4.transAxes,
+                        fontsize=10, ha='right', va='center', color='green')
+                ax4.text(-0.3, 0.05, '▼ = End', transform=ax4.transAxes,
+                        fontsize=10, ha='right', va='center', color='red')
+                if phase_info:
+                    ax4.text(-0.3, -0.1, 'Colors = Phases', transform=ax4.transAxes,
+                            fontsize=9, ha='right', va='center', color='gray')
             
             # Add grid for better readability
             ax4.grid(True, alpha=0.3)
             ax4.set_aspect('equal', adjustable='box')
+        
+        # Color scale keys will be added inline with each subplot
         
         # Section 2: Correlation Tables (Row 4)
         # Center 3 correlation tables with equal spacing
@@ -4276,7 +4356,8 @@ class EmbeddingTrajectoryAnalyzer:
                 },
                 'messages': [{'content': f'null_msg_{j}', 'speaker': 'null'} 
                            for j in range(conversation_length)],
-                'embedded_messages': [{'embedding': emb, 'turn': j} 
+                'embedded_messages': [{'embedding': emb, 'turn': j, 'speaker': 'null', 
+                                     'session_id': f'null_{conv_type}_{i}'} 
                                     for j, emb in enumerate(embeddings)],
                 'is_null_model': True
             }
@@ -6076,7 +6157,7 @@ class EmbeddingTrajectoryAnalyzer:
     
     def perform_statistical_tests(self):
         """Perform statistical significance tests on tier comparisons"""
-        if not self.tier_results or len(self.tier_results) < 2:
+        if not hasattr(self, 'tier_results') or not self.tier_results or len(self.tier_results) < 2:
             print("Need at least 2 tiers for statistical comparison")
             return None
         
@@ -7688,6 +7769,8 @@ class EmbeddingTrajectoryAnalyzer:
                 # Restore state
                 self.conversations = checkpoint_data.get('conversations', [])
                 self.tier_results = checkpoint_data.get('tier_results', {})
+                self.all_embeddings = checkpoint_data.get('all_embeddings', [])
+                self.all_metadata = checkpoint_data.get('all_metadata', [])
                 processed_files = set(checkpoint_data.get('processed_files', []))
                 print(f"Found {len(self.conversations)} already processed conversations")
             else:
@@ -7809,7 +7892,9 @@ class EmbeddingTrajectoryAnalyzer:
                         checkpoint_state = {
                             'conversations': self.conversations,
                             'tier_results': self.tier_results,
-                            'processed_files': list(processed_files)
+                            'processed_files': list(processed_files),
+                            'all_embeddings': self.all_embeddings.copy() if hasattr(self, 'all_embeddings') else [],
+                            'all_metadata': self.all_metadata.copy() if hasattr(self, 'all_metadata') else []
                         }
                         self.save_checkpoint('analysis_state', checkpoint_state)
             
@@ -7820,7 +7905,9 @@ class EmbeddingTrajectoryAnalyzer:
             checkpoint_state = {
                 'conversations': self.conversations,
                 'tier_results': self.tier_results,
-                'processed_files': list(processed_files)
+                'processed_files': list(processed_files),
+                'all_embeddings': self.all_embeddings.copy() if hasattr(self, 'all_embeddings') else [],
+                'all_metadata': self.all_metadata.copy() if hasattr(self, 'all_metadata') else []
             }
             self.save_checkpoint('analysis_state', checkpoint_state)
             
@@ -7833,6 +7920,14 @@ class EmbeddingTrajectoryAnalyzer:
         # Find embedding clusters
         clusters, cluster_analysis = self.find_embedding_clusters()
         
+        # Store clustering results
+        self.clustering_results = {
+            'clusters': clusters,
+            'cluster_analysis': cluster_analysis,
+            'all_embeddings': self.all_embeddings.copy() if self.all_embeddings else [],
+            'all_metadata': self.all_metadata.copy() if self.all_metadata else []
+        }
+        
         # Analyze embedding structure
         self.analyze_embedding_structure()
         
@@ -7841,6 +7936,13 @@ class EmbeddingTrajectoryAnalyzer:
         
         # Identify high-density regions
         attractor_mask, densities = self.identify_attractor_regions()
+        
+        # Store analysis results
+        self.analysis_results = {
+            'convergence_df': convergence_df,
+            'attractor_mask': attractor_mask,
+            'densities': densities
+        }
         
         # Tier-specific analysis if applicable
         if self.tier_results:
@@ -8167,7 +8269,11 @@ class EmbeddingTrajectoryAnalyzer:
             'tier_results': self.tier_results,
             'analysis_complete': True,
             'completion_time': datetime.now().isoformat(),
-            'total_conversations': len(self.conversations)
+            'total_conversations': len(self.conversations),
+            'all_embeddings': self.all_embeddings.copy() if hasattr(self, 'all_embeddings') else [],
+            'all_metadata': self.all_metadata.copy() if hasattr(self, 'all_metadata') else [],
+            'clustering_results': getattr(self, 'clustering_results', {}),
+            'analysis_results': getattr(self, 'analysis_results', {})
         }
         self.save_checkpoint('analysis_state_final', final_checkpoint)
         
