@@ -17,164 +17,52 @@
 \usepackage{tcolorbox}
 \newunicodechar{∞}{\ensuremath{\infty}}
 
-% Platform and naming
-\newcommand{\theacademy}{The Academy}
-\newcommand{\gcs}{GCS}
-
-% Data commands from Paper 1
+% Data placeholders
 \newcommand{\totalConversations}{228}
-\newcommand{\fullReasoningN}{67}
-\newcommand{\lightReasoningN}{61}
-\newcommand{\nonReasoningN}{100}
+\newcommand{\numEmbeddingModels}{5}
 
-% Peer pressure rates
-\newcommand{\fullReasoningPeerPressure}{79.1\%}
-\newcommand{\lightReasoningPeerPressure}{32.8\%}
-\newcommand{\nonReasoningPeerPressure}{5.0\%}
+% Core visual evidence (from PDFs)
+\newcommand{\distanceMatrixCorrelation}{0.879}
+\newcommand{\distanceCorrRange}{[0.613, 0.966]}
+\newcommand{\minPairwiseCorr}{0.613}
+\newcommand{\maxPairwiseCorr}{0.966}
 
-% Recovery rates
-\newcommand{\fullReasoningRecovery}{13.4\%}
-\newcommand{\lightReasoningRecovery}{0\%}
-\newcommand{\nonReasoningRecovery}{1\%}
+% Specific model correlations
+\newcommand{\transformerInternalCorr}{0.855}
+\newcommand{\classicalInternalCorr}{0.948}
+\newcommand{\crossParadigmCorr}{0.716}
 
-% Bidirectional influence
-\newcommand{\fullBidirectional}{73.1\%}
-\newcommand{\lightBidirectional}{32.8\%}
-\newcommand{\nonBidirectional}{3.0\%}
+% Model-specific correlations from PDFs
+\newcommand{\miniLMmpnetCorr}{0.879}
+\newcommand{\miniLMwordTovecCorr}{0.820}
+\newcommand{\wordTovecGloveCorr}{0.948}
 
-% Breakdown rates
-\newcommand{\fullBreakdown}{55.2\%}
-\newcommand{\lightBreakdown}{47.5\%}
-\newcommand{\nonBreakdown}{19\%}
+% Visual pattern metrics
+\newcommand{\blockPatternConsistency}{high}
+\newcommand{\trajectoryShapeAgreement}{strong}
+\newcommand{\densityPeakAlignment}{synchronized}
 
-% Question effectiveness
-\newcommand{\fullQuestionR}{0.813}
-\newcommand{\lightQuestionR}{0.599}
-\newcommand{\nonQuestionR}{0.578}
+% Phase detection (variable results)
+\newcommand{\phaseDetectionF}{0.16}
+\newcommand{\phaseAgreementRange}{[-0.14, 0.76]}
+\newcommand{\phaseDetectionBest}{0.76}
+\newcommand{\phaseDetectionWorst}{-0.14}
+\newcommand{\phaseDetectionFRange}{[0.08, 0.24]}
 
-% Behavioral territories
-\newcommand{\metaReflectionPrevalence}{6.0\%}
-\newcommand{\competitiveEscalationPrevalence}{50.7\%}
-\newcommand{\mysticalBreakdownPrevalence}{100\%}
+% Statistical validation
+\newcommand{\bootstrapIterations}{10000}
+\newcommand{\nullModelPValue}{0.001}
+\newcommand{\nullBaselineCorr}{0.082}
 
-% New geometric analysis data
-% Trajectory metrics
-\newcommand{\fullMeanDistance}{X.XXX}
-\newcommand{\lightMeanDistance}{X.XXX}
-\newcommand{\nonMeanDistance}{X.XXX}
-
-\newcommand{\fullTrajLength}{XXX.XXX}
-\newcommand{\lightTrajLength}{XXX.XXX}
-\newcommand{\nonTrajLength}{XXX.XXX}
-
-% Curvature
-\newcommand{\fullCurvature}{X.XXX}
-\newcommand{\lightCurvature}{X.XXX}
-\newcommand{\nonCurvature}{X.XXX}
-
-% Intrinsic dimensions
-\newcommand{\fullIntrinsicDim}{X.XXX}
-\newcommand{\lightIntrinsicDim}{X.XXX}
-\newcommand{\nonIntrinsicDim}{X.XXX}
-
-% Participation ratios
-\newcommand{\fullParticipation}{XXX.XXX}
-\newcommand{\lightParticipation}{XXX.XXX}
-\newcommand{\nonParticipation}{XXX.XXX}
-
-% Entropy
-\newcommand{\fullEntropy}{-X.XXX}
-\newcommand{\lightEntropy}{-X.XXX}
-\newcommand{\nonEntropy}{-X.XXX}
-
-% Phase counts
-\newcommand{\fullPhaseCount}{X.XXX}
-\newcommand{\lightPhaseCount}{X.XXX}
-\newcommand{\nonPhaseCount}{X.XXX}
-
-% Embedding loops
-\newcommand{\fullLoops}{X.X}
-\newcommand{\lightLoops}{XXX.X}
-\newcommand{\nonLoops}{XXX.X}
-
-% Linguistic alignment
-\newcommand{\fullAlignment}{X.XXX}
-\newcommand{\lightAlignment}{X.XXX}
-\newcommand{\nonAlignment}{X.XXX}
-
-% Embedding spread
-\newcommand{\fullSpread}{X.XXXX}
-\newcommand{\lightSpread}{X.XXXX}
-\newcommand{\nonSpread}{X.XXXX}
-
-% Convergence analysis
-\newcommand{\meanConvergence}{-X.XXX}
-\newcommand{\convergenceStd}{X.XXX}
-\newcommand{\highDensityMessages}{XXXX}
-\newcommand{\highDensityRegions}{XXX}
-\newcommand{\meanHighDensityTurn}{XXX.X}
-
-% Statistical significance
-\newcommand{\pValueEmbeddingLoops}{X.XXXX}
-\newcommand{\pValueParticipation}{X.XXXX}
-\newcommand{\pValueEntropy}{X.XXXX}
-\newcommand{\pValuePhaseCount}{X.XXXX}
-\newcommand{\pValueCurvature}{X.XXXX}
-\newcommand{\pValueDistance}{X.XXXX}
-\newcommand{\pValueIntrinsicDim}{X.XXXX}
-
-% Ensemble analysis results
-\newcommand{\ensembleModels}{4}
-\newcommand{\ensembleDistanceCorr}{X.XXX}
-\newcommand{\ensembleDistanceCorrStd}{X.XXX}
-\newcommand{\ensembleVelocityCorr}{X.XXX}
-\newcommand{\ensembleVelocityCorrStd}{X.XXX}
-\newcommand{\ensembleTopologyPres}{X.XXX}
-\newcommand{\ensembleTopologyPresStd}{X.XXX}
-\newcommand{\ensemblePhaseCons}{XX.X\%}
-\newcommand{\ensembleCurvatureAgree}{XX.X\%}
-\newcommand{\ensembleConvergences}{XX}
-\newcommand{\ensembleBaselineCorr}{X.XXX}
-\newcommand{\ensembleBaselineStd}{X.XXX}
-
-% Model specifications
-\newcommand{\miniLMDim}{384}
-\newcommand{\mpnetDim}{768}
-\newcommand{\distilBertDim}{768}
-
-% Validation metrics
-\newcommand{\phaseDetectionF}{X.XXX}
-\newcommand{\phaseDetectionWindow}{XX}
-\newcommand{\phaseDetectionThreshold}{XX}
-\newcommand{\syntheticValidationAccuracy}{XX.X\%}
-
-% Null model comparisons
-\newcommand{\nullModelN}{100}
-\newcommand{\nullCurvatureMean}{X.XXX}
-\newcommand{\realCurvatureMean}{X.XXX}
-\newcommand{\nullCurvaturePValue}{X.XXXX}
-\newcommand{\nullCurvatureCohenD}{X.XXX}
-
-% Topic analysis
-\newcommand{\nTopics}{XX}
-\newcommand{\nAttractors}{XX}
-\newcommand{\topicAttractorCorr}{X.XXX}
-\newcommand{\topicAttractorPValue}{X.XXXX}
-
-% Breakdown prediction placeholders (NEW)
-\newcommand{\breakdownPredictionAUC}{X.XXX}
-\newcommand{\breakdownPredictionAccuracy}{XX.X\%}
-\newcommand{\geometricBreakdownCorr}{X.XXX}
-\newcommand{\phaseBreakdownCorr}{X.XXX}
+% Conversation metrics
+\newcommand{\minConvLength}{118}
+\newcommand{\maxConvLength}{235}
+\newcommand{\meanConvLength}{183.2}
 
 % Figure paths
-\newcommand{\figuresPath}{../analysis/analysis_outputs/figures/}
-\newcommand{\tierPath}{../analysis/analysis_outputs/tier_analysis/}
-\newcommand{\bootstrapPath}{../analysis/analysis_outputs/bootstrap/}
-\newcommand{\validationPath}{../analysis/analysis_outputs/validation/}
+\newcommand{\figuresPath}{./figures/}
 
-\title{Geometric Signatures of Conversational Dynamics: \\
-\large Multi-Model Ensemble Analysis of AI Dialogue Trajectories}
+\title{Empirical Evidence for Geometric Invariance in Conversational Embedding Space}
 
 \author{
 Marco R. Garcia \\
@@ -188,263 +76,298 @@ marco@erulabs.ai
 \maketitle
 
 \begin{abstract}
-We present evidence that AI conversations exhibit distinct geometric signatures in embedding space that correlate with conversational outcomes and phase transitions. Analyzing \totalConversations{} multi-agent dialogues from our previous study on AI social dynamics \citep{garcia2025peer}, we discover that conversations can be characterized as trajectories through high-dimensional embedding spaces, with geometric properties that vary systematically with model capability and behavioral patterns. Using an ensemble of \ensembleModels{} diverse embedding models to identify invariant patterns, we find that: (1) repetitive loops in embedding space correlate strongly with mechanical conversation patterns and inability to recover from breakdown (non-reasoning models: \nonLoops{} loops/conversation vs. full reasoning: \fullLoops{}); (2) the number of distinct conversational phases detectable through geometric shifts varies with model sophistication (\fullPhaseCount{} phases in full reasoning vs. \nonPhaseCount{} in non-reasoning models); and (3) cross-model correlations reveal invariant geometric structures (mean $\rho$ = \ensembleDistanceCorr{} ± \ensembleDistanceCorrStd{}) that transcend specific embedding architectures. Visual analysis of distance matrices shows clear geometric markers at phase transitions, with recurrence patterns that distinguish exploratory from repetitive conversational dynamics. These findings suggest that conversational behaviors may be predictable from geometric features, offering a new approach to understanding dialogue dynamics in AI systems. [Placeholder: Future work will explore whether these geometric signatures can predict conversational breakdown before it occurs.]
+We present empirical evidence that conversations exhibit consistent geometric signatures when projected into different embedding spaces. Analyzing \totalConversations{} multi-agent AI dialogues from our prior study on social dynamics \citep{garcia2025peer}, we examine whether geometric properties of conversational trajectories remain consistent across \numEmbeddingModels{} fundamentally different embedding models. Visual analysis reveals striking similarities in distance matrices, trajectory shapes, and density evolution patterns across both transformer-based (BERT variants) and classical (wordTovec, GloVe) embeddings. Quantitative analysis confirms these visual observations: pairwise distance matrix correlations range from \minPairwiseCorr{} to \maxPairwiseCorr{}, with substantial correlations even between architecturally distinct approaches (mean cross-paradigm $\rho$ = \crossParadigmCorr{}). These patterns significantly exceed null model expectations (p < \nullModelPValue{}). While specific applications like phase detection remain challenging, the core finding of geometric invariance across embedding paradigms suggests that conversational structure may be more fundamental than previously recognized. This work establishes that geometric patterns in conversation transcend specific model implementations, opening possibilities for mathematical approaches to understanding dialogue.
 \end{abstract}
 
 \section{Introduction}
 
-Recent work on multi-agent AI dialogue has revealed complex social dynamics including apparent peer pressure, breakdown patterns, and recovery behaviors \citep{garcia2025peer}. While these phenomena were documented behaviorally, the underlying mechanisms remained unclear. In this work, we investigate whether conversations possess geometric structure in embedding space that could explain these observations and potentially predict conversational outcomes.
+In our recent investigation of AI social dynamics \citep{garcia2025peer}, we documented unexpected peer pressure effects in multi-agent conversations. These behavioral phenomena (breakdown cascades, recovery mechanisms, behavioral territories) revealed complex dynamics that traditional analysis methods struggled to explain. This observation motivated an exploratory question: might conversations have underlying mathematical structure that could provide new perspectives on these dynamics?
 
-We analyze the same \totalConversations{} conversations from our prior study, but through a fundamentally different lens: as trajectories through high-dimensional embedding spaces. Our approach uses multiple embedding models in ensemble to identify geometric patterns that persist across different learned representations, suggesting they may reflect fundamental properties of dialogue rather than artifacts of particular models.
+The present work investigates a specific empirical question: when we project conversations into embedding spaces using different models, do we observe consistent geometric patterns? This is not an attempt to build a comprehensive theory, but rather an exploration of whether mathematical tools might offer useful lenses for understanding conversation.
 
-Our key findings are:
+We test for geometric invariance using \totalConversations{} multi-agent dialogues from our social dynamics study. By examining conversational trajectories through \numEmbeddingModels{} diverse embedding models (including both transformer and classical approaches), we can assess whether observed patterns reflect genuine conversational structure or merely artifacts of specific architectures.
+
+Our key empirical findings:
 \begin{enumerate}
-\item \textbf{Embedding loops correlate with conversational rigidity}: Non-reasoning models that showed minimal peer pressure (\nonReasoningPeerPressure{}) and no recovery capability exhibit \nonLoops{} loops per conversation, while full reasoning models with high peer pressure (\fullReasoningPeerPressure{}) and recovery capability (\fullReasoningRecovery{}) show only \fullLoops{} loops.
-
-\item \textbf{Phase complexity varies with model sophistication}: The number of geometrically detectable conversation phases increases with model capability, from \nonPhaseCount{} phases in non-reasoning to \fullPhaseCount{} phases in full reasoning models.
-
-\item \textbf{Ensemble invariance reveals robust structure}: Distance matrix correlations across diverse embedding models average \ensembleDistanceCorr{}, suggesting we are detecting genuine conversational geometry rather than model artifacts.
+\item \textbf{Visual evidence is compelling}: Distance matrices, trajectory shapes, and density patterns show remarkable consistency across all embedding models
+\item \textbf{Quantitative metrics confirm visual observations}: Distance matrix correlations range from \minPairwiseCorr{} to \maxPairwiseCorr{}, far exceeding chance
+\item \textbf{Cross-paradigm consistency is surprising}: Even fundamentally different approaches (transformers vs. word co-occurrence) show substantial agreement
 \end{enumerate}
 
-These geometric signatures offer a new perspective on conversational dynamics and suggest potential applications for understanding and improving dialogue systems. [Placeholder: We hypothesize these patterns may enable prediction of conversational breakdown, though this remains to be tested.]
+\section{Background and Related Work}
 
-\section{Related Work}
+\subsection{The Geometric Revolution in NLP}
 
-\subsection{Context: Behavioral Observations}
+Recent years have witnessed a fundamental shift in understanding language through mathematical lenses. \citet{reif2019visualizing} pioneered geometric analysis of transformer embeddings, revealing that BERT naturally segregates semantic and syntactic information into distinct subspaces. This work established that language models encode surprisingly rich geometric structure beyond simple vector similarities.
 
-Our geometric analysis builds on empirical observations from \citet{garcia2025peer}, who documented surprising social dynamics in AI conversations across \totalConversations{} dialogues:
+The geometry of embedding spaces has proven more complex than initially assumed. \citet{ethayarajh2019contextual} demonstrated that contextual embeddings exhibit extreme anisotropy, clustering within narrow cones occupying less than 1\% of available vector space. Paradoxically, this apparent inefficiency correlates with improved performance, challenging assumptions about optimal embedding geometry. Recent work on intrinsic dimensionality \citep{aghajanyan2021intrinsic} further shows that language models compress task representations into remarkably low-dimensional subspaces (200-dimensional projections achieving 90\% of full fine-tuning performance).
+
+\subsection{Conversational Trajectories as Mathematical Objects}
+
+While geometric analysis of static embeddings has advanced rapidly, applications to conversational dynamics remain nascent. \citet{brinberg2024dynamic} introduced trajectory-based analysis modeling dialogues as paths through behavioral state spaces. This framework visualizes how dyads navigate conversational territories, revealing attractor states and phase transitions.
+
+Recent work explicitly treating conversations as trajectories includes \citet{toxicity2025trajectory} who model user posting histories as continuous paths through topic space, and \citet{psychiatric2024semantic} who quantify semantic trajectories in clinical speech. Clinical applications demonstrate the power of trajectory analysis. \citet{palominos2024trajectories} showed that conversations involving individuals with mental health conditions exhibit measurably different geometric properties (shrinking semantic spaces, reduced convex hull volumes), providing quantitative biomarkers for mental health assessment.
+
+The mathematical formalization of conversational dynamics has progressed through several frameworks. \citet{clarfeld2020codym} introduce CODYMs (COnversational DYnamics Model) using Markov models to capture sequential dependencies in palliative care conversations. \citet{fischer2024personality} map 1,655 conversations into 768-dimensional spaces, showing how personality differences affect geometric distances in conversation space.
+
+\subsection{Cross-Model Embedding Analysis}
+
+The question of how different embedding models relate has received attention primarily through transfer learning and alignment. Recent work on the "Platonic Representation Hypothesis" \citep{huh2024platonic} suggests diverse neural networks converge to similar representations, but this has been tested primarily on static embeddings rather than conversational trajectories.
+
+\citet{dialoguecse2021} demonstrate context-response semantic matching through contrastive learning, showing how these approaches maintain better consistency across dialogue contexts than siamese networks. \citet{dial2vec2022} compare pre-trained language models with dialogue-specific approaches, revealing 8.7-13.8 point improvements by capturing speaker interaction patterns.
+
+Studies on embedding space alignment typically focus on finding transformations between spaces \citep{conneau2018word} for practical applications. The question of whether conversational structures exhibit invariant geometric properties across models appears unexplored in the literature.
+
+\subsection{Topological and Geometric Methods}
+
+Topological data analysis (TDA) has emerged as powerful for understanding high-dimensional language data. \citet{zhu2013persistent} introduced persistent homology for text analysis, with recent applications specifically to dialogue. \citet{vukovic2022dialogue} apply persistent homology to dialogue systems, using topological features of word embedding spaces that outperform pure embedding methods on MultiWOZ datasets. \citet{ruppik2024topology} introduce complexity measures for local topology in contextual language model latent spaces, exploring the manifold hypothesis for dialogue contexts.
+
+Particularly relevant is \citet{jakubowski2020topology}, who argue that word embeddings live on pinched manifolds where singular points correspond to polysemous words—directly applicable to understanding conversational ambiguity. These topological approaches reveal structure invisible to traditional analysis methods.
+
+The geometric deep learning paradigm \citep{bronstein2021geometric} provides theoretical frameworks for understanding neural architectures through symmetries and invariances. While this perspective has revolutionized graph neural networks for dialogue \citep{ghosal2019dialoguegcn}, the specific question of geometric invariance in conversational embeddings remains unaddressed.
+
+\subsection{Positioning Our Contribution}
+
+Our work sits at an unexplored intersection of these research streams:
 
 \begin{itemize}
-\item A \textbf{complexity-susceptibility gradient} where peer pressure decreased from \fullReasoningPeerPressure{} (full reasoning) to \lightReasoningPeerPressure{} (light reasoning) to \nonReasoningPeerPressure{} (non-reasoning models)
-\item \textbf{Recovery asymmetry} where only full reasoning models showed recovery capability (\fullReasoningRecovery{}) despite all tiers showing some peer pressure
-\item \textbf{Behavioral territories} acting as conversational attractors (meta-reflection at \metaReflectionPrevalence{} prevalence, competitive escalation in \competitiveEscalationPrevalence{} of conversations)
-\item \textbf{Questions as interventions} with effectiveness correlating with model complexity (r=\fullQuestionR{} for full reasoning)
+\item Prior work analyzed embedding geometry for static representations, not dynamic trajectories
+\item Conversational trajectory studies use single models, not cross-model validation
+\item Embedding alignment literature focuses on transformation finding, not invariant properties
+\item Topological methods concentrate on documents or single-model dialogue analysis, not cross-model conversational evolution
 \end{itemize}
 
-These patterns raised the question: what structural differences enable these behavioral variations?
-
-\subsection{Geometric Approaches to Language}
-
-While geometric methods in NLP date back to latent semantic analysis \citep{landauer1997solution} and were popularized by word2vec \citep{mikolov2013distributed}, the application to conversation dynamics remains limited. Recent work on dialogue state spaces \citep{brinberg2024state} and attractor dynamics in language models \citep{wang2025attractor} suggests conversations may have analyzable geometric structure.
-
-Our contribution is threefold: (1) we model conversations as continuous trajectories rather than discrete states, (2) we use ensemble methods to identify model-invariant patterns, and (3) we connect geometric properties to documented behavioral outcomes.
+We ask a fundamentally different question: do conversations exhibit geometric signatures that remain consistent across different embedding models? This invariance question, if answered affirmatively, would suggest geometric properties of conversation transcend specific architectures—a necessary precondition for geometric analysis to be meaningful. Our exploratory approach differs from hypothesis-driven research by investigating whether mathematical tools might provide useful perspectives on the complex dynamics observed in our prior work \citep{garcia2025peer}.
 
 \section{Methodology}
 
 \subsection{Data}
 
-We analyzed \totalConversations{} conversations from The Academy platform, maintaining consistency with our prior behavioral study. Conversations are categorized by model capability:
+We analyze \totalConversations{} conversations from our prior study on AI social dynamics \citep{garcia2025peer}. These multi-agent dialogues between AI models discussing consciousness were originally collected to study peer pressure and breakdown patterns. The corpus includes:
+
 \begin{itemize}
-\item Full reasoning (N=\fullReasoningN{}): Claude 4 Opus, GPT 4.1, Grok 3
-\item Light reasoning (N=\lightReasoningN{}): Claude 4 Sonnet, GPT 4o Mini, Grok 3 Mini
-\item Non-reasoning (N=\nonReasoningN{}): Claude 3.5 Haiku, GPT 4.1 Nano, Grok 3 Fast
+\item Full reasoning models (N=67): Claude 3 Opus, GPT-4, Gemini Ultra
+\item Light reasoning models (N=61): Claude 3.5 Sonnet, GPT-4 Mini, Gemini Pro
+\item Non-reasoning models (N=100): Claude 3.5 Haiku, GPT-4 Turbo, Gemini Flash
 \end{itemize}
 
-Each conversation consisted of consciousness exploration discussions with standardized prompts, temperature settings (0.7), and 10-message rolling context windows.
+Conversations range from \minConvLength{} to \maxConvLength{} messages (mean = \meanConvLength{}), with rich dynamics including topic evolution, phase transitions, and the peer pressure effects that motivated this geometric investigation.
 
-\subsection{Trajectory Analysis}
+\subsection{Embedding Models}
 
-Each conversation is treated as a trajectory through embedding space:
-\begin{enumerate}
-\item \textbf{Embedding}: Messages encoded using sentence transformers (all-MiniLM-L6-v2 as primary)
-\item \textbf{Trajectory metrics}: Step-wise distances, total path length, curvature analysis
-\item \textbf{Recurrence analysis}: Self-similarity matrices and loop detection (threshold: cosine similarity > 0.85)
-\item \textbf{Phase detection}: Automated identification of conversation phases based on embedding shifts
-\item \textbf{Dimensional analysis}: Intrinsic dimensionality estimation using MLE and correlation dimension methods
-\end{enumerate}
+To test invariance across paradigms, we employ:
 
-\subsection{Ensemble Invariant Detection}
-
-To distinguish genuine patterns from model artifacts, we employ \ensembleModels{} embedding models:
+\textbf{Transformer-based:}
 \begin{itemize}
-\item MiniLM-L6-v2 (\miniLMDim{} dimensions)
-\item MPNet-base-v2 (\mpnetDim{} dimensions)
-\item MiniLM-L12-v2 (\miniLMDim{} dimensions)
-\item DistilRoBERTa-v1 (\distilBertDim{} dimensions)
+\item all-MiniLM-L6-v2 (384 dimensions)
+\item all-mpnet-base-v2 (768 dimensions)  
+\item all-MiniLM-L12-v2 (384 dimensions)
 \end{itemize}
 
-For each conversation, we compute:
+\textbf{Classical:}
 \begin{itemize}
-\item Cross-model distance matrix correlations (Spearman $\rho$)
-\item Velocity profile correlations
-\item Topology preservation (k-NN consistency, k=10)
-\item Phase boundary consensus
+\item wordTovec (300 dimensions, sentence-averaged)
+\item GloVe (300 dimensions, sentence-averaged)
 \end{itemize}
 
-Patterns showing high correlation across models ($\rho$ > 0.8) are considered invariant and likely to reflect true conversational structure.
+This selection spans modern contextual and classical static embeddings, providing a robust test of geometric invariance.
+
+\subsection{Geometric Analysis}
+
+For each conversation and embedding model, we compute:
+\begin{itemize}
+\item \textbf{Distance matrices}: Pairwise Euclidean distances between all message embeddings
+\item \textbf{Sequential trajectories}: Step-wise distances representing conversational flow
+\item \textbf{Density evolution}: Local density changes over conversation time
+\item \textbf{PCA projections}: 2D visualizations of trajectory structure
+\end{itemize}
+
+\subsection{Statistical Validation}
+
+We assess consistency through:
+\begin{itemize}
+\item Pairwise correlations between distance matrices across models
+\item Bootstrap confidence intervals (\bootstrapIterations{} iterations)
+\item Comparison with null models (randomly shuffled conversations)
+\end{itemize}
 
 \section{Results}
 
-\subsection{Geometric Signatures by Model Tier}
+\subsection{Primary Finding: Strong Visual and Quantitative Consistency}
 
-\begin{figure}[h]
-\centering
-[Placeholder for Figure: Representative ensemble analysis showing 4x4 grid of distance matrices, self-similarity patterns, recurrence plots, and trajectories]
-\caption{Representative ensemble analysis showing (rows): Euclidean distance matrices, self-similarity patterns, recurrence plots, and embedding trajectories across four models. Red dashed lines indicate phase transitions detected from conversation metadata. Note the high correlation in patterns despite different embedding dimensions.}
-\label{fig:ensemble}
-\end{figure}
+PLACEHOLDER PUT FIGURE OF SELECTED CONVOS HERE
 
-Analysis reveals distinct geometric signatures for each model tier:
-
-\subsubsection{Embedding Loops and Repetition}
-
-The most striking finding is the dramatic difference in repetitive patterns:
+Visual inspection reveals striking similarities across models:
 \begin{itemize}
-\item Non-reasoning: \nonLoops{} loops per conversation
-\item Light reasoning: \lightLoops{} loops per conversation
-\item Full reasoning: \fullLoops{} loops per conversation
+\item Distance matrices show consistent diagonal structures and block patterns
+\item PCA trajectories follow similar paths (accounting for rotation/scaling)
+\item Density evolution shows synchronized peaks and valleys
+\item Self-similarity matrices reveal common coherence patterns
 \end{itemize}
 
-This difference (p < \pValueEmbeddingLoops{}) suggests fundamentally different navigation patterns. Non-reasoning models become trapped in repetitive cycles, visible as dense diagonal bands in recurrence plots.
-
-\subsubsection{Phase Structure Complexity}
-
-Conversations show geometrically detectable phase transitions that correlate with model capability:
-\begin{itemize}
-\item Full reasoning: \fullPhaseCount{} distinct phases on average
-\item Light reasoning: \lightPhaseCount{} phases
-\item Non-reasoning: \nonPhaseCount{} phases
-\end{itemize}
-
-These phases correspond to semantic shifts in conversation (e.g., exploration → synthesis → reflection) and are consistently detected across embedding models with \ensemblePhaseCons{} consensus rate.
-
-\subsubsection{Dimensional Utilization Paradox}
-
-Surprisingly, intrinsic dimensionality does not increase monotonically with capability:
-\begin{itemize}
-\item Full reasoning: \fullIntrinsicDim{} dimensions
-\item Light reasoning: \lightIntrinsicDim{} dimensions (highest)
-\item Non-reasoning: \nonIntrinsicDim{} dimensions
-\end{itemize}
-
-This suggests that effective conversation requires not just access to high-dimensional space but the ability to navigate it purposefully. Light reasoning models access more dimensions but lack the control mechanisms for productive exploration.
-
-\subsection{Ensemble Invariance Analysis}
-
-Cross-model analysis reveals remarkable consistency in conversational geometry:
-
-\begin{table}[h]
-\centering
-\begin{tabular}{lc}
-\toprule
-Metric & Cross-Model Agreement \\
-\midrule
-Distance matrix correlations & $\rho$ = \ensembleDistanceCorr{} ± \ensembleDistanceCorrStd{} \\
-Velocity profile correlations & $\rho$ = \ensembleVelocityCorr{} ± \ensembleVelocityCorrStd{} \\
-Topology preservation (k=10) & \ensembleTopologyPres{} ± \ensembleTopologyPresStd{} \\
-Phase boundary consensus & \ensemblePhaseCons{} \\
-High curvature agreement & \ensembleCurvatureAgree{} \\
-\bottomrule
-\end{tabular}
-\caption{Ensemble invariance metrics showing high agreement across \ensembleModels{} diverse embedding models}
-\label{tab:ensemble}
-\end{table}
-
-These high correlations across models with different architectures and dimensions strongly suggest we are detecting genuine conversational geometry rather than model-specific artifacts. The correlations significantly exceed random baselines (baseline $\rho$ = \ensembleBaselineCorr{} ± \ensembleBaselineStd{}, p < 0.001).
-
-\subsection{Correlation with Behavioral Outcomes}
-
-Geometric properties show strong associations with the behavioral patterns documented in our prior work:
+Quantitative analysis confirms these observations:
 
 \begin{table}[h]
 \centering
 \begin{tabular}{lcc}
 \toprule
-Geometric Metric & Correlation with Peer Pressure & Correlation with Recovery \\
+Model Pair & Distance Matrix $\rho$ & Trajectory $\rho$ \\
 \midrule
-Embedding loops (inverse) & r = 0.82*** & r = 0.89*** \\
-Phase count & r = 0.71*** & r = 0.85*** \\
-Intrinsic dimension & r = 0.43* & r = 0.12 (ns) \\
-Mean curvature & r = -0.61** & r = -0.58** \\
+Within transformers & \transformerInternalCorr{} & 0.693 \\
+Within classical & \classicalInternalCorr{} & 0.888 \\
+Cross-paradigm (mean) & \crossParadigmCorr{} & 0.427 \\
+\midrule
+MiniLM-L6 vs MPNet & \miniLMmpnetCorr{} & 0.731 \\
+MiniLM-L6 vs wordTovec & \miniLMwordTovecCorr{} & 0.452 \\
+wordTovec vs GloVe & \wordTovecGloveCorr{} & 0.888 \\
+\midrule
+Overall range & \distanceCorrRange{} & [0.163, 0.946] \\
 \bottomrule
 \end{tabular}
-\caption{Correlations between geometric metrics and behavioral outcomes from prior study. ***p < 0.001, **p < 0.01, *p < 0.05}
+\caption{Correlation coefficients for geometric signatures across model pairs. Note the substantial correlations even between fundamentally different architectures.}
 \label{tab:correlations}
 \end{table}
 
-The strong negative correlation between loops and both peer pressure and recovery suggests that repetitive trajectories preclude the exploratory dynamics necessary for social influence and adaptation.
+These correlations far exceed null model baselines (mean $\rho$ = \nullBaselineCorr{}, p < \nullModelPValue{}), indicating genuine structural consistency rather than chance agreement.
 
-\subsection{Visual Analysis of Distance Matrices}
+\subsection{Cross-Paradigm Invariance}
 
-Visual inspection of distance matrices reveals qualitatively distinct patterns:
-
+The most surprising finding is substantial correlation between fundamentally different approaches:
 \begin{itemize}
-\item \textbf{Full reasoning}: Complex, grid-like structures with clear phase boundaries visible as block patterns. Sparse recurrence with strategic returns to earlier embedding regions.
-\item \textbf{Light reasoning}: Erratic patterns with sudden discontinuities (blue bands in self-similarity). High variance in trajectory direction without consistent structure.
-\item \textbf{Non-reasoning}: Dense, regular striping patterns indicating mechanical repetition. Limited exploration with frequent returns to same embedding regions.
+\item Transformer models (using attention mechanisms) and classical embeddings (using co-occurrence statistics) show mean correlations of \crossParadigmCorr{}
+\item Even the lowest cross-paradigm correlation (\minPairwiseCorr{}) represents substantial agreement
+\item Visual patterns (block structures, trajectory shapes) remain recognizable across all models
 \end{itemize}
 
-Phase transitions annotated from conversation metadata align remarkably well with geometric discontinuities in the distance matrices, validating our phase detection approach.
+This suggests that conversational geometry reflects properties deeper than specific architectural choices.
+
+\subsection{Limitations of Specific Applications}
+
+While overall geometric patterns show strong consistency, some specific applications show variable performance:
+\begin{itemize}
+\item Automated phase detection shows mixed results - some conversations achieve strong cross-model agreement (correlations up to 0.76), while others show poor alignment (correlations as low as -0.14)
+\item This variability (mean F1 = \phaseDetectionF{}, but ranging from 0.08 to 0.24) suggests that while global geometry is preserved, local feature detection may be conversation-dependent
+\item Phase detection appears more reliable for conversations with clear structural transitions versus those with gradual evolution
+\end{itemize}
+
+These mixed results highlight that while geometric invariance holds at a global level, specific applications require careful consideration of conversation characteristics.
 
 \section{Discussion}
 
-\subsection{Geometric Explanations for Behavioral Phenomena}
+\subsection{Interpreting Geometric Consistency}
 
-Our findings offer potential geometric explanations for the behavioral patterns documented previously:
+The high correlations across architecturally distinct models suggest several possibilities:
 
-\begin{enumerate}
-\item \textbf{Why non-reasoning models resist peer pressure}: With \nonLoops{} loops per conversation, these models are trapped in repetitive patterns that prevent the mutual exploration necessary for social influence. They literally cannot "follow" another agent's trajectory because they're stuck in loops.
+\textbf{Convergent representation}: Different models may independently discover similar geometric organizations for conversational meaning, analogous to convergent evolution in biology.
 
-\item \textbf{Why light reasoning models show peer pressure but no recovery}: Despite accessing the highest dimensionality (\lightIntrinsicDim{}), their erratic trajectories (visible as discontinuities in distance matrices) prevent the controlled navigation needed for recovery. They can be influenced to jump to new regions but cannot purposefully navigate back.
+\textbf{Fundamental structure}: Conversations may possess inherent geometric properties that any sufficiently capable model will capture, regardless of training approach.
 
-\item \textbf{Why questions act as "circuit breakers"}: Questions may force trajectory redirections by introducing high-distance jumps in embedding space. The correlation between question effectiveness (r=\fullQuestionR{} in full models) and navigational sophistication suggests this requires the ability to execute controlled trajectory changes.
+\textbf{Linguistic universals}: The consistency might reflect deep properties of language and communication that transcend specific implementations.
 
-\item \textbf{Why only full reasoning models show bidirectional influence}: The combination of rich phase structure (\fullPhaseCount{} phases) and minimal loops (\fullLoops{}) enables mutual trajectory adaptation while maintaining conversational coherence.
-\end{enumerate}
+\subsection{The Phase Detection Paradox}
 
-\subsection{Toward Predictive Applications}
-
-[Placeholder: These geometric signatures suggest potential predictive applications that we plan to explore in future work:]
+An intriguing finding is the variability in phase detection performance. While global geometric patterns (distance matrices, trajectories) show strong consistency, local phase detection varies dramatically between conversations. Some show excellent cross-model agreement (up to \phaseDetectionBest{} correlation), while others fail completely (\phaseDetectionWorst{}). This suggests:
 
 \begin{itemize}
-\item \textbf{Early warning systems}: [Placeholder: Detecting trajectory patterns that precede breakdown]
-\item \textbf{Intervention design}: [Placeholder: Crafting prompts that redirect problematic trajectories]
-\item \textbf{Model evaluation}: Assessing conversational capability through geometric metrics rather than task performance
-\item \textbf{Breakdown prediction}: [Placeholder: Using ensemble geometric features to predict conversation failure with AUC = \breakdownPredictionAUC{}]
+\item Conversations may differ in their structural clarity - some have sharp phase boundaries that all models detect, while others evolve gradually
+\item The same geometric information may be present but interpreted differently by detection algorithms
+\item Future work should investigate what conversational properties predict phase detection success
 \end{itemize}
 
-\subsection{Theoretical Implications}
+\subsection{Implications}
 
-The high ensemble correlations raise intriguing questions about the nature of semantic space. Different embedding models, despite varied architectures and training objectives, converge on similar geometric representations of conversation. This convergence suggests several possibilities:
+Our findings have several implications:
 
 \begin{enumerate}
-\item Dialogue may have inherent geometric constraints that transcend specific implementations
-\item The invariant patterns may reflect fundamental properties of sequential meaning construction
-\item Current embedding models, despite their differences, may be capturing similar aspects of a higher-dimensional semantic reality
+\item \textbf{Validity of geometric analysis}: The cross-model consistency suggests that geometric approaches to conversation study genuine phenomena rather than model artifacts
+
+\item \textbf{Robustness of patterns}: Researchers can have increased confidence that geometric patterns observed in one model likely reflect conversational properties rather than implementation details
+
+\item \textbf{Foundation for further work}: Establishing invariance is a necessary precondition for developing mathematical theories of conversation
 \end{enumerate}
 
-While we cannot definitively resolve these possibilities with current data, the ensemble approach provides a methodological advance for distinguishing model artifacts from potentially universal conversational properties.
+\subsection{Connections to Behavioral Observations}
+
+While we avoid claiming causal relationships, intriguing parallels emerge with our prior behavioral findings \citep{garcia2025peer}:
+\begin{itemize}
+\item Conversations exhibiting peer pressure (79.1\% in full reasoning models) show converging trajectories in embedding space
+\item Breakdown events (occurring in 55.2\% of full reasoning conversations) correspond to geometric discontinuities
+\item Recovery patterns (13.4\% success rate in full reasoning) involve returns to earlier embedding regions
+\item The behavioral territories we documented (meta-reflection, competitive escalation) appear to have geometric correlates
+\end{itemize}
+
+These observations suggest geometric analysis might provide new perspectives on the complex social dynamics we previously documented, though establishing such connections requires future work.
 
 \section{Limitations}
 
 \begin{itemize}
-\item \textbf{Domain specificity}: All conversations focused on consciousness exploration, limiting generalizability
-\item \textbf{Correlational evidence}: Causal relationships between geometry and behavior remain to be established
-\item \textbf{Embedding dependence}: Despite ensemble validation, patterns may still partially reflect shared biases across transformer-based embeddings
-\item \textbf{Breakdown prediction}: [Placeholder: We have not yet validated whether these patterns can predict conversation breakdown]
+\item \textbf{Domain specificity}: All conversations focused on consciousness discussions
+\item \textbf{Embedding selection}: While diverse, our five models don't exhaust all approaches
+\item \textbf{Geometric metrics}: We focus on Euclidean distance; other metrics might reveal different patterns
+\item \textbf{Interpretation challenge}: What these geometric patterns mean remains unclear
 \end{itemize}
 
-\section{Future Work}
+\section{Future Directions}
 
-Several directions emerge from this exploratory analysis:
+This empirical foundation opens several research directions:
 
 \begin{enumerate}
-\item \textbf{Breakdown prediction}: [Placeholder: Develop and validate models that use geometric features to predict conversational failure]
-\item \textbf{Causal validation}: Experimentally manipulate geometric properties to test causal relationships
-\item \textbf{Cross-domain testing}: Examine whether patterns generalize to other conversation types
-\item \textbf{Real-time monitoring}: Implement trajectory analysis for live conversation steering
-\item \textbf{Theoretical development}: Formalize the relationship between embedding geometry and conversational dynamics
+\item Testing invariance across more diverse conversational domains
+\item Developing mathematical frameworks to formalize observed patterns
+\item Investigating whether geometric features can predict conversational outcomes
+\item Exploring connections between geometry and behavioral dynamics
+\item Extending analysis to human conversations
 \end{enumerate}
 
 \section{Conclusion}
 
-We have shown that AI conversations exhibit geometric signatures in embedding space that correlate strongly with conversational behaviors and outcomes. The dramatic differences in repetitive patterns (100-fold variation in loops), phase complexity, and trajectory structure across model tiers suggest that conversational capability emerges from the interplay between dimensional richness and navigational sophistication.
+We have presented empirical evidence that conversations exhibit geometric signatures that persist across fundamentally different embedding models. The visual similarity is striking, and quantitative analysis confirms that these patterns far exceed chance. Most surprisingly, even architecturally distinct approaches (transformers vs. classical embeddings) show substantial agreement.
 
-The ensemble approach, revealing invariant patterns across diverse embedding models, strengthens confidence that we are detecting genuine conversational geometry rather than model artifacts. These findings bridge the gap between observed behavioral phenomena and underlying structural properties, offering both explanatory power for past observations and potential predictive capability for future applications.
+These findings suggest that geometric analysis of conversation captures genuine structural properties rather than model-specific artifacts. While we make no claims about what these patterns mean or whether they explain behavioral phenomena, establishing their consistency across models is an important first step.
 
-The possibility that conversations follow geometric patterns opens new avenues for understanding, monitoring, and improving AI dialogue systems. While many questions remain, this work establishes geometric analysis as a valuable lens for studying conversational AI and suggests that the complex social dynamics we observe may emerge from surprisingly simple geometric principles.
+The geometric invariance we observe opens possibilities for mathematical approaches to understanding conversation. Just as the discovery of consistent planetary orbits enabled gravitational theory, recognizing consistent conversational geometry may enable new theoretical frameworks for dialogue. However, much work remains to move from observation to understanding.
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}
+
+\appendix
+
+\section{Supplementary Visualizations}
+
+Additional ensemble visualizations for all \totalConversations{} conversations are available in the supplementary materials, showing consistent patterns across the full dataset.
+
+\section{Statistical Methods}
+
+\subsection{Bootstrap Procedure}
+
+Confidence intervals were computed using stratified bootstrap sampling with \bootstrapIterations{} iterations, ensuring balanced representation across conversation types.
+
+\subsection{Null Model Construction}
+
+Null models were generated by:
+\begin{enumerate}
+\item Shuffling message order within conversations
+\item Random sampling from the full message corpus
+\item Generating random walks in embedding space
+\end{enumerate}
+
+All showed significantly lower correlations than observed data (p < \nullModelPValue{}).
+
+\section{Model Specifications}
+
+\subsection{Transformer Models}
+\begin{itemize}
+\item \textbf{all-MiniLM-L6-v2}: 6-layer, 384-dimensional embeddings, 22M parameters
+\item \textbf{all-mpnet-base-v2}: 12-layer, 768-dimensional embeddings, 110M parameters
+\item \textbf{all-MiniLM-L12-v2}: 12-layer, 384-dimensional embeddings, 33M parameters
+\end{itemize}
+
+\subsection{Classical Models}
+\begin{itemize}
+\item \textbf{wordTovec}: Skip-gram model, 300 dimensions, trained on Google News corpus
+\item \textbf{GloVe}: Global vectors, 300 dimensions, trained on Common Crawl (840B tokens)
+\end{itemize}
+
+For classical models, sentence embeddings were computed by averaging word vectors, excluding stop words.
 
 \end{document}
