@@ -9,6 +9,7 @@ sentence_transformers
 plotly
 ruptures
 hmmlearn
+gensim>=4.0.0  # For Word2Vec and GloVe embeddings
 
 # Optional but recommended
 statsmodels>=0.13.0  # For power analysis

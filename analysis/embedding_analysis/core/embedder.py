@@ -8,12 +8,14 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import numpy as np
 import torch
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 import logging
 import warnings
 warnings.filterwarnings('ignore')
+import gensim.downloader as api
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +26,11 @@ class EnsembleEmbedder:
     """
     
     DEFAULT_ENSEMBLE = [
-        {'name': 'MiniLM-L6', 'model_id': 'all-MiniLM-L6-v2', 'dim': 384},
-        {'name': 'MPNet', 'model_id': 'all-mpnet-base-v2', 'dim': 768},
-        {'name': 'MiniLM-L12', 'model_id': 'all-MiniLM-L12-v2', 'dim': 384},
-        {'name': 'DistilRoBERTa', 'model_id': 'all-distilroberta-v1', 'dim': 768},
-        {'name': 'E5-small', 'model_id': 'intfloat/e5-small-v2', 'dim': 384},
+        {'name': 'MiniLM-L6', 'model_id': 'all-MiniLM-L6-v2', 'dim': 384, 'type': 'transformer'},
+        {'name': 'MPNet', 'model_id': 'all-mpnet-base-v2', 'dim': 768, 'type': 'transformer'},
+        {'name': 'MiniLM-L12', 'model_id': 'all-MiniLM-L12-v2', 'dim': 384, 'type': 'transformer'},
+        {'name': 'Word2Vec', 'model_id': 'word2vec-google-news-300', 'dim': 300, 'type': 'word2vec'},
+        {'name': 'GloVe', 'model_id': 'glove-wiki-gigaword-300', 'dim': 300, 'type': 'glove'},
     ]
     
     def __init__(self, 
@@ -66,18 +68,29 @@ class EnsembleEmbedder:
         for config in self.ensemble_config:
             model_name = config['name']
             model_id = config['model_id']
+            model_type = config.get('type', 'transformer')
             
             try:
                 logger.info(f"Loading {model_name} ({model_id})...")
-                model = SentenceTransformer(
-                    model_id, 
-                    device=self.device,
-                    cache_folder=self.cache_dir
-                )
+                
+                if model_type == 'transformer':
+                    model = SentenceTransformer(
+                        model_id, 
+                        device=self.device,
+                        cache_folder=self.cache_dir
+                    )
+                elif model_type in ['word2vec', 'glove']:
+                    # Load pre-trained word embeddings
+                    model = api.load(model_id)
+                    logger.info(f"Loaded {model_name} vocabulary size: {len(model)}")
+                else:
+                    raise ValueError(f"Unknown model type: {model_type}")
+                    
                 self.models[model_name] = {
                     'model': model,
                     'dim': config['dim'],
-                    'id': model_id
+                    'id': model_id,
+                    'type': model_type
                 }
                 logger.info(f"✓ Loaded {model_name} with {config['dim']} dimensions")
                 
@@ -110,18 +123,25 @@ class EnsembleEmbedder:
         
         for model_name, model_info in model_iterator:
             model = model_info['model']
+            model_type = model_info['type']
             
             if show_progress:
                 model_iterator.set_description(f"Embedding with {model_name}")
             
-            # Encode texts with GPU optimization
-            model_embeddings = model.encode(
-                texts,
-                batch_size=batch_size,
-                show_progress_bar=False,  # We use our own progress bar
-                convert_to_numpy=True,
-                device=self.device
-            )
+            if model_type == 'transformer':
+                # Encode texts with GPU optimization
+                model_embeddings = model.encode(
+                    texts,
+                    batch_size=batch_size,
+                    show_progress_bar=False,  # We use our own progress bar
+                    convert_to_numpy=True,
+                    device=self.device
+                )
+            elif model_type in ['word2vec', 'glove']:
+                # For word embeddings, compute average of word vectors
+                model_embeddings = self._embed_with_word_vectors(texts, model, model_info['dim'])
+            else:
+                raise ValueError(f"Unknown model type: {model_type}")
             
             embeddings[model_name] = model_embeddings
             
@@ -145,6 +165,41 @@ class EnsembleEmbedder:
         """
         texts = [msg.get(text_key, '') for msg in messages]
         return self.embed_texts(texts)
+    
+    def _embed_with_word_vectors(self, texts: List[str], model, dim: int) -> np.ndarray:
+        """
+        Embed texts using word vectors (Word2Vec or GloVe).
+        
+        Args:
+            texts: List of texts to embed
+            model: Word vector model
+            dim: Embedding dimension
+            
+        Returns:
+            Array of embeddings
+        """
+        embeddings = []
+        
+        for text in texts:
+            # Tokenize text (simple split, could use more sophisticated tokenization)
+            tokens = text.lower().split()
+            
+            # Get word vectors for tokens that exist in vocabulary
+            word_vectors = []
+            for token in tokens:
+                if token in model:
+                    word_vectors.append(model[token])
+            
+            if word_vectors:
+                # Average word vectors
+                text_embedding = np.mean(word_vectors, axis=0)
+            else:
+                # If no words in vocabulary, use zero vector
+                text_embedding = np.zeros(dim)
+                
+            embeddings.append(text_embedding)
+            
+        return np.array(embeddings)
     
     def calculate_ensemble_agreement(self, 
                                    embeddings: Dict[str, np.ndarray]) -> Dict[str, float]:
