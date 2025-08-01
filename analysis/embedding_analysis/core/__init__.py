@@ -9,6 +9,16 @@ from .geometric_invariance import (
     HypothesisTester,
     NullModelComparator
 )
+from .hierarchical_hypothesis_testing import (
+    HierarchicalHypothesisTester,
+    HypothesisResult,
+    TierResult
+)
+from .paradigm_null_models import (
+    ParadigmSpecificNullModels,
+    MessageLevelNullModels
+)
+from .control_analyses import ControlAnalyses
 
 __all__ = [
     'EnsembleEmbedder', 
@@ -17,5 +27,11 @@ __all__ = [
     'GeometricSignatureComputer',
     'InvarianceAnalyzer',
     'HypothesisTester',
-    'NullModelComparator'
+    'NullModelComparator',
+    'HierarchicalHypothesisTester',
+    'HypothesisResult',
+    'TierResult',
+    'ParadigmSpecificNullModels',
+    'MessageLevelNullModels',
+    'ControlAnalyses'
 ]

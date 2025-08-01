@@ -15,3 +15,5 @@ venv/
 conversation_analysis_env/
 checkpoints/
 __pycache__
+pytest.ini
+.pytest_cache/

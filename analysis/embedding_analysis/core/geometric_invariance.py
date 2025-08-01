@@ -291,21 +291,31 @@ class InvarianceAnalyzer:
                         sig1 = signatures_by_model[model1][sig_type]
                         sig2 = signatures_by_model[model2][sig_type]
                         
-                        if len(sig1) > 0 and len(sig2) > 0 and len(sig1) == len(sig2):
-                            # Handle different signature types
-                            if sig_type == 'distance_matrix':
-                                # For matrices, flatten and correlate
-                                corr = self._compute_matrix_correlation(sig1, sig2)
+                        # Check if values are arrays or scalars
+                        if isinstance(sig1, (list, np.ndarray)) and isinstance(sig2, (list, np.ndarray)):
+                            if len(sig1) > 0 and len(sig2) > 0 and len(sig1) == len(sig2):
+                                # Handle different signature types
+                                if sig_type == 'distance_matrix':
+                                    # For matrices, flatten and correlate
+                                    corr = self._compute_matrix_correlation(sig1, sig2)
+                                else:
+                                    # For vectors, use Spearman correlation
+                                    corr, _ = stats.spearmanr(sig1, sig2)
+                                    
+                                corr_matrix[i, j] = corr
+                                corr_matrix[j, i] = corr
                             else:
-                                # For vectors, use Spearman correlation
-                                corr, _ = stats.spearmanr(sig1, sig2)
-                                
+                                # Different lengths or empty - no correlation
+                                corr_matrix[i, j] = np.nan
+                        else:
+                            # For scalar values, compute similarity (1 - normalized difference)
+                            if sig1 == sig2:
+                                corr = 1.0
+                            else:
+                                max_val = max(abs(sig1), abs(sig2), 1e-10)
+                                corr = 1.0 - abs(sig1 - sig2) / max_val
                             corr_matrix[i, j] = corr
                             corr_matrix[j, i] = corr
-                        else:
-                            # Different lengths or empty - no correlation
-                            corr_matrix[i, j] = np.nan
-                            corr_matrix[j, i] = np.nan
                             
             correlations[sig_type] = {
                 'correlation_matrix': corr_matrix,

@@ -10,6 +10,8 @@ plotly
 ruptures
 hmmlearn
 gensim>=4.0.0  # For Word2Vec and GloVe embeddings
+pytest
+pytest-cov
 
 # Optional but recommended
 statsmodels>=0.13.0  # For power analysis
