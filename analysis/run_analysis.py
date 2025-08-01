@@ -240,6 +240,9 @@ class ConversationAnalysisPipeline:
                 for model_name, all_emb in batch_embeddings.items():
                     embeddings[model_name] = all_emb[start:end]
                 
+                # Get number of messages in this conversation
+                n_messages = len(conv['messages'])
+                
                 # Calculate trajectory metrics
                 trajectory_metrics = self.trajectory_analyzer.calculate_ensemble_trajectories(embeddings)
                 
@@ -248,11 +251,36 @@ class ConversationAnalysisPipeline:
                 
                 # Compare with annotations if available
                 phase_comparison = None
+                phase_statistics = None
                 if 'phases' in conv:
                     phase_comparison = self.phase_detector.compare_with_annotations(
                         phase_results['detected_phases'],
                         conv['phases']
                     )
+                    
+                    # Run statistical tests
+                    from embedding_analysis.utils.statistics import (
+                        test_model_phase_agreement, 
+                        test_phase_detection_accuracy
+                    )
+                    
+                    # Test model agreement
+                    model_agreement_stats = test_model_phase_agreement(
+                        phase_results['model_phases'],
+                        n_messages
+                    )
+                    
+                    # Test accuracy against annotations
+                    accuracy_stats = test_phase_detection_accuracy(
+                        conv['phases'],
+                        phase_results['model_phases'],
+                        n_messages
+                    )
+                    
+                    phase_statistics = {
+                        'model_agreement': model_agreement_stats,
+                        'detection_accuracy': accuracy_stats
+                    }
                     
                 # Store results
                 conv_results = {
@@ -260,7 +288,8 @@ class ConversationAnalysisPipeline:
                     'embeddings': embeddings,
                     'trajectory_metrics': trajectory_metrics,
                     'phase_results': phase_results,
-                    'phase_comparison': phase_comparison
+                    'phase_comparison': phase_comparison,
+                    'phase_statistics': phase_statistics
                 }
                 
                 tier_results['conversations'].append(conv_results)
@@ -321,6 +350,41 @@ class ConversationAnalysisPipeline:
                 'avg_precision': sum(precisions) / len(precisions),
                 'avg_recall': sum(recalls) / len(recalls),
                 'avg_f1': sum(f1s) / len(f1s)
+            }
+            
+        # Phase statistical tests
+        phase_stats = [c['phase_statistics'] for c in tier_results['conversations']
+                      if c.get('phase_statistics') is not None]
+        
+        if phase_stats:
+            # Aggregate model agreement stats
+            fleiss_kappas = [ps['model_agreement']['fleiss_kappa'] for ps in phase_stats]
+            kendall_ws = [ps['model_agreement']['kendall_w'] for ps in phase_stats]
+            
+            summary['phase_model_agreement'] = {
+                'avg_fleiss_kappa': sum(fleiss_kappas) / len(fleiss_kappas),
+                'avg_kendall_w': sum(kendall_ws) / len(kendall_ws),
+                'interpretation': phase_stats[0]['model_agreement']['interpretation']['agreement_level']
+            }
+            
+            # Aggregate detection accuracy stats
+            model_precisions = {}
+            model_recalls = {}
+            for ps in phase_stats:
+                for model, stats in ps['detection_accuracy']['per_model'].items():
+                    if model not in model_precisions:
+                        model_precisions[model] = []
+                        model_recalls[model] = []
+                    model_precisions[model].append(stats['precision'])
+                    model_recalls[model].append(stats['recall'])
+            
+            summary['phase_detection_by_model'] = {
+                model: {
+                    'avg_precision': sum(precs) / len(precs),
+                    'avg_recall': sum(recs) / len(recs)
+                }
+                for model, precs in model_precisions.items()
+                for recs in [model_recalls[model]]
             }
             
         # Trajectory statistics

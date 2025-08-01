@@ -8,9 +8,11 @@ matplotlib.use('Agg')  # Use non-interactive backend for parallel processing
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Rectangle, Patch
+from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sns
 from sklearn.decomposition import PCA
+from scipy import stats
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 import logging
@@ -290,8 +292,15 @@ class EnsembleVisualizer:
             ax_vel_corr = None
             ax_topo = None
         
-        # Calculate correlations
-        dist_corr_matrix = self._calculate_matrix_correlations(distance_matrices)
+        # Import statistical functions
+        from embedding_analysis.utils.statistics import (
+            calculate_distance_matrix_correlations,
+            calculate_velocity_profile_correlations,
+            calculate_topology_preservation
+        )
+        
+        # Calculate correlations using functions from stats module
+        dist_corr_matrix = calculate_distance_matrix_correlations(distance_matrices)
         sns.heatmap(dist_corr_matrix, annot=True, fmt='.3f', xticklabels=model_names,
                    yticklabels=model_names, cmap='RdBu_r', center=0.5, ax=ax_dist_corr,
                    vmin=0, vmax=1, cbar_kws={'label': 'Correlation'})
@@ -299,7 +308,7 @@ class EnsembleVisualizer:
         
         # Velocity correlations
         if ax_vel_corr is not None:
-            vel_corr_matrix = self._calculate_trajectory_correlations(ensemble_embeddings)
+            vel_corr_matrix = calculate_velocity_profile_correlations(ensemble_embeddings)
             sns.heatmap(vel_corr_matrix, annot=True, fmt='.3f', xticklabels=model_names,
                        yticklabels=model_names, cmap='RdBu_r', center=0.5, ax=ax_vel_corr,
                        vmin=0, vmax=1, cbar_kws={'label': 'Correlation'})
@@ -307,7 +316,7 @@ class EnsembleVisualizer:
         
         # Topology preservation
         if ax_topo is not None:
-            topo_matrix = self._calculate_topology_preservation(ensemble_embeddings)
+            topo_matrix = calculate_topology_preservation(ensemble_embeddings)
             sns.heatmap(topo_matrix, annot=True, fmt='.3f', xticklabels=model_names,
                        yticklabels=model_names, cmap='Greens', vmin=0, vmax=1,
                        cbar_kws={'label': 'Preservation'}, ax=ax_topo)
@@ -384,28 +393,28 @@ class EnsembleVisualizer:
                         })
                         last_phase = phase_name
                 
-                # Draw vertical lines for each unique transition
+                # Draw points for each unique transition
                 for phase_idx, transition in enumerate(unique_transitions):
                     turn = transition['turn']
                     phase_name = transition['phase'].title()
                     
                     if 0 <= turn <= n_messages:
-                        # Draw vertical line
-                        ax_phase.axvline(x=turn, ymin=annotated_y-0.15, ymax=annotated_y+0.15, 
-                                       color='red', linewidth=2, alpha=0.8)
+                        # Draw point instead of vertical line
+                        ax_phase.scatter(turn, annotated_y, color='red', s=100, 
+                                       marker='o', zorder=5, alpha=0.8)
                         
-                        # Add phase name with rotation to avoid overlap
-                        ax_phase.text(turn, annotated_y+0.2, phase_name, 
-                                    rotation=45, ha='left', va='bottom', fontsize=10,
-                                    color='darkred', fontweight='bold')
-                        
-                        # Add turn number below the line
-                        ax_phase.text(turn, annotated_y-0.2, f'T{turn}', 
-                                    ha='center', va='top', fontsize=8,
-                                    color='red', alpha=0.7)
+                        # Add phase name diagonally below the point, touching the dot
+                        # Calculate text position to touch the dot edge
+                        text_offset = 0.05  # Small offset from dot edge
+                        ax_phase.text(turn - 1, annotated_y - text_offset, phase_name, 
+                                    ha='right', va='top', fontsize=8,
+                                    color='darkred', fontweight='bold',
+                                    rotation=45, rotation_mode='anchor',
+                                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white', 
+                                            edgecolor='none', alpha=0.7))
                 
                 # Add label for annotated transitions
-                ax_phase.text(-0.05, annotated_y, 'Annotated\nTransitions', 
+                ax_phase.text(-0.05, annotated_y, 'Annotated', 
                             transform=ax_phase.transAxes, ha='right', va='center',
                             fontsize=12, fontweight='bold', color='darkred')
             
@@ -426,16 +435,16 @@ class EnsembleVisualizer:
                         confidence = phase.get('confidence', 0.5)
                         
                         if 0 < turn < n_messages:
-                            # Draw vertical line
-                            ax_phase.axvline(x=turn, ymin=y_pos-0.08, ymax=y_pos+0.08,
-                                           color=color, linewidth=2,
-                                           alpha=0.3 + 0.7 * confidence,
-                                           linestyle='-' if confidence > 0.7 else '--')
+                            # Calculate error bar size based on confidence
+                            # Higher confidence = smaller error bars
+                            error_size = (1 - confidence) * 5  # Max error of 5 turns when confidence is 0
                             
-                            # Add turn number
-                            ax_phase.text(turn, y_pos+0.1, f'{turn}',
-                                        ha='center', va='bottom', fontsize=7,
-                                        color=color, alpha=0.7)
+                            # Draw point with horizontal error bars
+                            ax_phase.errorbar(turn, y_pos, xerr=error_size, 
+                                            fmt='o', color=color, markersize=8,
+                                            capsize=5, capthick=1.5,
+                                            alpha=0.5 + 0.5 * confidence,
+                                            zorder=4)
                     
                     # Add model label
                     ax_phase.text(-0.02, y_pos, model_name.replace('all-', '').replace('-v2', ''),
@@ -473,6 +482,12 @@ class EnsembleVisualizer:
                     color = model_colors[model_idx]
                     legend_elements.append(Patch(facecolor=color, label=model_name.replace('all-', '').replace('-v2', '')))
                     model_idx += 1
+                
+                # Add note about error bars
+                error_bar_legend = Line2D([0], [0], color='gray', marker='o', markersize=8,
+                                        label='Error bars indicate confidence\n(smaller = higher confidence)',
+                                        linestyle='', markerfacecolor='gray', alpha=0.7)
+                legend_elements.append(error_bar_legend)
                     
                 ax_phase.legend(handles=legend_elements, loc='upper right', 
                               bbox_to_anchor=(0.98, 0.98), ncol=1,
@@ -485,38 +500,112 @@ class EnsembleVisualizer:
             ax_phase.set_ylim(0, 1)
             ax_phase.axis('off')
             
-        # Section 4: Phase correlation statistics (Row 8)
-        if annotated_phases and model_phases:
-            ax_stats = fig.add_subplot(gs[8, :])
+        # Section 4: Phase detection correlation matrices (Row 8)
+        if model_phases:
+            # Calculate phase agreement correlations between models
+            phase_correlations = np.zeros((n_models, n_models))
             
-            # Calculate correlations for each model
-            stats_text = []
-            for model_name, phases in model_phases.items():
-                correlation_stats = calculate_phase_correlation(
-                    annotated_phases, phases, n_messages, tolerance=5
-                )
+            # Create binary phase arrays for each model
+            model_phase_arrays = {}
+            for i, (model_name, phases) in enumerate(model_phases.items()):
+                phase_array = np.zeros(n_messages)
+                for phase in phases:
+                    turn = phase['turn']
+                    if 0 <= turn < n_messages:
+                        # Apply small window around phase
+                        window = 3
+                        start = max(0, turn - window)
+                        end = min(n_messages, turn + window + 1)
+                        phase_array[start:end] = 1
+                model_phase_arrays[model_name] = phase_array
+            
+            # Calculate pairwise correlations
+            for i, model1 in enumerate(model_names):
+                for j, model2 in enumerate(model_names):
+                    if i == j:
+                        phase_correlations[i, j] = 1.0
+                    else:
+                        arr1 = model_phase_arrays[model1]
+                        arr2 = model_phase_arrays[model2]
+                        if np.std(arr1) > 0 and np.std(arr2) > 0:
+                            corr, _ = stats.pearsonr(arr1, arr2)
+                            phase_correlations[i, j] = corr
+                        else:
+                            phase_correlations[i, j] = 0
+            
+            # Create three correlation matrix plots
+            # 1. Model-to-model phase agreement
+            ax_phase_corr = fig.add_subplot(gs[8, :n_models//3 + 1])
+            sns.heatmap(phase_correlations, 
+                       xticklabels=[m.replace('all-', '').replace('-v2', '') for m in model_names],
+                       yticklabels=[m.replace('all-', '').replace('-v2', '') for m in model_names],
+                       cmap='coolwarm', center=0, vmin=-1, vmax=1,
+                       square=True, cbar_kws={'label': 'Correlation'},
+                       ax=ax_phase_corr, annot=True, fmt='.2f', annot_kws={'size': 8})
+            ax_phase_corr.set_title('Phase Detection Agreement', fontsize=12)
+            
+            # 2. Model accuracy against annotations (if available)
+            if annotated_phases:
+                from embedding_analysis.utils.statistics import calculate_phase_correlation
                 
-                model_short = model_name.replace('all-', '').replace('-v2', '')
-                stats_text.append(
-                    f"{model_short}: Correlation={correlation_stats['correlation']:.3f} "
-                    f"(p={correlation_stats['p_value']:.3f}), "
-                    f"F1={correlation_stats['f1_score']:.3f}, "
-                    f"Precision={correlation_stats['precision']:.3f}, "
-                    f"Recall={correlation_stats['recall']:.3f}"
-                )
+                accuracy_matrix = np.zeros((n_models, 4))  # 4 metrics: correlation, precision, recall, F1
                 
-            # Calculate model agreement
-            agreement_stats = calculate_model_agreement(model_phases, n_messages)
-            stats_text.append(f"\nModel Agreement: {agreement_stats['mean_agreement']:.3f} ± {agreement_stats['std_agreement']:.3f}")
+                for i, (model_name, phases) in enumerate(model_phases.items()):
+                    phase_stats = calculate_phase_correlation(annotated_phases, phases, n_messages)
+                    accuracy_matrix[i, 0] = phase_stats['correlation']
+                    accuracy_matrix[i, 1] = phase_stats['precision']
+                    accuracy_matrix[i, 2] = phase_stats['recall']
+                    accuracy_matrix[i, 3] = phase_stats['f1_score']
+                
+                ax_accuracy = fig.add_subplot(gs[8, n_models//3 + 1:2*n_models//3 + 1])
+                sns.heatmap(accuracy_matrix,
+                           xticklabels=['Correlation', 'Precision', 'Recall', 'F1'],
+                           yticklabels=[m.replace('all-', '').replace('-v2', '') for m in model_names],
+                           cmap='Greens', vmin=0, vmax=1,
+                           cbar_kws={'label': 'Score'}, ax=ax_accuracy,
+                           annot=True, fmt='.2f', annot_kws={'size': 8})
+                ax_accuracy.set_title('Phase Detection Accuracy', fontsize=12)
             
-            # Display statistics
-            ax_stats.text(0.5, 0.5, '\n'.join(stats_text), 
-                         transform=ax_stats.transAxes,
-                         ha='center', va='center', fontsize=10,
-                         bbox=dict(boxstyle='round,pad=0.5', facecolor='lightyellow', alpha=0.8))
-            
-            ax_stats.set_title('Phase Detection Correlation Statistics', fontsize=14)
-            ax_stats.axis('off')
+            # 3. Phase timing consistency
+            if model_phases:
+                # Create timing difference matrix
+                timing_matrix = np.zeros((n_models, n_models))
+                
+                for i, model1 in enumerate(model_names):
+                    phases1_turns = [p['turn'] for p in model_phases[model1]]
+                    
+                    for j, model2 in enumerate(model_names):
+                        if i == j:
+                            timing_matrix[i, j] = 0
+                        else:
+                            phases2_turns = [p['turn'] for p in model_phases[model2]]
+                            
+                            # Calculate mean timing difference
+                            timing_diffs = []
+                            for turn1 in phases1_turns:
+                                if phases2_turns:
+                                    min_diff = min(abs(turn1 - turn2) for turn2 in phases2_turns)
+                                    if min_diff <= 10:  # Only count reasonable matches
+                                        timing_diffs.append(min_diff)
+                            
+                            if timing_diffs:
+                                timing_matrix[i, j] = np.mean(timing_diffs)
+                            else:
+                                timing_matrix[i, j] = np.nan
+                
+                ax_timing = fig.add_subplot(gs[8, 2*n_models//3 + 1:])
+                
+                # Mask NaN values for better visualization
+                mask = np.isnan(timing_matrix)
+                
+                sns.heatmap(timing_matrix,
+                           xticklabels=[m.replace('all-', '').replace('-v2', '') for m in model_names],
+                           yticklabels=[m.replace('all-', '').replace('-v2', '') for m in model_names],
+                           cmap='YlOrRd', vmin=0, vmax=5,
+                           cbar_kws={'label': 'Mean Turn Difference'},
+                           ax=ax_timing, mask=mask,
+                           annot=True, fmt='.1f', annot_kws={'size': 8})
+                ax_timing.set_title('Phase Timing Differences', fontsize=12)
         
         # Overall title
         session_id = conversation.get('metadata', {}).get('session_id', 'Unknown')
@@ -584,77 +673,3 @@ class EnsembleVisualizer:
                     
         return similarities
         
-    def _calculate_matrix_correlations(self, matrices: Dict[str, np.ndarray]) -> np.ndarray:
-        """Calculate pairwise correlations between matrices."""
-        model_names = list(matrices.keys())
-        n_models = len(model_names)
-        corr_matrix = np.ones((n_models, n_models))
-        
-        for i, model1 in enumerate(model_names):
-            for j, model2 in enumerate(model_names):
-                if i != j:
-                    mat1 = matrices[model1].flatten()
-                    mat2 = matrices[model2].flatten()
-                    corr = np.corrcoef(mat1, mat2)[0, 1]
-                    corr_matrix[i, j] = corr
-                    
-        return corr_matrix
-        
-    def _calculate_trajectory_correlations(self, embeddings: Dict[str, np.ndarray]) -> np.ndarray:
-        """Calculate trajectory correlations based on velocity patterns."""
-        model_names = list(embeddings.keys())
-        n_models = len(model_names)
-        corr_matrix = np.ones((n_models, n_models))
-        
-        # Calculate velocities for each model
-        velocities = {}
-        for model, emb in embeddings.items():
-            vel = []
-            for i in range(1, len(emb)):
-                vel.append(np.linalg.norm(emb[i] - emb[i-1]))
-            velocities[model] = np.array(vel)
-            
-        # Calculate correlations
-        for i, model1 in enumerate(model_names):
-            for j, model2 in enumerate(model_names):
-                if i != j:
-                    corr = np.corrcoef(velocities[model1], velocities[model2])[0, 1]
-                    corr_matrix[i, j] = corr
-                    
-        return corr_matrix
-        
-    def _calculate_topology_preservation(self, embeddings: Dict[str, np.ndarray]) -> np.ndarray:
-        """Calculate topology preservation between models."""
-        model_names = list(embeddings.keys())
-        n_models = len(model_names)
-        topo_matrix = np.ones((n_models, n_models))
-        
-        # For topology preservation, we check if nearest neighbors are preserved
-        k = min(10, len(next(iter(embeddings.values()))) // 5)
-        
-        for i, model1 in enumerate(model_names):
-            for j, model2 in enumerate(model_names):
-                if i != j:
-                    # Calculate k-nearest neighbors for each point in both models
-                    emb1 = embeddings[model1]
-                    emb2 = embeddings[model2]
-                    
-                    preservation_scores = []
-                    for idx in range(len(emb1)):
-                        # Find k nearest neighbors in model1
-                        dists1 = [np.linalg.norm(emb1[idx] - emb1[jdx]) 
-                                 for jdx in range(len(emb1)) if idx != jdx]
-                        nn1 = np.argsort(dists1)[:k]
-                        
-                        # Find k nearest neighbors in model2
-                        dists2 = [np.linalg.norm(emb2[idx] - emb2[jdx]) 
-                                 for jdx in range(len(emb2)) if idx != jdx]
-                        nn2 = np.argsort(dists2)[:k]
-                        
-                        # Calculate overlap
-                        overlap = len(set(nn1) & set(nn2)) / k
-                        preservation_scores.append(overlap)
-                        
-                    topo_matrix[i, j] = np.mean(preservation_scores)
-                    
-        return topo_matrix
