@@ -36,7 +36,8 @@ class EnsembleVisualizer:
                                          conversation: Dict,
                                          ensemble_embeddings: Dict[str, np.ndarray],
                                          phase_info: Optional[Dict] = None,
-                                         save_path: Optional[str] = None) -> plt.Figure:
+                                         save_path: Optional[str] = None,
+                                         save_pdf: Optional[str] = None) -> plt.Figure:
         """
         Create comprehensive ensemble visualization with distance matrices,
         self-similarity, recurrence plots, trajectories, and phase information.
@@ -45,7 +46,8 @@ class EnsembleVisualizer:
             conversation: Conversation data
             ensemble_embeddings: Embeddings from each model
             phase_info: Phase detection results
-            save_path: Path to save figure
+            save_path: Path to save figure as PNG
+            save_pdf: Path to save figure as PDF
             
         Returns:
             Figure object
@@ -620,10 +622,18 @@ class EnsembleVisualizer:
         plt.suptitle('\n'.join(title_lines), fontsize=16, y=0.98)
         
         # Save figure
-        if save_path:
+        if save_path or save_pdf:
             plt.tight_layout(rect=[0, 0.02, 1, 0.96])  # Leave space for suptitle and legend
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"Saved ensemble visualization to {save_path}")
+            
+            # Save as PNG if path provided
+            if save_path:
+                plt.savefig(save_path, dpi=300, bbox_inches='tight')
+                logger.info(f"Saved ensemble visualization to {save_path}")
+            
+            # Save as PDF if path provided
+            if save_pdf:
+                plt.savefig(save_pdf, format='pdf', bbox_inches='tight')
+                logger.info(f"Saved ensemble visualization to {save_pdf}")
         else:
             session_id = conversation.get('metadata', {}).get('session_id', 'Unknown')
             tier = conversation.get('tier', 'unknown')

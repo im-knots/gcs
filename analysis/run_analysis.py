@@ -35,7 +35,8 @@ class ConversationAnalysisPipeline:
                  checkpoint_enabled: bool = True,
                  log_level: str = "INFO",
                  batch_size: int = 25,
-                 outcome_csv_paths: Optional[Dict[str, str]] = None):
+                 outcome_csv_paths: Optional[Dict[str, str]] = None,
+                 figure_format: str = "both"):
         """
         Initialize analysis pipeline.
         
@@ -45,6 +46,7 @@ class ConversationAnalysisPipeline:
             log_level: Logging level
             batch_size: Number of conversations to process in each GPU batch
             outcome_csv_paths: Optional dict mapping tier names to CSV paths
+            figure_format: Format for saving figures ('png', 'pdf', or 'both')
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
@@ -76,6 +78,9 @@ class ConversationAnalysisPipeline:
         
         # Batch size for GPU processing
         self.batch_size = batch_size
+        
+        # Figure format preference
+        self.figure_format = figure_format
         
         # Cache for outcome data
         self.outcome_data_cache = {}
@@ -306,11 +311,29 @@ class ConversationAnalysisPipeline:
                 
                 # Generate comprehensive ensemble visualization
                 # The conversation dict already contains 'phases' if annotated phases exist
+                base_filename = f"{tier_name}_{session_id}_ensemble"
+                
+                # Determine which formats to save based on user preference
+                png_path = None
+                pdf_path = None
+                
+                if self.figure_format in ['png', 'both']:
+                    png_dir = self.output_dir / "figures" / "ensemble" / "png"
+                    png_dir.mkdir(parents=True, exist_ok=True)
+                    png_path = png_dir / f"{base_filename}.png"
+                
+                if self.figure_format in ['pdf', 'both']:
+                    pdf_dir = self.output_dir / "figures" / "ensemble" / "pdf"
+                    pdf_dir.mkdir(parents=True, exist_ok=True)
+                    pdf_path = pdf_dir / f"{base_filename}.pdf"
+                
+                # Create the plot with the specified formats
                 self.ensemble_visualizer.create_comprehensive_ensemble_plot(
                     conv,
                     embeddings,
                     phase_results,  # This contains detected phases
-                    save_path=self.output_dir / "figures" / "ensemble" / f"{tier_name}_{session_id}_ensemble.png"
+                    save_path=png_path,
+                    save_pdf=pdf_path
                 )
             
             # Clear GPU cache after each batch
@@ -647,6 +670,13 @@ def main():
         help="Path to CSV file with outcomes for phase-3-no-reasoning (default: phase-3-no-reasoning/n100/conversation_analysis_enhanced.csv)"
     )
     
+    parser.add_argument(
+        "--figure-format",
+        choices=["png", "pdf", "both"],
+        default="both",
+        help="Format for saving figures: png, pdf, or both (default: both)"
+    )
+    
     args = parser.parse_args()
     
     # Define tier directories
@@ -671,7 +701,8 @@ def main():
         checkpoint_enabled=not args.no_checkpoint,
         log_level=args.log_level,
         batch_size=args.batch_size,
-        outcome_csv_paths=outcome_csv_paths if outcome_csv_paths else None
+        outcome_csv_paths=outcome_csv_paths if outcome_csv_paths else None,
+        figure_format=args.figure_format
     )
     
     # Run analysis
