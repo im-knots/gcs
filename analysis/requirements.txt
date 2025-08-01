@@ -7,6 +7,8 @@ seaborn>=0.11.0
 scipy>=1.7.0
 sentence_transformers
 plotly
+ruptures
+hmmlearn
 
 # Optional but recommended
 statsmodels>=0.13.0  # For power analysis

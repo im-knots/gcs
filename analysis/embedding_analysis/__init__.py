@@ -9,14 +9,12 @@ __version__ = "0.1.0"
 
 from .core.embedder import EnsembleEmbedder
 from .core.trajectory import TrajectoryAnalyzer
-from .models.breakdown import BreakdownPredictor
-from .models.phase_detector import PhaseDetector
+from .models.ensemble_phase_detector import EnsemblePhaseDetector
 from .visualization.plots import TrajectoryVisualizer
 
 __all__ = [
     'EnsembleEmbedder',
     'TrajectoryAnalyzer',
-    'BreakdownPredictor',
-    'PhaseDetector',
+    'EnsemblePhaseDetector',
     'TrajectoryVisualizer'
 ]

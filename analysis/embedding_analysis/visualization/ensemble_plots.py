@@ -63,29 +63,32 @@ class EnsembleVisualizer:
             
         # Calculate optimal figure size - increased width to prevent compression
         fig_width = 7 * n_models  # 7 per model
-        fig_height = 32  # Increased to accommodate statistics row
+        fig_height = 38  # Increased to ensure all content fits properly
         logger.info(f"Creating figure ({fig_width}x{fig_height})...")
         fig = plt.figure(figsize=(fig_width, fig_height))
         
         # Create GridSpec for flexible layout
-        # Total rows: 4 (section 1) + 1 (correlation tables) + 3 (phase diagram) + 1 (stats) = 9
+        # Total rows: 4 (section 1) + 1 (density) + 1 (correlation tables) + 2 (phase diagram) + 1 (stats) = 9
         total_rows = 9
-        gs = gridspec.GridSpec(total_rows, n_models, figure=fig, hspace=0.35, wspace=0.25)
+        gs = gridspec.GridSpec(total_rows, n_models, figure=fig, hspace=0.4, wspace=0.25)
         
-        # Process phase information - separate detected and annotated
-        detected_phases = []
+        # Process phase information - get model-specific and ensemble results
+        model_phases = {}
+        ensemble_phases = []
+        phase_variance = {}
         annotated_phases = []
         
-        # Get detected phases from blind detection
-        if phase_info and 'detected_phases' in phase_info:
-            for phase in phase_info['detected_phases']:
-                detected_phases.append({
-                    'name': phase.get('type', f"Phase {len(detected_phases)+1}"),
-                    'start_turn': phase['turn'],
-                    'confidence': phase.get('confidence', 0.5),
-                    'turn_range': (phase['turn'], phase.get('end_turn', n_messages))
-                })
-            detected_phases.sort(key=lambda x: x['start_turn'])
+        # Get model-specific phase detection results
+        if phase_info and 'model_phases' in phase_info:
+            model_phases = phase_info['model_phases']
+            
+        # Get overall ensemble phases
+        if phase_info and 'ensemble_phases' in phase_info:
+            ensemble_phases = phase_info['ensemble_phases']
+            
+        # Get variance information
+        if phase_info and 'variance_by_model' in phase_info:
+            phase_variance = phase_info['variance_by_model']
             
         # Get annotated phases if available
         if 'phases' in conversation and conversation['phases']:
@@ -97,8 +100,8 @@ class EnsembleVisualizer:
                 })
             annotated_phases.sort(key=lambda x: x['start_turn'])
             
-        # Use detected phases for the main visualization
-        phase_list = detected_phases
+        # Use ensemble phases for the main visualization (in trajectory plots)
+        phase_list = ensemble_phases
         
         # Standardize all embeddings first
         standardized_embeddings = {}
@@ -118,7 +121,8 @@ class EnsembleVisualizer:
             'Euclidean\nDistance',
             'Self-Similarity\n(Cosine)',
             'Recurrence\nPlot',
-            'Embedding\nTrajectory (PCA)'
+            'Embedding\nTrajectory (PCA)',
+            'Density\nEvolution'
         ]
         
         # Create visualizations for each model
@@ -171,7 +175,7 @@ class EnsembleVisualizer:
             # Add phase boundaries if available
             if phase_list:
                 for phase in phase_list:
-                    start_turn = phase['start_turn']
+                    start_turn = phase.get('turn', phase.get('start_turn', 0))
                     if start_turn < n_messages and start_turn > 0:
                         ax1.axhline(y=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
                         ax1.axvline(x=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
@@ -211,7 +215,7 @@ class EnsembleVisualizer:
             # Add phase boundaries
             if phase_list:
                 for phase in phase_list:
-                    start_turn = phase['start_turn']
+                    start_turn = phase.get('turn', phase.get('start_turn', 0))
                     if start_turn < n_messages and start_turn > 0:
                         ax3.axhline(y=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
                         ax3.axvline(x=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
@@ -226,13 +230,13 @@ class EnsembleVisualizer:
             
             # Color points by phase if available
             if phase_list:
-                sorted_phases = sorted(phase_list, key=lambda x: x['start_turn'])
+                sorted_phases = sorted(phase_list, key=lambda x: x.get('turn', x.get('start_turn', 0)))
                 distinct_colors = plt.cm.tab20(np.linspace(0, 1, 20))
                 
                 for phase_idx, phase in enumerate(sorted_phases):
-                    start_turn = phase['start_turn']
+                    start_turn = phase.get('turn', phase.get('start_turn', 0))
                     if phase_idx < len(sorted_phases) - 1:
-                        end_turn = sorted_phases[phase_idx + 1]['start_turn']
+                        end_turn = sorted_phases[phase_idx + 1].get('turn', sorted_phases[phase_idx + 1].get('start_turn', 0))
                     else:
                         end_turn = n_messages
                     
@@ -272,25 +276,71 @@ class EnsembleVisualizer:
             
             # No grid lines - cleaner appearance
             ax4.set_aspect('equal', adjustable='box')
+            
+            # Row 5: Add density evolution plot
+            ax5 = fig.add_subplot(gs[4, idx])
+            
+            # Calculate density evolution using sliding window
+            window_size = min(20, n_messages // 5)
+            step_size = max(1, window_size // 4)
+            
+            centers = []
+            densities = []
+            
+            for start in range(0, n_messages - window_size + 1, step_size):
+                end = start + window_size
+                window_embeddings = embeddings[start:end]
+                
+                # Calculate density as inverse of mean pairwise distance
+                from scipy.spatial.distance import pdist
+                if len(window_embeddings) > 1:
+                    distances = pdist(window_embeddings, metric='euclidean')
+                    density = 1.0 / (np.mean(distances) + 1e-6)
+                else:
+                    density = 0
+                
+                centers.append((start + end) / 2)
+                densities.append(density)
+            
+            # Plot density evolution
+            ax5.plot(centers, densities, 'b-', linewidth=2)
+            ax5.fill_between(centers, densities, alpha=0.3)
+            
+            # Add phase boundaries to density plot
+            if ensemble_phases:
+                for phase in ensemble_phases:
+                    start_turn = phase.get('turn', phase.get('start_turn', 0))
+                    if start_turn < n_messages and start_turn > 0:
+                        ax5.axvline(x=start_turn, color='red', linestyle='--', alpha=0.6, linewidth=1)
+            
+            ax5.set_xlim(0, n_messages)
+            ax5.set_xlabel('Turn', fontsize=10)
+            if idx == 0:
+                ax5.set_ylabel('Density', fontsize=10)
+                # Add row label
+                ax5.text(-0.3, 0.5, row_labels[4], transform=ax5.transAxes, 
+                        fontsize=12, fontweight='bold', ha='right', va='center',
+                        rotation=0)
+            ax5.grid(True, alpha=0.3)
         
-        # Section 2: Correlation Tables (Row 4)
+        # Section 2: Correlation Tables (Row 5)
         # Center 3 correlation tables with equal spacing
         if n_models >= 3:
             # Create a subgridspec for the correlation row to ensure proper centering
             from matplotlib.gridspec import GridSpecFromSubplotSpec
-            corr_gs = GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[4, :], 
+            corr_gs = GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[5, :], 
                                              wspace=0.3, width_ratios=[1, 1, 1])
             ax_dist_corr = fig.add_subplot(corr_gs[0, 0])
             ax_vel_corr = fig.add_subplot(corr_gs[0, 1])
             ax_topo = fig.add_subplot(corr_gs[0, 2])
         elif n_models == 2:
             # For 2 models, center the available correlation plots
-            ax_dist_corr = fig.add_subplot(gs[4, 0])
-            ax_vel_corr = fig.add_subplot(gs[4, 1])
+            ax_dist_corr = fig.add_subplot(gs[5, 0])
+            ax_vel_corr = fig.add_subplot(gs[5, 1])
             ax_topo = None
         else:
             # For 1 model, just show distance correlation
-            ax_dist_corr = fig.add_subplot(gs[4, 0])
+            ax_dist_corr = fig.add_subplot(gs[5, 0])
             ax_vel_corr = None
             ax_topo = None
         
@@ -324,9 +374,9 @@ class EnsembleVisualizer:
                        cbar_kws={'label': 'Preservation'}, ax=ax_topo)
             ax_topo.set_title('Topology Preservation', fontsize=12)
         
-        # Section 3: Phase transition timeline (Rows 5-7)
+        # Section 3: Phase transition timeline (Rows 6-8)
         # Create a subplot spanning all columns for the phase diagram
-        ax_phase = fig.add_subplot(gs[5:8, :])
+        ax_phase = fig.add_subplot(gs[6:8, :])
         
         # Get model-specific phase detections if available
         model_phases = {}
@@ -334,24 +384,22 @@ class EnsembleVisualizer:
             model_phases = phase_info['model_phases']
         
         # Create phase transition timeline
-        if model_phases or annotated_phases:
-            # Setup layout - annotated on top, then each model
-            n_models_with_phases = len(model_phases)
-            total_rows = 1 + n_models_with_phases  # 1 for annotated + n models
+        # Always show 6 rows: 1 for annotated + 5 for embedding models
+        total_rows = 6
+        y_positions = np.linspace(0.9, 0.1, total_rows)
+        
+        # Model colors - one for each embedding model
+        model_colors = plt.cm.tab10(np.linspace(0, 1, 10))[:5]
+        
+        # Draw base lines for all rows
+        for y in y_positions:
+            ax_phase.axhline(y=y, color='gray', linewidth=1, alpha=0.3)
+        
+        # First row is for annotated phases
+        annotated_y = y_positions[0]
             
-            # Calculate y positions
-            y_positions = np.linspace(0.9, 0.1, total_rows)
-            annotated_y = y_positions[0] if annotated_phases else None
-            
-            # Model colors
-            model_colors = plt.cm.tab10(np.linspace(0, 1, 10))[:n_models_with_phases]
-            
-            # Draw base lines
-            for i, y in enumerate(y_positions[:len(y_positions) if annotated_phases else n_models_with_phases]):
-                ax_phase.axhline(y=y, color='gray', linewidth=1, alpha=0.3)
-            
-            # Draw annotated phase transitions if available
-            if annotated_phases:
+        # Draw annotated phase transitions if available
+        if annotated_phases:
                 sorted_annotated = sorted(annotated_phases, key=lambda x: x['start_turn'])
                 
                 # Extract unique transitions (only when phase changes)
@@ -419,88 +467,88 @@ class EnsembleVisualizer:
                 ax_phase.text(-0.05, annotated_y, 'Annotated', 
                             transform=ax_phase.transAxes, ha='right', va='center',
                             fontsize=12, fontweight='bold', color='darkred')
-            
-            # Draw model-specific phase transitions
-            if model_phases:
-                model_idx = 0
-                for model_name, phases in model_phases.items():
-                    if annotated_phases:
-                        y_pos = y_positions[model_idx + 1]  # Skip first position for annotated
-                    else:
-                        y_pos = y_positions[model_idx]
-                        
-                    color = model_colors[model_idx]
+        else:
+            # Still show the annotated label even if no phases
+            ax_phase.text(-0.05, y_positions[0], 'Annotated',
+                        transform=ax_phase.transAxes, ha='right', va='center',
+                        fontsize=12, fontweight='bold', color='darkred')
+        
+        # Draw model-specific phase transitions with ensemble statistics
+        if model_phases:
+            model_idx = 0
+            for model_name in model_names:  # Use the same order as in the main visualization
+                y_pos = y_positions[model_idx + 1]  # Skip first position for annotated
+                color = model_colors[model_idx]
+                
+                if model_name in model_phases:
+                    phases = model_phases[model_name]
                     
-                    # Draw phase transitions for this model
+                    # For each phase detection in this model
                     for phase in phases:
-                        turn = phase['turn']
-                        confidence = phase.get('confidence', 0.5)
+                        turn = phase.get('turn', phase.get('start_turn', 0))
                         
                         if 0 < turn < n_messages:
-                            # Calculate error bar size based on confidence
-                            # Higher confidence = smaller error bars
-                            error_size = (1 - confidence) * 5  # Max error of 5 turns when confidence is 0
+                            # Calculate error bars based on the variance from different detection methods
+                            # If we have method-specific results, calculate the variance
+                            error_size = 2  # Default error size
+                            
+                            if 'std' in phase:
+                                # Use the standard deviation if available
+                                error_size = phase['std']
+                            elif 'confidence' in phase:
+                                # Or calculate from confidence
+                                confidence = phase.get('confidence', 0.5)
+                                error_size = (1 - confidence) * 5
                             
                             # Draw point with horizontal error bars
                             ax_phase.errorbar(turn, y_pos, xerr=error_size, 
-                                            fmt='o', color=color, markersize=8,
-                                            capsize=5, capthick=1.5,
-                                            alpha=0.5 + 0.5 * confidence,
+                                            fmt='o', color=color, markersize=10,
+                                            capsize=6, capthick=2,
+                                            alpha=0.8,
                                             zorder=4)
-                    
-                    # Add model label
-                    ax_phase.text(-0.02, y_pos, model_name.replace('all-', '').replace('-v2', ''),
-                                transform=ax_phase.transAxes, ha='right', va='center',
-                                fontsize=10, color=color, fontweight='bold')
-                    
-                    model_idx += 1
-            
-            # Set up the axis
-            ax_phase.set_xlim(-5, n_messages + 5)  # Add some padding
-            ax_phase.set_ylim(0, 1)
-            ax_phase.set_xlabel('Conversation Turn', fontsize=14)
-            
-            # Update title based on what we're showing
-            if annotated_phases and model_phases:
-                ax_phase.set_title('Phase Transitions: Annotated vs Model-Specific Detections', fontsize=16)
-            elif model_phases:
-                ax_phase.set_title('Model-Specific Phase Detections', fontsize=16)
-            else:
-                ax_phase.set_title('Annotated Phase Transitions', fontsize=16)
-            
-            # Remove y-axis as it's not meaningful
-            ax_phase.set_yticks([])
-            ax_phase.set_ylabel('')
-            
-            # Add grid for x-axis only
-            ax_phase.grid(True, axis='x', alpha=0.3)
-            
-            # Add legend for model colors if showing model phases
-            if model_phases:
-                # Create color legend
-                legend_elements = []
-                model_idx = 0
-                for model_name in model_phases.keys():
-                    color = model_colors[model_idx]
-                    legend_elements.append(Patch(facecolor=color, label=model_name.replace('all-', '').replace('-v2', '')))
-                    model_idx += 1
                 
-                # Add note about error bars
-                error_bar_legend = Line2D([0], [0], color='gray', marker='o', markersize=8,
-                                        label='Error bars indicate confidence\n(smaller = higher confidence)',
-                                        linestyle='', markerfacecolor='gray', alpha=0.7)
-                legend_elements.append(error_bar_legend)
-                    
-                ax_phase.legend(handles=legend_elements, loc='upper right', 
-                              bbox_to_anchor=(0.98, 0.98), ncol=1,
-                              frameon=True, fancybox=True, shadow=True, fontsize=9)
-        else:
-            # If no phase info, just show a message
-            ax_phase.text(0.5, 0.5, 'No phase information available', 
-                        ha='center', va='center', fontsize=14)
-            ax_phase.set_xlim(0, 1)
-            ax_phase.set_ylim(0, 1)
-            ax_phase.axis('off')
+                # Add model label
+                model_label = model_name.replace('all-', '').replace('-v2', '')
+                ax_phase.text(-0.02, y_pos, model_label,
+                            transform=ax_phase.transAxes, ha='right', va='center',
+                            fontsize=10, color=color, fontweight='bold')
+                
+                model_idx += 1
+        
+        # Set up the axis
+        ax_phase.set_xlim(-5, n_messages + 5)  # Add some padding
+        ax_phase.set_ylim(0, 1)
+        ax_phase.set_xlabel('Conversation Turn', fontsize=14)
+        
+        # Update title
+        ax_phase.set_title('Phase Transitions: Ensemble Detection Results per Embedding Model', fontsize=16)
+        
+        # Remove y-axis as it's not meaningful
+        ax_phase.set_yticks([])
+        ax_phase.set_ylabel('')
+        
+        # Add grid for x-axis only
+        ax_phase.grid(True, axis='x', alpha=0.3)
+        
+        # Add legend for model colors
+        # Create color legend for all embedding models
+        legend_elements = []
+        model_idx = 0
+        for model_name in model_names:
+            color = model_colors[model_idx]
+            model_label = model_name.replace('all-', '').replace('-v2', '')
+            legend_elements.append(Patch(facecolor=color, label=model_label))
+            model_idx += 1
+            
+        # Add note about error bars
+        error_bar_legend = Line2D([0], [0], color='gray', marker='o', markersize=8,
+                                label='Error bars show variance across\ndetection methods',
+                                linestyle='', markerfacecolor='gray', alpha=0.7)
+        legend_elements.append(error_bar_legend)
+                
+        ax_phase.legend(handles=legend_elements, loc='upper right', 
+                      bbox_to_anchor=(0.98, 0.98), ncol=1,
+                      frameon=True, fancybox=True, shadow=True, fontsize=9)
             
         # Section 4: Phase detection correlation matrices (Row 8)
         if model_phases:
@@ -512,7 +560,7 @@ class EnsembleVisualizer:
             for i, (model_name, phases) in enumerate(model_phases.items()):
                 phase_array = np.zeros(n_messages)
                 for phase in phases:
-                    turn = phase['turn']
+                    turn = phase.get('turn', phase.get('start_turn', 0))
                     if 0 <= turn < n_messages:
                         # Apply small window around phase
                         window = 3
@@ -574,13 +622,13 @@ class EnsembleVisualizer:
                 timing_matrix = np.zeros((n_models, n_models))
                 
                 for i, model1 in enumerate(model_names):
-                    phases1_turns = [p['turn'] for p in model_phases[model1]]
+                    phases1_turns = [p.get('turn', p.get('start_turn', 0)) for p in model_phases[model1]]
                     
                     for j, model2 in enumerate(model_names):
                         if i == j:
                             timing_matrix[i, j] = 0
                         else:
-                            phases2_turns = [p['turn'] for p in model_phases[model2]]
+                            phases2_turns = [p.get('turn', p.get('start_turn', 0)) for p in model_phases[model2]]
                             
                             # Calculate mean timing difference
                             timing_diffs = []
@@ -623,7 +671,7 @@ class EnsembleVisualizer:
         
         # Save figure
         if save_path or save_pdf:
-            plt.tight_layout(rect=[0, 0.02, 1, 0.96])  # Leave space for suptitle and legend
+            plt.tight_layout(rect=[0, 0.01, 1, 0.97])  # Leave space for suptitle and legend
             
             # Save as PNG if path provided
             if save_path:
@@ -636,10 +684,9 @@ class EnsembleVisualizer:
                 logger.info(f"Saved ensemble visualization to {save_pdf}")
         else:
             session_id = conversation.get('metadata', {}).get('session_id', 'Unknown')
-            tier = conversation.get('tier', 'unknown')
-            filename = f"{tier}_{session_id[:12]}_ensemble_comprehensive.png"
+            filename = f"{session_id[:12]}_ensemble_comprehensive.png"
             default_path = self.output_dir / filename
-            plt.tight_layout(rect=[0, 0.02, 1, 0.96])
+            plt.tight_layout(rect=[0, 0.01, 1, 0.97])
             plt.savefig(default_path, dpi=300, bbox_inches='tight')
             logger.info(f"Saved ensemble visualization to {default_path}")
             

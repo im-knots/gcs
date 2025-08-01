@@ -307,3 +307,267 @@ class ReportGenerator:
             logger.info(f"Conversation report saved to {save_path}")
             
         return report_text
+        
+    def generate_hypothesis_test_report(self,
+                                      hypothesis_results: Dict,
+                                      save_path: Optional[str] = None) -> str:
+        """
+        Generate report for hypothesis test results.
+        
+        Args:
+            hypothesis_results: Results from geometric invariance hypothesis testing
+            save_path: Path to save report
+            
+        Returns:
+            Report text
+        """
+        report = []
+        report.append("GEOMETRIC INVARIANCE HYPOTHESIS TEST RESULTS")
+        report.append("=" * 70)
+        report.append(f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        report.append("")
+        
+        # Main hypothesis result
+        if 'main_hypothesis' in hypothesis_results:
+            main = hypothesis_results['main_hypothesis']
+            report.append("MAIN HYPOTHESIS")
+            report.append("-" * 40)
+            report.append("H0: Conversations do NOT exhibit invariant geometric signatures")
+            report.append("H1: Conversations exhibit invariant geometric signatures across models")
+            report.append("")
+            
+            if main.get('hypothesis_supported'):
+                report.append("✓ HYPOTHESIS SUPPORTED")
+            else:
+                report.append("✗ HYPOTHESIS NOT SUPPORTED")
+                
+            report.append("")
+            report.append("Evidence Summary:")
+            evidence = main.get('evidence', {})
+            for key, value in evidence.items():
+                report.append(f"  - {key.replace('_', ' ').title()}: {'✓' if value else '✗'}")
+                
+        # Geometric properties
+        if 'geometric_properties' in hypothesis_results:
+            report.append("\n\nGEOMETRIC PROPERTIES ANALYSIS")
+            report.append("-" * 40)
+            
+            props = hypothesis_results['geometric_properties']
+            
+            # Distance matrices
+            if 'distance_matrices' in props:
+                dm = props['distance_matrices']
+                report.append("\nDistance Matrix Correlations:")
+                report.append(f"  Mean correlation: {dm['mean_correlation']:.3f}")
+                report.append(f"  Min correlation: {dm['min_correlation']:.3f}")
+                report.append(f"  Passes threshold (ρ > 0.8): {'Yes' if dm['passes_threshold'] else 'No'}")
+                report.append(f"  Statistical test p-value: {dm['hypothesis_test']['p_value']:.4f}")
+                
+            # Curvature patterns
+            if 'curvature_patterns' in props:
+                cp = props['curvature_patterns']
+                report.append("\nCurvature Pattern Consistency:")
+                report.append(f"  Coefficient of variation: {cp['coefficient_of_variation']:.3f}")
+                report.append(f"  Consistent across models: {'Yes' if cp['consistency_test']['consistent'] else 'No'}")
+                
+            # Phase transitions
+            if 'phase_transitions' in props:
+                pt = props['phase_transitions']
+                report.append("\nPhase Transition Alignment:")
+                report.append(f"  Mean agreement: {pt['mean_agreement']:.3f}")
+                sig_test = pt.get('significance_test', {})
+                if 'p_value' in sig_test:
+                    report.append(f"  Statistical significance: p={sig_test['p_value']:.4f}")
+                    
+            # Velocity profiles
+            if 'velocity_profiles' in props:
+                vp = props['velocity_profiles']
+                report.append("\nVelocity Profile Correlations:")
+                report.append(f"  Mean correlation: {vp['mean_correlation']:.3f}")
+                sig_test = vp.get('significance_test', {})
+                if 'p_value' in sig_test:
+                    report.append(f"  Statistical significance: p={sig_test['p_value']:.4f}")
+                    
+        # Control tests
+        if 'controls' in hypothesis_results:
+            report.append("\n\nCONTROL TESTS")
+            report.append("-" * 40)
+            
+            controls = hypothesis_results['controls']
+            
+            # Non-transformer comparison
+            if 'non_transformer' in controls:
+                nt = controls['non_transformer']
+                report.append("\nTransformer vs Non-Transformer Embeddings:")
+                report.append(f"  Within-transformer correlation: {nt['within_transformer']:.3f}")
+                report.append(f"  Transformer-to-control correlation: {nt['transformer_to_control']:.3f}")
+                report.append(f"  Difference: {nt['difference']:.3f}")
+                
+            # Scrambled comparison
+            if 'scrambled' in controls:
+                sc = controls['scrambled']
+                report.append("\nReal vs Scrambled Conversations:")
+                report.append(f"  Real conversation correlation: {sc['real_correlation']:.3f}")
+                report.append(f"  Scrambled correlation: {sc['scrambled_correlation']:.3f}")
+                report.append(f"  Effect size (Cohen's d): {sc['effect_size']:.3f}")
+                
+        # Multiple testing correction
+        if 'corrected' in hypothesis_results:
+            corr = hypothesis_results['corrected']
+            report.append("\n\nMULTIPLE TESTING CORRECTION")
+            report.append("-" * 40)
+            report.append(f"Number of tests: {corr.get('n_tests', 0)}")
+            report.append(f"Significant after correction: {corr.get('n_significant', 0)}")
+            
+        # Effect sizes
+        if 'effect_sizes' in hypothesis_results:
+            report.append("\n\nEFFECT SIZES")
+            report.append("-" * 40)
+            
+            for effect_name, effect_data in hypothesis_results['effect_sizes'].items():
+                report.append(f"\n{effect_name.replace('_', ' ').title()}:")
+                for key, value in effect_data.items():
+                    if isinstance(value, (int, float)):
+                        report.append(f"  {key}: {value:.3f}")
+                    else:
+                        report.append(f"  {key}: {value}")
+                        
+        # Summary
+        if 'summary' in hypothesis_results:
+            summary = hypothesis_results['summary']
+            report.append("\n\nSUMMARY")
+            report.append("-" * 40)
+            
+            if 'key_findings' in summary:
+                report.append("\nKey Findings:")
+                for finding in summary['key_findings']:
+                    report.append(f"  • {finding}")
+                    
+            if 'limitations' in summary:
+                report.append("\nLimitations:")
+                for limitation in summary['limitations']:
+                    report.append(f"  • {limitation}")
+                    
+        report_text = "\n".join(report)
+        
+        if save_path:
+            save_path = Path(save_path)
+            save_path.write_text(report_text)
+            logger.info(f"Hypothesis test report saved to {save_path}")
+            
+        return report_text
+    
+    def generate_invariance_report(self,
+                                 analysis_results: Dict,
+                                 save_path: Optional[str] = None) -> str:
+        """
+        Generate report focused on geometric invariance findings.
+        
+        Args:
+            analysis_results: Dictionary containing invariance analysis results
+            save_path: Path to save report
+            
+        Returns:
+            Report text
+        """
+        report = []
+        report.append("GEOMETRIC INVARIANCE ANALYSIS REPORT")
+        report.append("=" * 70)
+        report.append(f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        report.append("")
+        
+        # Analysis overview
+        report.append("ANALYSIS OVERVIEW")
+        report.append("-" * 40)
+        report.append(f"Analysis Type: {analysis_results.get('analysis_type', 'Geometric Invariance')}")
+        report.append(f"Total Conversations Analyzed: {analysis_results.get('n_conversations', 0)}")
+        report.append("")
+        
+        # Model information
+        if 'model_info' in analysis_results:
+            report.append("EMBEDDING MODELS")
+            report.append("-" * 40)
+            for model_name, info in analysis_results['model_info'].items():
+                report.append(f"  {model_name}:")
+                report.append(f"    Dimensions: {info['dimension']}")
+            report.append("")
+            
+        # Invariance statistics
+        if 'invariance_statistics' in analysis_results:
+            stats = analysis_results['invariance_statistics']
+            report.append("GEOMETRIC INVARIANCE STATISTICS")
+            report.append("-" * 40)
+            report.append(f"Overall Mean Invariance: {stats.get('mean_invariance', 0):.3f}")
+            report.append(f"Standard Deviation: {stats.get('std_invariance', 0):.3f}")
+            report.append(f"Median Invariance: {stats.get('median_invariance', 0):.3f}")
+            report.append("")
+            
+            # Per-signature statistics
+            if 'signature_type_stats' in stats:
+                report.append("Invariance by Geometric Signature Type:")
+                for sig_type, sig_stats in stats['signature_type_stats'].items():
+                    report.append(f"  {sig_type.replace('_', ' ').title()}:")
+                    report.append(f"    Mean: {sig_stats.get('mean', 0):.3f}")
+                    report.append(f"    Std: {sig_stats.get('std', 0):.3f}")
+                    report.append(f"    Range: [{sig_stats.get('min', 0):.3f}, {sig_stats.get('max', 0):.3f}]")
+                report.append("")
+                
+        # Hypothesis test results
+        if 'hypothesis_results' in analysis_results:
+            hyp = analysis_results['hypothesis_results']
+            report.append("HYPOTHESIS TEST RESULTS")
+            report.append("-" * 40)
+            report.append(f"Invariance Score: {hyp.get('invariance_score', 0):.3f}")
+            report.append(f"95% Confidence Interval: {hyp.get('confidence_interval', (0, 0))}")
+            report.append(f"p-value: {hyp.get('p_value', 1.0):.6f}")
+            report.append(f"Effect Size (Cohen's d): {hyp.get('cohens_d', 0):.3f}")
+            report.append("")
+            
+            if hyp.get('hypothesis_supported', False):
+                report.append("✓ HYPOTHESIS SUPPORTED: Strong geometric invariance detected")
+                report.append("  Conversations exhibit consistent geometric patterns across embedding models")
+            else:
+                report.append("✗ HYPOTHESIS NOT SUPPORTED: Weak geometric invariance")
+                report.append("  Limited consistency in geometric patterns across models")
+            report.append("")
+            
+            # Null model comparison if available
+            if 'null_comparison' in hyp:
+                report.append("NULL MODEL COMPARISON")
+                report.append("-" * 40)
+                for null_type, null_stats in hyp['null_comparison'].items():
+                    if isinstance(null_stats, dict) and 'mean_invariance' in null_stats:
+                        report.append(f"  {null_type.replace('_', ' ').title()}:")
+                        report.append(f"    Mean Invariance: {null_stats.get('mean_invariance', 0):.3f}")
+                report.append("")
+                
+        # Conclusions
+        report.append("CONCLUSIONS")
+        report.append("-" * 40)
+        
+        mean_inv = analysis_results.get('invariance_statistics', {}).get('mean_invariance', 0)
+        if mean_inv > 0.7:
+            report.append("Strong geometric invariance observed across transformer embedding models.")
+            report.append("This suggests that conversations have intrinsic geometric properties")
+            report.append("that are consistently captured by different embedding approaches.")
+        elif mean_inv > 0.5:
+            report.append("Moderate geometric invariance observed across embedding models.")
+            report.append("Conversations show some consistent geometric patterns, but with")
+            report.append("notable variations between different embedding approaches.")
+        else:
+            report.append("Weak geometric invariance observed across embedding models.")
+            report.append("Different embeddings capture substantially different geometric")
+            report.append("properties of conversations.")
+            
+        report.append("")
+        report_text = "\n".join(report)
+        
+        # Save report
+        if save_path:
+            save_path = Path(save_path)
+            save_path.parent.mkdir(exist_ok=True)
+            with open(save_path, 'w') as f:
+                f.write(report_text)
+            logger.info(f"Invariance report saved to {save_path}")
+            
+        return report_text

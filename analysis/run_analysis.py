@@ -12,22 +12,31 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from tqdm import tqdm
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 from embedding_analysis import (
     EnsembleEmbedder,
     TrajectoryAnalyzer,
-    PhaseDetector,
-    BreakdownPredictor,
     TrajectoryVisualizer
 )
 from embedding_analysis.core import ConversationLoader
+from embedding_analysis.core.hypothesis_testing import GeometricInvarianceHypothesisTester
+from embedding_analysis.core.geometric_invariance import (
+    GeometricSignatureComputer,
+    InvarianceAnalyzer,
+    HypothesisTester,
+    NullModelComparator
+)
+from embedding_analysis.models.ensemble_phase_detector import EnsemblePhaseDetector
 from embedding_analysis.visualization import ReportGenerator, EnsembleVisualizer
+from embedding_analysis.visualization.density_evolution import DensityEvolutionVisualizer
 from embedding_analysis.utils import CheckpointManager, setup_logging
 
 
 class ConversationAnalysisPipeline:
     """
-    Main pipeline for conversation analysis with trajectory-based breakdown prediction.
+    Main pipeline for conversation analysis focused on geometric invariance.
     """
     
     def __init__(self, 
@@ -35,7 +44,6 @@ class ConversationAnalysisPipeline:
                  checkpoint_enabled: bool = True,
                  log_level: str = "INFO",
                  batch_size: int = 25,
-                 outcome_csv_paths: Optional[Dict[str, str]] = None,
                  figure_format: str = "both"):
         """
         Initialize analysis pipeline.
@@ -45,7 +53,6 @@ class ConversationAnalysisPipeline:
             checkpoint_enabled: Whether to enable checkpointing
             log_level: Logging level
             batch_size: Number of conversations to process in each GPU batch
-            outcome_csv_paths: Optional dict mapping tier names to CSV paths
             figure_format: Format for saving figures ('png', 'pdf', or 'both')
         """
         self.output_dir = Path(output_dir)
@@ -61,10 +68,12 @@ class ConversationAnalysisPipeline:
         self.loader = ConversationLoader()
         self.embedder = EnsembleEmbedder()
         self.trajectory_analyzer = TrajectoryAnalyzer()
-        self.phase_detector = PhaseDetector()
-        self.breakdown_predictor = BreakdownPredictor()
+        self.ensemble_phase_detector = EnsemblePhaseDetector()
+        self.hypothesis_tester = GeometricInvarianceHypothesisTester()
+        # Breakdown predictor removed - not needed for invariance analysis
         self.visualizer = TrajectoryVisualizer(self.output_dir / "figures")
         self.ensemble_visualizer = EnsembleVisualizer(self.output_dir / "figures" / "ensemble")
+        self.density_visualizer = DensityEvolutionVisualizer()
         self.report_generator = ReportGenerator(self.output_dir / "reports")
         
         # Checkpoint manager
@@ -72,8 +81,15 @@ class ConversationAnalysisPipeline:
         if checkpoint_enabled:
             self.checkpoint_manager = CheckpointManager(self.output_dir / "checkpoints")
             
+        # Initialize geometric invariance components
+        self.signature_computer = GeometricSignatureComputer()
+        self.invariance_analyzer = InvarianceAnalyzer()
+        self.hypothesis_tester_new = HypothesisTester()
+        self.null_comparator = NullModelComparator()
+        
         # Results storage
-        self.tier_results = {}
+        self.all_conversations = []
+        self.invariance_results = {}
         self.analysis_results = {}
         
         # Batch size for GPU processing
@@ -82,125 +98,67 @@ class ConversationAnalysisPipeline:
         # Figure format preference
         self.figure_format = figure_format
         
-        # Cache for outcome data
-        self.outcome_data_cache = {}
-        
-        # Store CSV paths if provided, otherwise use defaults
-        self.outcome_csv_paths = outcome_csv_paths or {}
-        
-        # Default CSV paths (highest n directories)
-        self.default_csv_paths = {
-            'full_reasoning': 'n67/conversation_analysis_enhanced.csv',
-            'light_reasoning': 'n61/conversation_analysis_enhanced.csv',
-            'non_reasoning': 'n100/conversation_analysis_enhanced.csv'
-        }
-        
-    def _load_outcome_data(self, tier_name: str, tier_dir: Path) -> Optional[Dict[str, str]]:
+    def load_all_conversations(self, directories: List[Path], max_conversations: Optional[int] = None) -> List[Dict]:
         """
-        Load conversation outcomes from CSV files.
+        Load all conversations from provided directories without tier categorization.
         
         Args:
-            tier_name: Name of the tier
-            tier_dir: Directory containing tier data
+            directories: List of directories to load conversations from
+            max_conversations: Maximum total conversations to load
             
         Returns:
-            Dictionary mapping filename to conversation outcome, or None if no CSV available
+            List of conversation dictionaries
         """
-        # Check if we've already cached this data
-        cache_key = f"{tier_name}_{tier_dir}"
-        if cache_key in self.outcome_data_cache:
-            return self.outcome_data_cache[cache_key]
-            
-        csv_path = None
+        all_conversations = []
         
-        # Check if user provided a specific CSV path for this tier
-        if tier_name in self.outcome_csv_paths:
-            csv_path = Path(self.outcome_csv_paths[tier_name])
-        else:
-            # Use default path
-            if tier_name in self.default_csv_paths:
-                csv_path = tier_dir / self.default_csv_paths[tier_name]
+        for directory in directories:
+            if not directory.exists():
+                self.logger.warning(f"Directory not found: {directory}")
+                continue
                 
-        if not csv_path or not csv_path.exists():
-            self.logger.info(f"No outcome CSV available for {tier_name}")
-            return None
+            self.logger.info(f"Loading conversations from {directory}")
             
-        outcome_map = {}
-        
-        try:
-            df = pd.read_csv(csv_path)
-            # Create mapping from filename to conversation_outcome
-            for _, row in df.iterrows():
-                filename = row['filename']
-                outcome = row.get('conversation_outcome', 'unknown')
-                outcome_map[filename] = outcome
-                
-            self.logger.info(f"Loaded {len(outcome_map)} outcomes from {csv_path}")
-        except Exception as e:
-            self.logger.warning(f"Failed to load outcomes from {csv_path}: {e}")
-            return None
-                
-        # Cache the results
-        self.outcome_data_cache[cache_key] = outcome_map
-        return outcome_map
-        
-    def analyze_tier(self, 
-                    tier_name: str,
-                    tier_dir: Path,
-                    max_conversations: Optional[int] = None) -> Dict:
-        """
-        Analyze conversations from a single tier.
-        
-        Args:
-            tier_name: Name of the tier
-            tier_dir: Directory containing conversations
-            max_conversations: Maximum conversations to analyze
-            
-        Returns:
-            Tier analysis results
-        """
-        self.logger.info(f"\nAnalyzing {tier_name} tier...")
-        
-        # Check for checkpoint
-        if self.checkpoint_manager:
-            checkpoint_data = self.checkpoint_manager.load_session_checkpoint(
-                tier_name, "tier_analysis"
+            # Load conversations from this directory
+            conversations = self.loader.load_conversations_batch(
+                directory,
+                max_conversations=max_conversations
             )
-            if checkpoint_data:
-                self.logger.info(f"Loaded checkpoint for {tier_name}")
-                return checkpoint_data
+            
+            # Filter conversations
+            conversations = self.loader.filter_conversations(
+                conversations,
+                min_turns=20
+            )
+            
+            all_conversations.extend(conversations)
+            
+            # Check if we've reached the limit
+            if max_conversations and len(all_conversations) >= max_conversations:
+                all_conversations = all_conversations[:max_conversations]
+                break
                 
-        # Load conversations
-        conversations = self.loader.load_conversations_batch(
-            tier_dir,
-            max_conversations=max_conversations
-        )
+        self.logger.info(f"Loaded {len(all_conversations)} conversations total")
+        return all_conversations
         
-        # Filter conversations
-        conversations = self.loader.filter_conversations(
-            conversations,
-            min_turns=20
-        )
+    def analyze_conversations_for_invariance(self, conversations: List[Dict]) -> Dict:
+        """
+        Analyze conversations for geometric invariance across embedding models.
         
-        self.logger.info(f"Processing {len(conversations)} conversations")
+        Args:
+            conversations: List of conversation dictionaries
+            
+        Returns:
+            Invariance analysis results
+        """
+        self.logger.info(f"\nAnalyzing {len(conversations)} conversations for geometric invariance...")
         
-        # Load outcome data from CSV files
-        outcome_map = self._load_outcome_data(tier_name, tier_dir)
-        
-        # Add outcome data to conversations if available
-        if outcome_map:
-            for conv in conversations:
-                filename = conv['metadata'].get('filename', '')
-                if filename in outcome_map:
-                    conv['metadata']['annotated_outcome'] = outcome_map[filename]
-        
-        tier_results = {
-            'tier_name': tier_name,
+        # Initialize results storage
+        invariance_results = {
             'n_conversations': len(conversations),
-            'conversations': [],
-            'phase_metrics': [],
-            'trajectory_metrics': [],
-            'breakdown_predictions': []
+            'conversation_results': [],
+            'geometric_signatures': {},
+            'invariance_scores': {},
+            'aggregate_statistics': None
         }
         
         # Process conversations in batches for GPU efficiency
@@ -232,7 +190,7 @@ class ConversationAnalysisPipeline:
             
             # Process each conversation in the batch
             for conv_idx, conv in enumerate(tqdm(batch_conversations, 
-                                                desc=f"Processing batch {batch_idx+1}/{n_batches} ({tier_name})", 
+                                                desc=f"Processing batch {batch_idx+1}/{n_batches}", 
                                                 unit="conv")):
                 
                 session_id = conv['metadata']['session_id']
@@ -248,45 +206,91 @@ class ConversationAnalysisPipeline:
                 # Get number of messages in this conversation
                 n_messages = len(conv['messages'])
                 
-                # Calculate trajectory metrics
+                # Calculate trajectory metrics with advanced methods
                 trajectory_metrics = self.trajectory_analyzer.calculate_ensemble_trajectories(embeddings)
                 
-                # Detect phases
-                phase_results = self.phase_detector.detect_phases(embeddings)
+                # Add advanced trajectory analysis
+                advanced_metrics = {}
+                for model_name, emb in embeddings.items():
+                    advanced_metrics[model_name] = self.trajectory_analyzer.analyze_trajectory_with_normalization(
+                        emb, method='adaptive'
+                    )
+                trajectory_metrics['advanced'] = advanced_metrics
+                
+                # Calculate curvature with ensemble methods
+                curvature_ensemble = {}
+                for model_name, emb in embeddings.items():
+                    curvature_ensemble[model_name] = self.trajectory_analyzer.calculate_curvature_ensemble(emb)
+                trajectory_metrics['curvature_ensemble'] = curvature_ensemble
+                
+                # Detect phases using ensemble methods for each model separately
+                annotated_phases = conv.get('phases', None)
+                model_phase_results = {}
+                
+                # Apply ensemble phase detection to each model's embeddings
+                for model_name, model_embeddings in embeddings.items():
+                    # Create single-model dict for the detector
+                    single_model_dict = {model_name: model_embeddings}
+                    model_results = self.ensemble_phase_detector.detect_phases_ensemble(
+                        single_model_dict, annotated_phases
+                    )
+                    model_phase_results[model_name] = model_results
+                
+                # Combine results across models
+                phase_results = {
+                    'model_phases': {},  # Phase detections for each model
+                    'method_results': {},  # Combined method results across models
+                    'ensemble_phases': [],  # Overall ensemble phases
+                    'variance_by_model': {}  # Variance in phase detection across models
+                }
+                
+                # Extract phases for each model
+                for model_name, model_result in model_phase_results.items():
+                    phase_results['model_phases'][model_name] = model_result.get('ensemble_phases', [])
+                    
+                    # Collect method results
+                    for method_name, method_phases in model_result.get('method_results', {}).items():
+                        if method_name not in phase_results['method_results']:
+                            phase_results['method_results'][method_name] = {}
+                        phase_results['method_results'][method_name][model_name] = method_phases
+                
+                # Calculate ensemble phases across all models
+                all_model_phases = []
+                for model_phases in phase_results['model_phases'].values():
+                    all_model_phases.extend(model_phases)
+                
+                # Group similar phases and calculate variance
+                if all_model_phases:
+                    phase_results['ensemble_phases'] = self._combine_cross_model_phases(all_model_phases, n_messages)
+                    phase_results['variance_by_model'] = self._calculate_phase_variance(phase_results['model_phases'], n_messages)
                 
                 # Compare with annotations if available
                 phase_comparison = None
                 phase_statistics = None
                 if 'phases' in conv:
-                    phase_comparison = self.phase_detector.compare_with_annotations(
-                        phase_results['detected_phases'],
+                    # Compare with annotations - use ensemble detected phases
+                    detected_phases = phase_results.get('ensemble_phases', [])
+                    phase_comparison = self._compare_phases_with_annotations(
+                        detected_phases,
                         conv['phases']
                     )
                     
-                    # Run statistical tests
-                    from embedding_analysis.utils.statistics import (
-                        test_model_phase_agreement, 
-                        test_phase_detection_accuracy
+                    # Skip statistical tests for now - would need to refactor for ensemble detector
+                    phase_statistics = None
+                    
+                # Compute geometric signatures for this conversation
+                signatures_by_model = {}
+                for model_name, emb in embeddings.items():
+                    signatures = self.signature_computer.compute_all_signatures(
+                        emb, f"{session_id}_{model_name}"
                     )
-                    
-                    # Test model agreement
-                    model_agreement_stats = test_model_phase_agreement(
-                        phase_results['model_phases'],
-                        n_messages
-                    )
-                    
-                    # Test accuracy against annotations
-                    accuracy_stats = test_phase_detection_accuracy(
-                        conv['phases'],
-                        phase_results['model_phases'],
-                        n_messages
-                    )
-                    
-                    phase_statistics = {
-                        'model_agreement': model_agreement_stats,
-                        'detection_accuracy': accuracy_stats
-                    }
-                    
+                    signatures_by_model[model_name] = signatures
+                
+                # Analyze invariance across models
+                invariance_metrics = self.invariance_analyzer.compute_invariance_metrics(
+                    signatures_by_model, session_id
+                )
+                
                 # Store results
                 conv_results = {
                     'session_id': session_id,
@@ -294,24 +298,23 @@ class ConversationAnalysisPipeline:
                     'trajectory_metrics': trajectory_metrics,
                     'phase_results': phase_results,
                     'phase_comparison': phase_comparison,
-                    'phase_statistics': phase_statistics
+                    'phase_statistics': phase_statistics,
+                    'geometric_signatures': signatures_by_model,
+                    'invariance_metrics': invariance_metrics
                 }
                 
-                tier_results['conversations'].append(conv_results)
-                tier_results['phase_metrics'].append(phase_results['ensemble_agreement'])
-                tier_results['trajectory_metrics'].append(trajectory_metrics)
+                invariance_results['conversation_results'].append(conv_results)
+                invariance_results['geometric_signatures'][session_id] = signatures_by_model
+                invariance_results['invariance_scores'][session_id] = invariance_metrics
                 
-                # Store for breakdown prediction
+                # Store for visualization
                 conv['ensemble_embeddings'] = embeddings
                 conv['trajectory_metrics'] = trajectory_metrics
                 conv['phase_info'] = phase_results
                 
-                # Add tier information to conversation
-                conv['tier'] = tier_name
-                
                 # Generate comprehensive ensemble visualization
                 # The conversation dict already contains 'phases' if annotated phases exist
-                base_filename = f"{tier_name}_{session_id}_ensemble"
+                base_filename = f"{session_id}_ensemble"
                 
                 # Determine which formats to save based on user preference
                 png_path = None
@@ -335,24 +338,27 @@ class ConversationAnalysisPipeline:
                     save_path=png_path,
                     save_pdf=pdf_path
                 )
+                
+                # Density evolution is now included in the comprehensive plot
+                # No need for separate density plots
             
             # Clear GPU cache after each batch
             import torch
             torch.cuda.empty_cache()
             
-        # Calculate tier statistics
-        tier_results['summary'] = self._calculate_tier_summary(tier_results)
+        # Calculate aggregate invariance statistics
+        invariance_results['aggregate_statistics'] = self.invariance_analyzer.aggregate_invariance_scores(
+            invariance_results['invariance_scores']
+        )
         
-        # Save checkpoint
-        if self.checkpoint_manager:
-            self.checkpoint_manager.create_session_checkpoint(
-                tier_name, "tier_analysis", tier_results
-            )
-            
-        return tier_results
+        # Log summary
+        self.logger.info(f"Mean invariance score: {invariance_results['aggregate_statistics']['mean_invariance']:.3f}")
+        self.logger.info(f"Std invariance score: {invariance_results['aggregate_statistics']['std_invariance']:.3f}")
         
-    def _calculate_tier_summary(self, tier_results: Dict) -> Dict:
-        """Calculate summary statistics for a tier."""
+        return invariance_results
+        
+    def _calculate_invariance_summary(self, invariance_results: Dict) -> Dict:
+        """Calculate summary statistics for invariance analysis."""
         summary = {}
         
         # Phase detection statistics
@@ -430,171 +436,175 @@ class ConversationAnalysisPipeline:
                 
         return summary
         
-    def train_breakdown_model(self, tier_results: Dict):
-        """Train breakdown prediction model on tier data."""
-        self.logger.info("\nTraining breakdown prediction model...")
-        
-        # Prepare training data
-        training_data = []
-        
-        for tier_name, tier_data in tier_results.items():
-            for conv in tier_data['conversations']:
-                # Extract features
-                features = self.breakdown_predictor.extract_features(
-                    conv['embeddings'],
-                    conv['trajectory_metrics'],
-                    conv['phase_results']
-                )
-                
-                # Get label (using synthetic labels for demo)
-                # In real usage, these would come from annotations
-                label = self._get_synthetic_label(conv)
-                
-                training_data.append((features, label))
-                
-        # Train model
-        if training_data:
-            metrics = self.breakdown_predictor.train(training_data)
-            self.logger.info(f"Model trained with {len(training_data)} samples")
-            return metrics
-        else:
-            self.logger.warning("No training data available")
-            return None
             
-    def _get_synthetic_label(self, conv_results: Dict) -> bool:
-        """Generate synthetic breakdown label for demonstration."""
-        # Simple heuristic based on trajectory metrics
-        velocity_variance = 0
         
-        for model_name, metrics in conv_results['trajectory_metrics'].items():
-            if model_name != 'consistency' and 'velocity_std' in metrics:
-                velocity_variance += metrics['velocity_std']
-                
-        # High variance suggests breakdown
-        return velocity_variance > 0.5
         
-    def generate_visualizations(self, tier_results: Dict):
-        """Generate all visualizations."""
-        self.logger.info("\nGenerating visualizations...")
-        
-        # Select representative conversations
-        for tier_name, tier_data in tier_results.items():
-            if tier_data['conversations']:
-                # First conversation from each tier
-                conv = tier_data['conversations'][0]
-                
-                # Ensemble trajectory plot
-                self.visualizer.plot_ensemble_trajectories(
-                    conv['embeddings'],
-                    conv['phase_results']['detected_phases'],
-                    title=f"{tier_name} - Ensemble Trajectories",
-                    save_path=self.output_dir / "figures" / f"{tier_name}_trajectories.png"
-                )
-                
-        # Breakdown predictions (if model trained)
-        if hasattr(self.breakdown_predictor, 'is_trained') and self.breakdown_predictor.is_trained:
-            # Collect predictions
-            all_predictions = {}
-            
-            for tier_name, tier_data in tier_results.items():
-                for conv in tier_data['conversations'][:5]:  # First 5 from each tier
-                    features = self.breakdown_predictor.extract_features(
-                        conv['embeddings'],
-                        conv['trajectory_metrics'],
-                        conv['phase_results']
-                    )
-                    
-                    pred = self.breakdown_predictor.predict(features)
-                    
-                    # Multi-horizon predictions
-                    lookahead = []
-                    for n in range(5, 31, 5):
-                        lookahead_pred = self.breakdown_predictor.predict(features)
-                        lookahead_pred['n_turns_ahead'] = n
-                        lookahead.append(lookahead_pred)
-                        
-                    all_predictions[conv['session_id']] = {
-                        'tier': tier_name,
-                        'immediate': pred,
-                        'lookahead': lookahead
-                    }
-                    
-            # Plot predictions
-            self.visualizer.plot_breakdown_predictions(
-                all_predictions,
-                save_path=self.output_dir / "figures" / "breakdown_predictions.png"
-            )
-            
-            # Feature importance
-            feature_importance = self.breakdown_predictor.get_feature_importance()
-            self.visualizer.plot_feature_importance(
-                feature_importance,
-                save_path=self.output_dir / "figures" / "feature_importance.png"
-            )
-            
-    def generate_reports(self, tier_results: Dict, model_metrics: Optional[Dict] = None):
-        """Generate analysis reports."""
-        self.logger.info("\nGenerating reports...")
-        
-        # Prepare analysis results
-        analysis_results = {
-            'ensemble_info': self.embedder.get_model_info(),
-            'tier_results': {}
-        }
-        
-        # Summarize tier results
-        for tier_name, tier_data in tier_results.items():
-            analysis_results['tier_results'][tier_name] = {
-                'n_conversations': tier_data['n_conversations'],
-                'summary': tier_data.get('summary', {})
-            }
-            
-        # Add model metrics
-        if model_metrics:
-            analysis_results['breakdown_model_metrics'] = model_metrics
-            
-        # Generate summary report
-        self.report_generator.generate_summary_report(
-            analysis_results,
-            save_path=self.output_dir / "reports" / "summary_report.txt"
-        )
-        
-        # Generate tier comparison report
-        self.report_generator.generate_tier_comparison_report(
-            analysis_results['tier_results'],
-            save_path=self.output_dir / "reports" / "tier_comparison.txt"
-        )
-        
-    def run_analysis(self, tier_directories: Dict[str, Path], max_conversations: Optional[int] = None):
+        return summary
+    
+    def _combine_cross_model_phases(self, all_phases: List[Dict], n_messages: int) -> List[Dict]:
         """
-        Run complete analysis pipeline.
+        Combine phase detections from multiple models into consensus phases.
         
         Args:
-            tier_directories: Dictionary mapping tier names to directories
-            max_conversations: Maximum conversations per tier
+            all_phases: List of all phase detections from all models
+            n_messages: Total number of messages
+            
+        Returns:
+            List of consensus phases with confidence scores
+        """
+        if not all_phases:
+            return []
+            
+        # Group phases by proximity
+        phase_groups = []
+        window = 10  # turns
+        
+        for phase in all_phases:
+            turn = phase.get('turn', phase.get('start_turn', 0))
+            found_group = False
+            
+            for group in phase_groups:
+                if any(abs(turn - p.get('turn', p.get('start_turn', 0))) <= window for p in group):
+                    group.append(phase)
+                    found_group = True
+                    break
+                    
+            if not found_group:
+                phase_groups.append([phase])
+                
+        # Create consensus phases
+        consensus_phases = []
+        for group in phase_groups:
+            if len(group) >= 2:  # Require at least 2 models to agree
+                turns = [p.get('turn', p.get('start_turn', 0)) for p in group]
+                consensus_phase = {
+                    'turn': int(np.median(turns)),
+                    'confidence': len(group) / 5.0,  # Assuming 5 models
+                    'std': np.std(turns),
+                    'n_models': len(group),
+                    'type': 'consensus'
+                }
+                consensus_phases.append(consensus_phase)
+                
+        return sorted(consensus_phases, key=lambda x: x['turn'])
+    
+    def _calculate_phase_variance(self, model_phases: Dict[str, List[Dict]], n_messages: int) -> Dict:
+        """
+        Calculate variance in phase detection across models.
+        
+        Args:
+            model_phases: Dict mapping model names to their detected phases
+            n_messages: Total number of messages
+            
+        Returns:
+            Dictionary with variance statistics
+        """
+        # Collect all phase transitions
+        all_transitions = []
+        for phases in model_phases.values():
+            transitions = [p.get('turn', p.get('start_turn', 0)) for p in phases]
+            all_transitions.extend(transitions)
+            
+        if not all_transitions:
+            return {'mean_std': 0, 'max_std': 0}
+            
+        # Calculate variance statistics
+        unique_transitions = sorted(set(all_transitions))
+        variances = []
+        
+        for trans in unique_transitions:
+            # Find all transitions near this one
+            window = 10
+            nearby = [t for t in all_transitions if abs(t - trans) <= window]
+            if len(nearby) > 1:
+                variances.append(np.std(nearby))
+                
+        return {
+            'mean_std': np.mean(variances) if variances else 0,
+            'max_std': np.max(variances) if variances else 0,
+            'by_phase': variances
+        }
+    
+    def _compare_phases_with_annotations(self, detected_phases: List[Dict], 
+                                        annotated_phases: List[Dict]) -> Dict:
+        """
+        Compare detected phases with annotations.
+        
+        Args:
+            detected_phases: List of detected phase dictionaries
+            annotated_phases: List of annotated phase dictionaries
+            
+        Returns:
+            Comparison metrics
+        """
+        # Simple comparison based on phase transition points
+        detected_turns = [p.get('turn', p.get('start_turn', 0)) for p in detected_phases]
+        annotated_turns = [p.get('turn', p.get('start_turn', 0)) for p in annotated_phases]
+        
+        # Calculate matches within threshold
+        threshold = 5  # turns
+        matches = 0
+        
+        for det_turn in detected_turns:
+            for ann_turn in annotated_turns:
+                if abs(det_turn - ann_turn) <= threshold:
+                    matches += 1
+                    break
+                    
+        precision = matches / len(detected_turns) if detected_turns else 0
+        recall = matches / len(annotated_turns) if annotated_turns else 0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+        
+        return {
+            'metrics': {
+                'precision': precision,
+                'recall': recall,
+                'f1': f1
+            },
+            'n_detected': len(detected_turns),
+            'n_annotated': len(annotated_turns),
+            'n_matches': matches
+        }
+        
+    def run_analysis(self, directories: List[Path], max_conversations: Optional[int] = None):
+        """
+        Run complete geometric invariance analysis pipeline.
+        
+        Args:
+            directories: List of directories containing conversations
+            max_conversations: Maximum total conversations to analyze
         """
         self.logger.info("="*70)
-        self.logger.info("CONVERSATION TRAJECTORY ANALYSIS")
+        self.logger.info("GEOMETRIC INVARIANCE ANALYSIS")
         self.logger.info("="*70)
         
-        # Analyze each tier
-        tier_results = {}
-        for tier_name, tier_dir in tier_directories.items():
-            if tier_dir.exists():
-                tier_results[tier_name] = self.analyze_tier(
-                    tier_name, tier_dir, max_conversations
-                )
-            else:
-                self.logger.warning(f"Tier directory not found: {tier_dir}")
-                
-        # Train breakdown model
-        model_metrics = self.train_breakdown_model(tier_results)
+        # Load all conversations
+        conversations = self.load_all_conversations(directories, max_conversations)
         
-        # Generate visualizations
-        self.generate_visualizations(tier_results)
+        if not conversations:
+            self.logger.error("No conversations loaded!")
+            return
+        
+        # Analyze conversations for invariance
+        invariance_results = self.analyze_conversations_for_invariance(conversations)
+        
+        # Test geometric invariance hypothesis
+        self.logger.info("\nTesting geometric invariance hypothesis...")
+        hypothesis_results = self.hypothesis_tester_new.test_invariance_hypothesis(
+            invariance_results['aggregate_statistics']
+        )
+        
+        # Generate null models for comparison (optional)
+        if len(conversations) > 0:
+            self.logger.info("\nGenerating null model comparisons...")
+            null_results = self.analyze_null_models(conversations[:5])  # Use first 5 conversations
+            hypothesis_results['null_comparison'] = null_results
+        
+        # Generate invariance-specific visualizations
+        self.generate_invariance_visualizations(invariance_results)
         
         # Generate reports
-        self.generate_reports(tier_results, model_metrics)
+        self.generate_invariance_reports(invariance_results, hypothesis_results)
         
         self.logger.info("\n" + "="*70)
         self.logger.info("ANALYSIS COMPLETE!")
@@ -626,7 +636,7 @@ def main():
         "--max-conversations",
         type=int,
         default=None,
-        help="Maximum conversations per tier (for testing)"
+        help="Maximum total conversations to analyze (for testing)"
     )
     
     parser.add_argument(
@@ -650,24 +660,10 @@ def main():
     )
     
     parser.add_argument(
-        "--phase1-csv",
-        type=str,
-        default=None,
-        help="Path to CSV file with outcomes for phase-1-premium (default: phase-1-premium/n67/conversation_analysis_enhanced.csv)"
-    )
-    
-    parser.add_argument(
-        "--phase2-csv",
-        type=str,
-        default=None,
-        help="Path to CSV file with outcomes for phase-2-efficient (default: phase-2-efficient/n61/conversation_analysis_enhanced.csv)"
-    )
-    
-    parser.add_argument(
-        "--phase3-csv",
-        type=str,
-        default=None,
-        help="Path to CSV file with outcomes for phase-3-no-reasoning (default: phase-3-no-reasoning/n100/conversation_analysis_enhanced.csv)"
+        "--directories",
+        nargs="+",
+        type=Path,
+        help="Directories containing conversations to analyze"
     )
     
     parser.add_argument(
@@ -679,21 +675,16 @@ def main():
     
     args = parser.parse_args()
     
-    # Define tier directories
-    tier_directories = {
-        'full_reasoning': args.data_dir / 'phase-1-premium',
-        'light_reasoning': args.data_dir / 'phase-2-efficient',
-        'non_reasoning': args.data_dir / 'phase-3-no-reasoning'
-    }
-    
-    # Build outcome CSV paths if provided
-    outcome_csv_paths = {}
-    if args.phase1_csv:
-        outcome_csv_paths['full_reasoning'] = args.phase1_csv
-    if args.phase2_csv:
-        outcome_csv_paths['light_reasoning'] = args.phase2_csv
-    if args.phase3_csv:
-        outcome_csv_paths['non_reasoning'] = args.phase3_csv
+    # Define directories to analyze
+    if args.directories:
+        directories = args.directories
+    else:
+        # Default: analyze all phase directories
+        directories = [
+            args.data_dir / 'phase-1-premium',
+            args.data_dir / 'phase-2-efficient',
+            args.data_dir / 'phase-3-no-reasoning'
+        ]
     
     # Initialize pipeline
     pipeline = ConversationAnalysisPipeline(
@@ -701,13 +692,12 @@ def main():
         checkpoint_enabled=not args.no_checkpoint,
         log_level=args.log_level,
         batch_size=args.batch_size,
-        outcome_csv_paths=outcome_csv_paths if outcome_csv_paths else None,
         figure_format=args.figure_format
     )
     
     # Run analysis
     pipeline.run_analysis(
-        tier_directories,
+        directories,
         max_conversations=args.max_conversations
     )
 
