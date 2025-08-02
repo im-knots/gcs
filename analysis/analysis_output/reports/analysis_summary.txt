@@ -1,6 +1,6 @@
 CONVERSATION TRAJECTORY ANALYSIS SUMMARY
 ======================================================================
-Analysis Date: 2025-08-01 22:39:39
+Analysis Date: 2025-08-01 22:55:07
 
 ENSEMBLE MODELS
 ----------------------------------------
@@ -20,7 +20,7 @@ ENSEMBLE MODELS
     Model ID: glove-wiki-gigaword-300
     Dimensions: 300
 
-KEY FINDINGS
+DATA SUMMARY
 ----------------------------------------
 1. Analyzed 229 conversations
 2. Mean invariance score: 0.377

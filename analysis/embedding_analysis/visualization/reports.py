@@ -108,17 +108,12 @@ class ReportGenerator:
                     
             report.append("")
             
-        # Key findings
-        report.append("KEY FINDINGS")
+        # Raw data summary
+        report.append("DATA SUMMARY")
         report.append("-" * 40)
-        findings = analysis_results.get('key_findings', [
-            "Ensemble embeddings successfully capture trajectory patterns",
-            "Blind phase detection shows promise for identifying transitions",
-            "Trajectory features enable breakdown prediction",
-            "Model tier differences are reflected in embedding dynamics"
-        ])
-        for i, finding in enumerate(findings, 1):
-            report.append(f"{i}. {finding}")
+        if 'key_findings' in analysis_results:
+            for i, finding in enumerate(analysis_results['key_findings'], 1):
+                report.append(f"{i}. {finding}")
             
         report_text = "\n".join(report)
         
@@ -204,7 +199,7 @@ class ReportGenerator:
                 report.append(f"\n  {test_name}:")
                 report.append(f"    Statistic: {results['statistic']:.3f}")
                 report.append(f"    p-value: {results['p_value']:.4f}")
-                report.append(f"    Significant: {'Yes' if results['p_value'] < 0.05 else 'No'}")
+                report.append(f"    p < 0.05: {'Yes' if results['p_value'] < 0.05 else 'No'}")
                 
         report_text = "\n".join(report)
         
@@ -523,12 +518,7 @@ class ReportGenerator:
             report.append(f"Effect Size (Cohen's d): {hyp.get('cohens_d', 0):.3f}")
             report.append("")
             
-            if hyp.get('hypothesis_supported', False):
-                report.append("✓ HYPOTHESIS SUPPORTED: Strong geometric invariance detected")
-                report.append("  Conversations exhibit consistent geometric patterns across embedding models")
-            else:
-                report.append("✗ HYPOTHESIS NOT SUPPORTED: Weak geometric invariance")
-                report.append("  Limited consistency in geometric patterns across models")
+            report.append(f"Hypothesis Result: {'✓ PASSED' if hyp.get('hypothesis_supported', False) else '✗ FAILED'}")
             report.append("")
             
             # Null model comparison if available
@@ -541,23 +531,15 @@ class ReportGenerator:
                         report.append(f"    Mean Invariance: {null_stats.get('mean_invariance', 0):.3f}")
                 report.append("")
                 
-        # Conclusions
-        report.append("CONCLUSIONS")
+        # Raw statistics summary
+        report.append("STATISTICS SUMMARY")
         report.append("-" * 40)
         
-        mean_inv = analysis_results.get('invariance_statistics', {}).get('mean_invariance', 0)
-        if mean_inv > 0.7:
-            report.append("Strong geometric invariance observed across transformer embedding models.")
-            report.append("This suggests that conversations have intrinsic geometric properties")
-            report.append("that are consistently captured by different embedding approaches.")
-        elif mean_inv > 0.5:
-            report.append("Moderate geometric invariance observed across embedding models.")
-            report.append("Conversations show some consistent geometric patterns, but with")
-            report.append("notable variations between different embedding approaches.")
-        else:
-            report.append("Weak geometric invariance observed across embedding models.")
-            report.append("Different embeddings capture substantially different geometric")
-            report.append("properties of conversations.")
+        if 'invariance_statistics' in analysis_results:
+            stats = analysis_results['invariance_statistics']
+            report.append(f"Mean invariance: {stats.get('mean_invariance', 0):.3f}")
+            report.append(f"Std invariance: {stats.get('std_invariance', 0):.3f}")
+            report.append(f"Median invariance: {stats.get('median_invariance', 0):.3f}")
             
         report.append("")
         report_text = "\n".join(report)
@@ -652,27 +634,15 @@ class ReportGenerator:
         report.append("-" * 40)
         
         max_tier = hypothesis_results.get('summary', {}).get('max_tier_passed', 0)
+        report.append(f"Maximum tier passed: {max_tier}/3")
         
-        if max_tier >= 3:
-            report.append("All three tiers of hypotheses passed:")
-            report.append("- Tier 1: Within-paradigm invariance established")
-            report.append("- Tier 2: Cross-paradigm invariance established") 
-            report.append("- Tier 3: Hierarchical relationship confirmed")
-            
-        elif max_tier == 2:
-            report.append("Tiers 1 and 2 passed:")
-            report.append("- Tier 1: Within-paradigm invariance established")
-            report.append("- Tier 2: Cross-paradigm invariance established")
-            report.append("- Tier 3: Hierarchical relationship not confirmed")
-            
-        elif max_tier == 1:
-            report.append("Only Tier 1 passed:")
-            report.append("- Tier 1: Within-paradigm invariance established")
-            report.append("- Tier 2: Cross-paradigm invariance not established")
-            
-        else:
-            report.append("No tiers passed:")
-            report.append("- Tier 1: Within-paradigm invariance not established")
+        # Tier status
+        report.append("\nTier Status:")
+        for i in range(1, 4):
+            if i <= max_tier:
+                report.append(f"- Tier {i}: PASSED")
+            else:
+                report.append(f"- Tier {i}: FAILED" if i == max_tier + 1 else f"- Tier {i}: NOT TESTED")
         
         # Control results interpretation
         controls_passed = sum(1 for c in hypothesis_results.get('controls', []) if c['passed'])
@@ -680,8 +650,7 @@ class ReportGenerator:
         
         if total_controls > 0:
             report.append(f"\n\nControl Checks: {controls_passed}/{total_controls} passed")
-            if controls_passed < total_controls:
-                report.append("⚠ Some control checks failed - results should be interpreted with caution")
+            report.append(f"Control Checks Failed: {total_controls - controls_passed}")
         
         report.append("")
         report_text = "\n".join(report)

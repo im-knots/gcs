@@ -1,6 +1,6 @@
 HIERARCHICAL HYPOTHESIS TEST RESULTS
 ======================================================================
-Analysis Date: 2025-08-01 22:39:39
+Analysis Date: 2025-08-01 22:55:07
 
 SUMMARY
 ----------------------------------------
@@ -35,7 +35,7 @@ Hypotheses:
      p-value: 1.6656e-75
      Effect size: -0.827
      Power: N/A
-     95% CI: [0.790, 0.864]
+     95% CI: [0.789, 0.862]
 
 Tier 2: Cross-Paradigm Invariance
 Status: PASSED
@@ -97,10 +97,13 @@ CONTROL HYPOTHESES
 
 RESULTS SUMMARY
 ----------------------------------------
-All three tiers of hypotheses passed:
-- Tier 1: Within-paradigm invariance established
-- Tier 2: Cross-paradigm invariance established
-- Tier 3: Hierarchical relationship confirmed
+Maximum tier passed: 3/3
+
+Tier Status:
+- Tier 1: PASSED
+- Tier 2: PASSED
+- Tier 3: PASSED
 
 
 Control Checks: 3/3 passed
+Control Checks Failed: 0
