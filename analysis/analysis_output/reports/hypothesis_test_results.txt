@@ -1,0 +1,106 @@
+HIERARCHICAL HYPOTHESIS TEST RESULTS
+======================================================================
+Analysis Date: 2025-08-01 22:39:39
+
+SUMMARY
+----------------------------------------
+Maximum Tier Passed: 3/3
+Total Hypotheses Tested: 12
+Hypotheses Passed: 12
+Mean Effect Size: 0.152
+Minimum p-value: 0.0000e+00
+
+Conclusion: All tiers passed: Complete geometric invariance established
+
+TIER RESULTS
+----------------------------------------
+
+Tier 1: Within-Paradigm Invariance
+Status: PASSED
+Correction Method: Bonferroni
+Adjusted Alpha: 0.017
+
+Hypotheses:
+  ✓ H1a: Transformer models show strong correlations (ρ > 0.75)
+     p-value: 2.8606e-08
+     Effect size: 0.208
+     Power: 0.999
+     95% CI: [0.802, 0.850]
+  ✓ H1b: Classical models show strong correlations (ρ > 0.70)
+     p-value: 0.0000e+00
+     Effect size: 0.842
+     Power: 1.000
+     95% CI: [0.918, 0.951]
+  ✓ H1c: Within-paradigm correlations exceed chance (p < 0.01)
+     p-value: 1.6656e-75
+     Effect size: -0.827
+     Power: N/A
+     95% CI: [0.790, 0.864]
+
+Tier 2: Cross-Paradigm Invariance
+Status: PASSED
+Correction Method: FDR (Benjamini-Hochberg)
+Adjusted Alpha: 0.050
+
+Hypotheses:
+  ✓ H2a: Cross-paradigm correlations are substantial (ρ > 0.50)
+     p-value: 1.4507e-10
+     Effect size: 0.170
+     Power: 1.000
+     95% CI: [0.583, 0.648]
+  ✓ H2b: All cross-paradigm correlations are positive
+     p-value: 0.0000e+00
+     Effect size: 0.500
+     Power: N/A
+     95% CI: [0.195, 0.896]
+  ✓ H2c: Cross-paradigm exceeds random embeddings
+     p-value: 7.0597e-116
+     Effect size: -0.999
+     Power: N/A
+
+Tier 3: Invariance Hierarchy
+Status: PASSED
+Correction Method: None (effect size criteria)
+Adjusted Alpha: 0.050
+
+Hypotheses:
+  ✓ H3a: Within > Cross > Random hierarchy
+     p-value: 0.0000e+00
+     Effect size: 0.650
+     Power: N/A
+  ✓ H3b: Effect size between levels is meaningful (q > 0.3)
+     p-value: nan
+     Effect size: 0.593
+     Power: N/A
+  ✓ H3c: Hierarchy persists across geometric metrics
+     p-value: nan
+     Effect size: 0.500
+     Power: N/A
+     95% CI: [0.000, 1.000]
+
+
+CONTROL HYPOTHESES
+----------------------------------------
+
+✓ H4: Real conversations > Scrambled conversations
+   p-value: 1.6656e-75
+   Effect size: -0.827
+
+✓ H5: Patterns persist after controlling for message length
+   p-value: 0.0000e+00
+   Effect size: 0.844
+
+✓ H6: Results hold with dimension-normalized metrics
+   p-value: 1.4507e-10
+   Effect size: 0.170
+
+
+RESULTS SUMMARY
+----------------------------------------
+All three tiers of hypotheses passed:
+- Tier 1: Within-paradigm invariance established
+- Tier 2: Cross-paradigm invariance established
+- Tier 3: Hierarchical relationship confirmed
+
+
+Control Checks: 3/3 passed

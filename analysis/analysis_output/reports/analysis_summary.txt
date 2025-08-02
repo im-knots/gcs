@@ -1,0 +1,28 @@
+CONVERSATION TRAJECTORY ANALYSIS SUMMARY
+======================================================================
+Analysis Date: 2025-08-01 22:39:39
+
+ENSEMBLE MODELS
+----------------------------------------
+  MiniLM-L6:
+    Model ID: all-MiniLM-L6-v2
+    Dimensions: 384
+  MPNet:
+    Model ID: all-mpnet-base-v2
+    Dimensions: 768
+  MiniLM-L12:
+    Model ID: all-MiniLM-L12-v2
+    Dimensions: 384
+  Word2Vec:
+    Model ID: word2vec-google-news-300
+    Dimensions: 300
+  GloVe:
+    Model ID: glove-wiki-gigaword-300
+    Dimensions: 300
+
+KEY FINDINGS
+----------------------------------------
+1. Analyzed 229 conversations
+2. Mean invariance score: 0.377
+3. Hypothesis testing: Tier 3 reached
+4. Control checks: 3/3 passed

@@ -39,6 +39,22 @@ from embedding_analysis.utils import CheckpointManager, setup_logging
 class ConversationAnalysisPipeline:
     """
     Main pipeline for conversation analysis focused on geometric invariance.
+    
+    Checkpoint System:
+    - Checkpoints are saved after each conversation is fully processed (including PNG/PDF generation)
+    - Each checkpoint contains all data needed for the later analysis stages:
+      - Embeddings from all models
+      - Trajectory metrics
+      - Phase detection results
+      - Geometric signatures
+      - Invariance metrics
+    - On restart, the pipeline automatically:
+      - Detects existing checkpoints
+      - Loads processed conversation data
+      - Skips re-processing of completed conversations
+      - Continues with remaining conversations
+    - Use --clear-checkpoints flag to start fresh
+    - Use --no-checkpoint flag to disable checkpointing entirely
     """
     
     def __init__(self, 
@@ -68,7 +84,7 @@ class ConversationAnalysisPipeline:
         
         # Initialize components
         self.loader = ConversationLoader()
-        self.embedder = EnsembleEmbedder()
+        self.embedder = None  # Lazy load only if needed
         self.trajectory_analyzer = TrajectoryAnalyzer()
         self.ensemble_phase_detector = EnsemblePhaseDetector()
         
@@ -168,16 +184,58 @@ class ConversationAnalysisPipeline:
             'aggregate_statistics': None
         }
         
-        # Process conversations in batches for GPU efficiency
-        batch_size = self.batch_size
-        n_batches = (len(conversations) + batch_size - 1) // batch_size
+        # Check for existing checkpoints
+        already_processed = set()
+        if self.checkpoint_manager:
+            self.logger.info("Checking for existing checkpoints...")
+            checkpoints = self.checkpoint_manager.list_checkpoints()
+            
+            for checkpoint in checkpoints:
+                if checkpoint['name'].startswith('conv_'):
+                    session_id = checkpoint['name'].replace('conv_', '')
+                    already_processed.add(session_id)
+                    
+                    # Load checkpoint data
+                    checkpoint_data = self.checkpoint_manager.load(checkpoint['name'])
+                    if checkpoint_data:
+                        # Add to results
+                        invariance_results['conversation_results'].append(checkpoint_data['conv_results'])
+                        invariance_results['geometric_signatures'][session_id] = checkpoint_data['geometric_signatures']
+                        invariance_results['invariance_scores'][session_id] = checkpoint_data['invariance_metrics']
+                        
+                        # Update original conversation with loaded data
+                        for conv in conversations:
+                            if conv['metadata']['session_id'] == session_id:
+                                conv['ensemble_embeddings'] = checkpoint_data['embeddings']
+                                conv['trajectory_metrics'] = checkpoint_data['trajectory_metrics']
+                                conv['phase_info'] = checkpoint_data['phase_results']
+                                break
+            
+            self.logger.info(f"Found {len(already_processed)} conversations already processed")
         
-        self.logger.info(f"Processing {len(conversations)} conversations in {n_batches} batches of {batch_size}")
+        # Filter out already processed conversations
+        conversations_to_process = [conv for conv in conversations 
+                                  if conv['metadata']['session_id'] not in already_processed]
+        
+        if not conversations_to_process:
+            self.logger.info("All conversations already processed! Skipping to analysis...")
+            self.logger.info("Skipping embedding model loading - not needed for analysis")
+            # Calculate aggregate statistics from loaded data
+            invariance_results['aggregate_statistics'] = self.invariance_analyzer.aggregate_invariance_scores(
+                invariance_results['invariance_scores']
+            )
+            return invariance_results
+        
+        # Process remaining conversations in batches for GPU efficiency
+        batch_size = self.batch_size
+        n_batches = (len(conversations_to_process) + batch_size - 1) // batch_size
+        
+        self.logger.info(f"Processing {len(conversations_to_process)} remaining conversations in {n_batches} batches of {batch_size}")
         
         for batch_idx in range(n_batches):
             start_idx = batch_idx * batch_size
-            end_idx = min((batch_idx + 1) * batch_size, len(conversations))
-            batch_conversations = conversations[start_idx:end_idx]
+            end_idx = min((batch_idx + 1) * batch_size, len(conversations_to_process))
+            batch_conversations = conversations_to_process[start_idx:end_idx]
             
             # Collect all messages for batch embedding
             all_messages = []
@@ -190,6 +248,11 @@ class ConversationAnalysisPipeline:
             
             # Extract text content for embedding
             all_texts = [msg.get('content', '') for msg in all_messages]
+            
+            # Lazy load embedder if needed
+            if self.embedder is None:
+                self.logger.info("Loading embedding models...")
+                self.embedder = EnsembleEmbedder()
             
             # Batch embed all messages at once
             self.logger.info(f"  Batch {batch_idx+1}/{n_batches}: Embedding {len(all_texts)} messages from {len(batch_conversations)} conversations")
@@ -348,6 +411,37 @@ class ConversationAnalysisPipeline:
                 
                 # Density evolution is now included in the comprehensive plot
                 # No need for separate density plots
+                
+                # Save checkpoint for this conversation after successful processing
+                if self.checkpoint_manager:
+                    checkpoint_data = {
+                        'session_id': session_id,
+                        'conversation': conv,  # Original conversation data
+                        'embeddings': embeddings,
+                        'trajectory_metrics': trajectory_metrics,
+                        'phase_results': phase_results,
+                        'phase_comparison': phase_comparison,
+                        'phase_statistics': phase_statistics,
+                        'geometric_signatures': signatures_by_model,
+                        'invariance_metrics': invariance_metrics,
+                        'conv_results': conv_results  # Complete results for this conversation
+                    }
+                    
+                    checkpoint_name = f"conv_{session_id}"
+                    self.checkpoint_manager.save(
+                        checkpoint_data,
+                        checkpoint_name,
+                        metadata={
+                            'session_id': session_id,
+                            'n_messages': n_messages,
+                            'models': list(embeddings.keys()),
+                            'phase_detected': len(phase_results.get('detected_phases', [])) > 0,
+                            'figures_generated': {
+                                'png': png_path is not None,
+                                'pdf': pdf_path is not None
+                            }
+                        }
+                    )
             
             # Clear GPU cache after each batch
             import torch
@@ -580,8 +674,9 @@ class ConversationAnalysisPipeline:
             Dictionary formatted for hypothesis testing
         """
         # Extract model pairs and categorize correlations
-        transformer_models = ['all-MiniLM-L6-v2', 'all-mpnet-base-v2', 'all-distilroberta-v1']
-        classical_models = ['word2vec', 'glove']
+        # Model names from EnsembleEmbedder
+        transformer_models = ['MiniLM-L6', 'MPNet', 'MiniLM-L12']
+        classical_models = ['Word2Vec', 'GloVe']
         
         transformer_pairs = []
         classical_pairs = []
@@ -595,8 +690,11 @@ class ConversationAnalysisPipeline:
         }
         
         # Collect pairwise correlations and metrics from conversation results
+        self.logger.debug(f"Processing {len(invariance_results['conversation_results'])} conversation results")
+        
         for conv_result in invariance_results['conversation_results']:
             if 'invariance_metrics' in conv_result and 'pairwise_correlations' in conv_result['invariance_metrics']:
+                self.logger.debug(f"Found pairwise correlations: {list(conv_result['invariance_metrics']['pairwise_correlations'].keys())}")
                 for pair_name, corr in conv_result['invariance_metrics']['pairwise_correlations'].items():
                     # Split on the last occurrence of '-' to handle model names with hyphens
                     # Try different split patterns to find the correct model pair
@@ -609,7 +707,10 @@ class ConversationAnalysisPipeline:
                     
                     if model1 is None or model2 is None:
                         # Skip if we can't parse the pair name
+                        self.logger.warning(f"Could not parse model pair from: {pair_name}")
                         continue
+                    
+                    self.logger.debug(f"Parsed pair {pair_name} as: {model1} - {model2}")
                     
                     # Categorize the correlation
                     if model1 in transformer_models and model2 in transformer_models:
@@ -837,10 +938,271 @@ class ConversationAnalysisPipeline:
         self.logger.info(f"  Transformer pairs: {len(transformer_pairs)}")
         self.logger.info(f"  Classical pairs: {len(classical_pairs)}")
         self.logger.info(f"  Cross-paradigm pairs: {len(cross_paradigm_pairs)}")
+        
+        # Log some example correlations if available
+        if transformer_pairs:
+            self.logger.info(f"  Example transformer correlations: {transformer_pairs[:3]}")
+        if classical_pairs:
+            self.logger.info(f"  Example classical correlations: {classical_pairs[:3]}")
+        if cross_paradigm_pairs:
+            self.logger.info(f"  Example cross-paradigm correlations: {cross_paradigm_pairs[:3]}")
+        
         self.logger.info(f"  Null samples: {len(null_within)}")
         self.logger.info(f"  Random samples: {len(random_pairs)}")
         
         return hypothesis_data
+    
+    def _get_model_names(self) -> List[str]:
+        """Get model names without loading the embedder."""
+        # Use the same model names as EnsembleEmbedder.DEFAULT_ENSEMBLE
+        return ['MiniLM-L6', 'MPNet', 'MiniLM-L12', 'Word2Vec', 'GloVe']
+    
+    def _get_model_configs(self) -> List[Dict]:
+        """Get model configurations without loading the embedder."""
+        return [
+            {'name': 'MiniLM-L6', 'model_id': 'all-MiniLM-L6-v2', 'dimension': 384},
+            {'name': 'MPNet', 'model_id': 'all-mpnet-base-v2', 'dimension': 768},
+            {'name': 'MiniLM-L12', 'model_id': 'all-MiniLM-L12-v2', 'dimension': 384},
+            {'name': 'Word2Vec', 'model_id': 'word2vec-google-news-300', 'dimension': 300},
+            {'name': 'GloVe', 'model_id': 'glove-wiki-gigaword-300', 'dimension': 300},
+        ]
+    
+    def clear_checkpoints(self):
+        """Clear all conversation checkpoints."""
+        if self.checkpoint_manager:
+            self.logger.info("Clearing conversation checkpoints...")
+            checkpoints = self.checkpoint_manager.list_checkpoints()
+            cleared = 0
+            
+            for checkpoint in checkpoints:
+                if checkpoint['name'].startswith('conv_'):
+                    try:
+                        checkpoint_path = Path(checkpoint['path'])
+                        metadata_path = checkpoint_path.with_suffix('') + '_metadata.json'
+                        
+                        if checkpoint_path.exists():
+                            checkpoint_path.unlink()
+                        if metadata_path.exists():
+                            metadata_path.unlink()
+                        
+                        cleared += 1
+                    except Exception as e:
+                        self.logger.error(f"Error clearing checkpoint {checkpoint['name']}: {e}")
+            
+            self.logger.info(f"Cleared {cleared} conversation checkpoints")
+    
+    def generate_invariance_visualizations(self, invariance_results: Dict):
+        """Generate visualizations for invariance analysis results."""
+        viz_dir = self.output_dir / "figures" / "invariance"
+        viz_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.logger.info("\nGenerating invariance visualizations...")
+        
+        # 1. Correlation heatmap across models
+        if invariance_results.get('conversation_results'):
+            # Collect average correlations between model pairs
+            model_names = self._get_model_names()
+            n_models = len(model_names)
+            avg_corr_matrix = np.zeros((n_models, n_models))
+            count_matrix = np.zeros((n_models, n_models))
+            
+            for conv_result in invariance_results['conversation_results']:
+                if 'invariance_metrics' in conv_result:
+                    # Use the first signature type that has correlations
+                    for sig_type, sig_data in conv_result['invariance_metrics'].items():
+                        if 'correlation_matrix' in sig_data and sig_type not in ['global_measures', 'persistence_features', 'pairwise_correlations']:
+                            corr_matrix = sig_data['correlation_matrix']
+                            if corr_matrix.shape == (n_models, n_models):
+                                mask = ~np.isnan(corr_matrix)
+                                avg_corr_matrix[mask] += corr_matrix[mask]
+                                count_matrix[mask] += 1
+                            break
+            
+            # Average the correlations
+            with np.errstate(divide='ignore', invalid='ignore'):
+                avg_corr_matrix = np.divide(avg_corr_matrix, count_matrix)
+                avg_corr_matrix[count_matrix == 0] = np.nan
+            
+            # Create heatmap
+            import matplotlib.pyplot as plt
+            import seaborn as sns
+            
+            plt.figure(figsize=(10, 8))
+            mask = np.isnan(avg_corr_matrix)
+            sns.heatmap(avg_corr_matrix, 
+                       xticklabels=model_names,
+                       yticklabels=model_names,
+                       annot=True, fmt='.3f',
+                       cmap='RdBu_r', center=0.5,
+                       vmin=0, vmax=1,
+                       mask=mask,
+                       square=True)
+            plt.title('Average Pairwise Correlations Between Embedding Models')
+            plt.tight_layout()
+            
+            # Save in requested formats
+            if self.figure_format in ['png', 'both']:
+                plt.savefig(viz_dir / 'model_correlation_heatmap.png', dpi=150, bbox_inches='tight')
+            if self.figure_format in ['pdf', 'both']:
+                plt.savefig(viz_dir / 'model_correlation_heatmap.pdf', bbox_inches='tight')
+            plt.close()
+            
+            self.logger.info("  ✓ Generated model correlation heatmap")
+        
+        # 2. Distribution of invariance scores
+        if invariance_results.get('invariance_scores'):
+            all_scores = []
+            for conv_id, conv_scores in invariance_results['invariance_scores'].items():
+                for sig_type, sig_data in conv_scores.items():
+                    if 'mean_correlation' in sig_data and not np.isnan(sig_data['mean_correlation']):
+                        all_scores.append(sig_data['mean_correlation'])
+            
+            if all_scores:
+                plt.figure(figsize=(10, 6))
+                plt.hist(all_scores, bins=30, alpha=0.7, edgecolor='black')
+                plt.axvline(np.mean(all_scores), color='red', linestyle='--', 
+                           label=f'Mean: {np.mean(all_scores):.3f}')
+                plt.axvline(np.median(all_scores), color='green', linestyle='--',
+                           label=f'Median: {np.median(all_scores):.3f}')
+                plt.xlabel('Invariance Score (Mean Correlation)')
+                plt.ylabel('Frequency')
+                plt.title('Distribution of Geometric Invariance Scores')
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                plt.tight_layout()
+                
+                # Save in requested formats
+                if self.figure_format in ['png', 'both']:
+                    plt.savefig(viz_dir / 'invariance_score_distribution.png', dpi=150, bbox_inches='tight')
+                if self.figure_format in ['pdf', 'both']:
+                    plt.savefig(viz_dir / 'invariance_score_distribution.pdf', bbox_inches='tight')
+                plt.close()
+                
+                self.logger.info("  ✓ Generated invariance score distribution")
+        
+        # 3. Paradigm comparison boxplot
+        if invariance_results.get('conversation_results'):
+            # Collect correlations by paradigm type
+            within_transformer = []
+            within_classical = []
+            cross_paradigm = []
+            
+            transformer_models = ['MiniLM-L6', 'MPNet', 'MiniLM-L12']
+            classical_models = ['Word2Vec', 'GloVe']
+            
+            for conv_result in invariance_results['conversation_results']:
+                if 'invariance_metrics' in conv_result and 'pairwise_correlations' in conv_result['invariance_metrics']:
+                    for pair_name, corr in conv_result['invariance_metrics']['pairwise_correlations'].items():
+                        if np.isnan(corr):
+                            continue
+                            
+                        # Parse models
+                        model1 = model2 = None
+                        for model in transformer_models + classical_models:
+                            if pair_name.startswith(model + '-'):
+                                model1 = model
+                                model2 = pair_name[len(model) + 1:]
+                                break
+                        
+                        if model1 and model2:
+                            if model1 in transformer_models and model2 in transformer_models:
+                                within_transformer.append(corr)
+                            elif model1 in classical_models and model2 in classical_models:
+                                within_classical.append(corr)
+                            else:
+                                cross_paradigm.append(corr)
+            
+            # Create boxplot
+            if within_transformer or within_classical or cross_paradigm:
+                plt.figure(figsize=(10, 6))
+                data_to_plot = []
+                labels = []
+                
+                if within_transformer:
+                    data_to_plot.append(within_transformer)
+                    labels.append(f'Within\nTransformer\n(n={len(within_transformer)})')
+                if within_classical:
+                    data_to_plot.append(within_classical)
+                    labels.append(f'Within\nClassical\n(n={len(within_classical)})')
+                if cross_paradigm:
+                    data_to_plot.append(cross_paradigm)
+                    labels.append(f'Cross\nParadigm\n(n={len(cross_paradigm)})')
+                
+                bp = plt.boxplot(data_to_plot, labels=labels, patch_artist=True)
+                
+                # Color the boxes
+                colors = ['lightblue', 'lightgreen', 'lightcoral']
+                for patch, color in zip(bp['boxes'], colors[:len(bp['boxes'])]):
+                    patch.set_facecolor(color)
+                
+                plt.ylabel('Correlation')
+                plt.title('Geometric Invariance by Model Paradigm')
+                plt.grid(True, alpha=0.3, axis='y')
+                plt.ylim(0, 1)
+                
+                # Add horizontal lines for reference
+                plt.axhline(0.75, color='red', linestyle='--', alpha=0.5, label='Strong correlation (0.75)')
+                plt.axhline(0.5, color='orange', linestyle='--', alpha=0.5, label='Moderate correlation (0.5)')
+                plt.legend()
+                
+                plt.tight_layout()
+                
+                # Save in requested formats
+                if self.figure_format in ['png', 'both']:
+                    plt.savefig(viz_dir / 'paradigm_comparison_boxplot.png', dpi=150, bbox_inches='tight')
+                if self.figure_format in ['pdf', 'both']:
+                    plt.savefig(viz_dir / 'paradigm_comparison_boxplot.pdf', bbox_inches='tight')
+                plt.close()
+                
+                self.logger.info("  ✓ Generated paradigm comparison boxplot")
+        
+        self.logger.info("Invariance visualizations complete")
+    
+    def generate_invariance_reports(self, invariance_results: Dict, hypothesis_results: Dict):
+        """Generate comprehensive reports for invariance and hypothesis test results."""
+        report_dir = self.output_dir / "reports"
+        report_dir.mkdir(exist_ok=True)
+        
+        # Generate invariance analysis report
+        if invariance_results:
+            invariance_report = self.report_generator.generate_invariance_report(
+                invariance_results,
+                save_path=report_dir / "invariance_analysis.txt"
+            )
+            self.logger.info("Generated invariance analysis report")
+        
+        # Generate hypothesis test report
+        if hypothesis_results:
+            hypothesis_report = self.report_generator.generate_hypothesis_test_report(
+                hypothesis_results,
+                save_path=report_dir / "hypothesis_test_results.txt"
+            )
+            self.logger.info("Generated hypothesis test report")
+        
+        # Generate summary report with available data only
+        # Create ensemble info in the expected format
+        ensemble_info = {}
+        for config in self._get_model_configs():
+            ensemble_info[config['name']] = {
+                'model_id': config['model_id'],
+                'dimension': config['dimension']
+            }
+        
+        summary_data = {
+            'ensemble_info': ensemble_info,
+            'key_findings': [
+                f"Analyzed {len(invariance_results.get('conversation_results', []))} conversations",
+                f"Mean invariance score: {invariance_results.get('aggregate_statistics', {}).get('mean_invariance', 0):.3f}",
+                f"Hypothesis testing: Tier {hypothesis_results.get('summary', {}).get('max_tier_passed', 0)} reached",
+                f"Control checks: {sum(1 for c in hypothesis_results.get('controls', []) if c.get('passed', False))}/{len(hypothesis_results.get('controls', []))} passed"
+            ]
+        }
+        
+        summary_report = self.report_generator.generate_summary_report(
+            summary_data,
+            save_path=report_dir / "analysis_summary.txt"
+        )
+        self.logger.info("Generated summary report")
         
     def run_analysis(self, directories: List[Path], max_conversations: Optional[int] = None):
         """
@@ -926,6 +1288,12 @@ def main():
     )
     
     parser.add_argument(
+        "--clear-checkpoints",
+        action="store_true",
+        help="Clear existing checkpoints before starting"
+    )
+    
+    parser.add_argument(
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         default="INFO",
@@ -974,6 +1342,10 @@ def main():
         batch_size=args.batch_size,
         figure_format=args.figure_format
     )
+    
+    # Clear checkpoints if requested
+    if args.clear_checkpoints and pipeline.checkpoint_manager:
+        pipeline.clear_checkpoints()
     
     # Run analysis
     pipeline.run_analysis(

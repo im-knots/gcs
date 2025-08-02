@@ -507,23 +507,38 @@ class HierarchicalHypothesisTester:
             real_corrs = data['real_scrambled_comparison']['real']
             scrambled_corrs = data['real_scrambled_comparison']['scrambled']
             
-            u_stat, p_value = stats.mannwhitneyu(real_corrs, scrambled_corrs,
-                                                alternative='greater')
-            
-            n1, n2 = len(real_corrs), len(scrambled_corrs)
-            effect_size = 1 - (2 * u_stat) / (n1 * n2)
-            
-            h4 = HypothesisResult(
-                name="H4",
-                passed=p_value < self.alpha,
-                p_value=p_value,
-                test_statistic=u_stat,
-                effect_size=effect_size,
-                confidence_interval=(np.nan, np.nan),
-                power=np.nan,
-                description="Real conversations > Scrambled conversations"
-            )
-            controls.append(h4)
+            # Check if we have data to test
+            if len(real_corrs) == 0 or len(scrambled_corrs) == 0:
+                # No data available - create a failed result
+                h4 = HypothesisResult(
+                    name="H4",
+                    passed=False,
+                    p_value=1.0,
+                    test_statistic=np.nan,
+                    effect_size=0.0,
+                    confidence_interval=(np.nan, np.nan),
+                    power=np.nan,
+                    description="Real conversations > Scrambled conversations (insufficient data)"
+                )
+                controls.append(h4)
+            else:
+                u_stat, p_value = stats.mannwhitneyu(real_corrs, scrambled_corrs,
+                                                    alternative='greater')
+                
+                n1, n2 = len(real_corrs), len(scrambled_corrs)
+                effect_size = 1 - (2 * u_stat) / (n1 * n2)
+                
+                h4 = HypothesisResult(
+                    name="H4",
+                    passed=p_value < self.alpha,
+                    p_value=p_value,
+                    test_statistic=u_stat,
+                    effect_size=effect_size,
+                    confidence_interval=(np.nan, np.nan),
+                    power=np.nan,
+                    description="Real conversations > Scrambled conversations"
+                )
+                controls.append(h4)
         
         # H5: Patterns persist after controlling for length
         if 'length_controlled' in data:
@@ -655,4 +670,32 @@ class HierarchicalHypothesisTester:
         results['summary']['min_p_value'] = min([h.p_value for h in all_hypotheses 
                                                if not np.isnan(h.p_value)])
         
+        # Convert dataclasses to dictionaries for serialization
+        results['tiers'] = [self._tier_to_dict(tier) for tier in results['tiers']]
+        results['controls'] = [self._hypothesis_to_dict(h) for h in results['controls']]
+        
         return results
+    
+    def _hypothesis_to_dict(self, hypothesis: HypothesisResult) -> Dict:
+        """Convert HypothesisResult to dictionary."""
+        return {
+            'name': hypothesis.name,
+            'passed': hypothesis.passed,
+            'p_value': hypothesis.p_value,
+            'test_statistic': hypothesis.test_statistic,
+            'effect_size': hypothesis.effect_size,
+            'confidence_interval': hypothesis.confidence_interval,
+            'power': hypothesis.power,
+            'description': hypothesis.description
+        }
+    
+    def _tier_to_dict(self, tier: TierResult) -> Dict:
+        """Convert TierResult to dictionary."""
+        return {
+            'tier_number': tier.tier_number,
+            'tier_name': tier.tier_name,
+            'passed': tier.passed,
+            'hypotheses': [self._hypothesis_to_dict(h) for h in tier.hypotheses],
+            'adjusted_alpha': tier.adjusted_alpha,
+            'correction_method': tier.correction_method
+        }

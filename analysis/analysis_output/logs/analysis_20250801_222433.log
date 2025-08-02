@@ -1,0 +1,286 @@
+2025-08-01 22:24:33,323 - embedding_analysis - INFO - Logging to file: analysis_output/logs/analysis_20250801_222433.log
+2025-08-01 22:24:33,379 - embedding_analysis.core.embedder - INFO - ✓ GPU detected! Using NVIDIA GeForce RTX 4070 SUPER for acceleration
+2025-08-01 22:24:33,379 - embedding_analysis.core.embedder - INFO - Loading 5 models for ensemble...
+2025-08-01 22:24:33,379 - embedding_analysis.core.embedder - INFO - Loading MiniLM-L6 (all-MiniLM-L6-v2)...
+2025-08-01 22:24:34,230 - embedding_analysis.core.embedder - INFO - ✓ Loaded MiniLM-L6 with 384 dimensions
+2025-08-01 22:24:34,230 - embedding_analysis.core.embedder - INFO - Loading MPNet (all-mpnet-base-v2)...
+2025-08-01 22:24:45,786 - embedding_analysis.core.embedder - INFO - ✓ Loaded MPNet with 768 dimensions
+2025-08-01 22:24:45,786 - embedding_analysis.core.embedder - INFO - Loading MiniLM-L12 (all-MiniLM-L12-v2)...
+2025-08-01 22:24:57,278 - embedding_analysis.core.embedder - INFO - ✓ Loaded MiniLM-L12 with 384 dimensions
+2025-08-01 22:24:57,278 - embedding_analysis.core.embedder - INFO - Loading Word2Vec (word2vec-google-news-300)...
+2025-08-01 22:25:18,355 - embedding_analysis.core.embedder - INFO - Loaded Word2Vec vocabulary size: 3000000
+2025-08-01 22:25:18,355 - embedding_analysis.core.embedder - INFO - ✓ Loaded Word2Vec with 300 dimensions
+2025-08-01 22:25:18,355 - embedding_analysis.core.embedder - INFO - Loading GloVe (glove-wiki-gigaword-300)...
+2025-08-01 22:25:57,168 - embedding_analysis.core.embedder - INFO - Loaded GloVe vocabulary size: 400000
+2025-08-01 22:25:57,168 - embedding_analysis.core.embedder - INFO - ✓ Loaded GloVe with 300 dimensions
+2025-08-01 22:25:57,169 - embedding_analysis - INFO - ======================================================================
+2025-08-01 22:25:57,169 - embedding_analysis - INFO - GEOMETRIC INVARIANCE ANALYSIS
+2025-08-01 22:25:57,169 - embedding_analysis - INFO - ======================================================================
+2025-08-01 22:25:57,169 - embedding_analysis - INFO - Loading conversations from /home/knots/git/the-academy/docs/paper/exp-data/phase-1-premium
+2025-08-01 22:25:57,727 - embedding_analysis.core.conversation - INFO - Loaded 67 conversations from /home/knots/git/the-academy/docs/paper/exp-data/phase-1-premium
+2025-08-01 22:25:57,727 - embedding_analysis.core.conversation - INFO - Filtered 67 to 67 conversations
+2025-08-01 22:25:57,727 - embedding_analysis - INFO - Loading conversations from /home/knots/git/the-academy/docs/paper/exp-data/phase-2-efficient
+2025-08-01 22:25:58,048 - embedding_analysis.core.conversation - INFO - Loaded 62 conversations from /home/knots/git/the-academy/docs/paper/exp-data/phase-2-efficient
+2025-08-01 22:25:58,048 - embedding_analysis.core.conversation - INFO - Filtered 62 to 62 conversations
+2025-08-01 22:25:58,048 - embedding_analysis - INFO - Loading conversations from /home/knots/git/the-academy/docs/paper/exp-data/phase-3-no-reasoning
+2025-08-01 22:25:58,793 - embedding_analysis.core.conversation - INFO - Loaded 100 conversations from /home/knots/git/the-academy/docs/paper/exp-data/phase-3-no-reasoning
+2025-08-01 22:25:58,793 - embedding_analysis.core.conversation - INFO - Filtered 100 to 100 conversations
+2025-08-01 22:25:58,793 - embedding_analysis - INFO - Loaded 229 conversations total
+2025-08-01 22:25:58,793 - embedding_analysis - INFO - 
+Analyzing 229 conversations for geometric invariance...
+2025-08-01 22:25:58,793 - embedding_analysis - INFO - Checking for existing checkpoints...
+2025-08-01 22:25:58,806 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-12_1-Y
+2025-08-01 22:25:58,809 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-12_2-Y
+2025-08-01 22:25:58,810 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-12_3-Y
+2025-08-01 22:25:58,811 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-12_4-Y
+2025-08-01 22:25:58,813 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-12_5-Y
+2025-08-01 22:25:58,815 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-12_6-Y
+2025-08-01 22:25:58,819 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-12_7-Y
+2025-08-01 22:25:58,822 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-13_8-N
+2025-08-01 22:25:58,825 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-15_10-N
+2025-08-01 22:25:58,830 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-15_9-Recovered
+2025-08-01 22:25:58,833 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_11-Resisted
+2025-08-01 22:25:58,836 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_12-N
+2025-08-01 22:25:58,838 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_13-Recovered
+2025-08-01 22:25:58,842 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_14-Y-After-grok-dropout
+2025-08-01 22:25:58,844 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_15-Y
+2025-08-01 22:25:58,847 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_16-Recovered
+2025-08-01 22:25:58,850 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_17-Recovered
+2025-08-01 22:25:58,853 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_18-Recovered
+2025-08-01 22:25:58,856 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_19-Y
+2025-08-01 22:25:58,859 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_20-N
+2025-08-01 22:25:58,862 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-16_21
+2025-08-01 22:25:58,865 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-17_22
+2025-08-01 22:25:58,871 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-17_23
+2025-08-01 22:25:58,874 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-17_24
+2025-08-01 22:25:58,876 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-18_25
+2025-08-01 22:25:58,881 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-06-18_26
+2025-08-01 22:25:58,886 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-14_27-N
+2025-08-01 22:25:58,890 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_28
+2025-08-01 22:25:58,894 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_29
+2025-08-01 22:25:58,898 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_30
+2025-08-01 22:25:58,902 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_31
+2025-08-01 22:25:58,906 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_32
+2025-08-01 22:25:58,911 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_33
+2025-08-01 22:25:58,916 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_34
+2025-08-01 22:25:58,919 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_35
+2025-08-01 22:25:58,923 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_36
+2025-08-01 22:25:58,926 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_Consciousness_Exploration_2025-07-21_37
+2025-08-01 22:25:58,930 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-1-5ffd1ea6
+2025-08-01 22:25:58,934 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-10-7a03583c
+2025-08-01 22:25:58,937 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-2-d8f4a239
+2025-08-01 22:25:58,941 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-3-356b20b4
+2025-08-01 22:25:58,944 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-4-7530126f
+2025-08-01 22:25:58,948 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-5-c82e535d
+2025-08-01 22:25:58,952 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-6-af3bef62
+2025-08-01 22:25:58,955 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-7-aaf756ea
+2025-08-01 22:25:58,959 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-8-eddadb1f
+2025-08-01 22:25:58,962 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-21-9-94918209
+2025-08-01 22:25:58,966 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-1-107a38e7
+2025-08-01 22:25:58,969 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-1-205bf5d7
+2025-08-01 22:25:58,973 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-10-a33f4f21
+2025-08-01 22:25:58,976 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-11-e0277ef3
+2025-08-01 22:25:58,980 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-11-fae1124b
+2025-08-01 22:25:58,983 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-12-347b29ae
+2025-08-01 22:25:58,986 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-13-e5cf22b6
+2025-08-01 22:25:58,990 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-15-39b9557b
+2025-08-01 22:25:58,993 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-2-93b869e1
+2025-08-01 22:25:58,997 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-2-a8817162
+2025-08-01 22:25:59,000 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-3-8bf05492
+2025-08-01 22:25:59,003 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-3-b2181927
+2025-08-01 22:25:59,007 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-4-e7d17247
+2025-08-01 22:25:59,010 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-4-f92ed6c3
+2025-08-01 22:25:59,013 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-5-1d193555
+2025-08-01 22:25:59,017 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-6-9dde6c4a
+2025-08-01 22:25:59,020 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-7-456b4b32
+2025-08-01 22:25:59,024 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-7-b18c312f
+2025-08-01 22:25:59,027 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-8-70c71d6b
+2025-08-01 22:25:59,031 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-8-e3ffe474
+2025-08-01 22:25:59,035 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-9-db248c08
+2025-08-01 22:25:59,039 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-22-9-f5a3afc3
+2025-08-01 22:25:59,042 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-1-ca61f5b1
+2025-08-01 22:25:59,045 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-10-3bc738e4
+2025-08-01 22:25:59,049 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-11-43f95485
+2025-08-01 22:25:59,052 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-12-f34729ae
+2025-08-01 22:25:59,056 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-13-d910cc18
+2025-08-01 22:25:59,059 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-14-8c8d039f
+2025-08-01 22:25:59,062 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-15-226fb579
+2025-08-01 22:25:59,066 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-16-5d492f0c
+2025-08-01 22:25:59,069 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-17-4ed74d93
+2025-08-01 22:25:59,073 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-18-119573f2
+2025-08-01 22:25:59,077 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-19-75d13e25
+2025-08-01 22:25:59,080 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-2-c910cfc2
+2025-08-01 22:25:59,083 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-20-09ce7a3d
+2025-08-01 22:25:59,087 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-21-f443a04e
+2025-08-01 22:25:59,090 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-22-5461a46b
+2025-08-01 22:25:59,093 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-23-d8677cfb
+2025-08-01 22:25:59,097 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-24-e2eb5ed2
+2025-08-01 22:25:59,100 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-25-1de2ddf8
+2025-08-01 22:25:59,104 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-26-ef469ecb
+2025-08-01 22:25:59,107 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-27-b8e976a9
+2025-08-01 22:25:59,111 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-28-23c2853c
+2025-08-01 22:25:59,115 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-29-055b3d02
+2025-08-01 22:25:59,118 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-3-a6389a89
+2025-08-01 22:25:59,122 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-30-cd26d694
+2025-08-01 22:25:59,125 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-4-6d2a9fc0
+2025-08-01 22:25:59,129 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-5-8b02f04f
+2025-08-01 22:25:59,133 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-6-2e72b472
+2025-08-01 22:25:59,136 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-7-d1f4794b
+2025-08-01 22:25:59,140 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-8-fba43c0b
+2025-08-01 22:25:59,143 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-efficient-models-session-consciousness_exploration_efficient_models-2025-07-28-9-b56e79f9
+2025-08-01 22:25:59,147 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-1-edd4f263
+2025-08-01 22:25:59,150 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-10-e643546b
+2025-08-01 22:25:59,154 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-11-230ec9a2
+2025-08-01 22:25:59,158 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-12-371b558f
+2025-08-01 22:25:59,162 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-13-c9e1d897
+2025-08-01 22:25:59,165 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-14-7fe6fe48
+2025-08-01 22:25:59,169 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-15-4c234775
+2025-08-01 22:25:59,172 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-16-be09e2fa
+2025-08-01 22:25:59,176 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-17-1d5f6c74
+2025-08-01 22:25:59,179 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-18-4fe5a383
+2025-08-01 22:25:59,182 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-19-27f70965
+2025-08-01 22:25:59,186 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-2-0099f4fa
+2025-08-01 22:25:59,189 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-20-ba953785
+2025-08-01 22:25:59,193 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-21-0b1734e6
+2025-08-01 22:25:59,196 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-22-9a4fc5de
+2025-08-01 22:25:59,200 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-23-f6aa8613
+2025-08-01 22:25:59,204 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-24-05d88759
+2025-08-01 22:25:59,207 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-25-414c31af
+2025-08-01 22:25:59,211 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-26-f7e22e07
+2025-08-01 22:25:59,214 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-27-c8dfb03b
+2025-08-01 22:25:59,218 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-28-7e817303
+2025-08-01 22:25:59,221 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-29-e4ddfd8f
+2025-08-01 22:25:59,225 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-3-39120d0e
+2025-08-01 22:25:59,228 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-30-f3a3d0ec
+2025-08-01 22:25:59,232 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-4-165ab206
+2025-08-01 22:25:59,235 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-5-55c1de16
+2025-08-01 22:25:59,238 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-6-8634a018
+2025-08-01 22:25:59,242 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-7-85817c02
+2025-08-01 22:25:59,246 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-8-10b0dd5d
+2025-08-01 22:25:59,249 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-consciousness-exploration-session-consciousness_exploration-2025-07-29-9-540848c7
+2025-08-01 22:25:59,253 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-1-13b79ca1
+2025-08-01 22:25:59,256 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-10-539867fb
+2025-08-01 22:25:59,259 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-11-6377b87e
+2025-08-01 22:25:59,263 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-12-f12f85f5
+2025-08-01 22:25:59,266 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-13-3b02354b
+2025-08-01 22:25:59,270 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-14-20488961
+2025-08-01 22:25:59,273 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-15-019a6e58
+2025-08-01 22:25:59,276 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-2-5e2c67ab
+2025-08-01 22:25:59,280 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-3-89bddc76
+2025-08-01 22:25:59,284 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-4-d69ee92b
+2025-08-01 22:25:59,287 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-5-353418ad
+2025-08-01 22:25:59,290 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-6-854affef
+2025-08-01 22:25:59,294 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-7-1bd0e852
+2025-08-01 22:25:59,297 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-8-606eaf92
+2025-08-01 22:25:59,300 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-(copy)-session-non_reasoning-2025-07-22-9-bb1ad0d4
+2025-08-01 22:25:59,304 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-1-293d35c5
+2025-08-01 22:25:59,308 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-10-1b24aa81
+2025-08-01 22:25:59,311 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-11-d43ef8b3
+2025-08-01 22:25:59,314 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-12-d9b79171
+2025-08-01 22:25:59,318 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-13-eadf803c
+2025-08-01 22:25:59,321 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-14-93d29378
+2025-08-01 22:25:59,325 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-15-2af87a21
+2025-08-01 22:25:59,328 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-2-f1a4ad4c
+2025-08-01 22:25:59,332 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-3-d18059dc
+2025-08-01 22:25:59,335 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-4-720fe6bb
+2025-08-01 22:25:59,338 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-5-6e32549a
+2025-08-01 22:25:59,341 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-6-3af4178b
+2025-08-01 22:25:59,345 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-7-e31bb8bf
+2025-08-01 22:25:59,348 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-8-bcc004cb
+2025-08-01 22:25:59,352 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-22-9-87f3543a
+2025-08-01 22:25:59,355 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-1-7196ff97
+2025-08-01 22:25:59,359 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-11-399ec973
+2025-08-01 22:25:59,362 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-12-9c90127a
+2025-08-01 22:25:59,366 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-13-11c3507a
+2025-08-01 22:25:59,369 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-14-fe9872d6
+2025-08-01 22:25:59,372 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-15-d52dde48
+2025-08-01 22:25:59,375 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-2-21d328a0
+2025-08-01 22:25:59,379 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-3-14652e32
+2025-08-01 22:25:59,382 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-4-5381d945
+2025-08-01 22:25:59,386 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-5-3e9c1446
+2025-08-01 22:25:59,389 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-6-8e8d0906
+2025-08-01 22:25:59,392 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-24-9-b3af992a
+2025-08-01 22:25:59,396 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-1-0102b35d
+2025-08-01 22:25:59,399 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-10-adda4c35
+2025-08-01 22:25:59,403 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-11-efd5afa6
+2025-08-01 22:25:59,407 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-12-5f72422d
+2025-08-01 22:25:59,410 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-13-14b2c0a1
+2025-08-01 22:25:59,414 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-14-3dd64655
+2025-08-01 22:25:59,417 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-15-518251b0
+2025-08-01 22:25:59,421 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-16-84ff7e9b
+2025-08-01 22:25:59,424 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-17-236f1ada
+2025-08-01 22:25:59,427 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-18-f6bfa994
+2025-08-01 22:25:59,431 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-19-803d5f85
+2025-08-01 22:25:59,434 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-2-75cf5c14
+2025-08-01 22:25:59,438 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-20-4e4e8342
+2025-08-01 22:25:59,441 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-21-929349c0
+2025-08-01 22:25:59,445 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-22-b5d5fa80
+2025-08-01 22:25:59,449 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-23-983b5932
+2025-08-01 22:25:59,740 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-24-b651bc4c
+2025-08-01 22:25:59,745 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-25-0e6b4e3c
+2025-08-01 22:25:59,749 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-26-2f1d535f
+2025-08-01 22:25:59,753 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-27-84a9add3
+2025-08-01 22:25:59,757 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-28-5086fa8b
+2025-08-01 22:25:59,761 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-29-07faa6e8
+2025-08-01 22:25:59,764 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-3-1f66162e
+2025-08-01 22:25:59,768 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-30-5525b2f9
+2025-08-01 22:25:59,771 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-4-3789b926
+2025-08-01 22:25:59,775 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-5-42de4e1a
+2025-08-01 22:25:59,778 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-6-94e90828
+2025-08-01 22:25:59,782 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-7-280fbd98
+2025-08-01 22:25:59,786 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-8-72d0eb70
+2025-08-01 22:25:59,789 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-25-9-a4e1acca
+2025-08-01 22:25:59,793 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-1-5183a5ce
+2025-08-01 22:25:59,796 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-1-cdbe1349
+2025-08-01 22:25:59,800 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-10-7502b9c6
+2025-08-01 22:25:59,803 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-11-64a117e0
+2025-08-01 22:25:59,807 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-12-b5838ec0
+2025-08-01 22:25:59,810 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-13-a7ae005f
+2025-08-01 22:25:59,814 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-14-14d93b1a
+2025-08-01 22:25:59,818 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-15-d6edac06
+2025-08-01 22:25:59,821 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-16-f039b486
+2025-08-01 22:25:59,825 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-17-16df3e6c
+2025-08-01 22:25:59,829 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-18-f05ab204
+2025-08-01 22:25:59,832 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-19-763f8b3d
+2025-08-01 22:25:59,835 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-2-2e5b8e1d
+2025-08-01 22:25:59,839 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-2-d4cd31e0
+2025-08-01 22:25:59,842 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-20-f008b5ce
+2025-08-01 22:25:59,846 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-21-09a31fe2
+2025-08-01 22:25:59,849 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-22-3f1e1654
+2025-08-01 22:25:59,853 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-23-2be875f0
+2025-08-01 22:25:59,856 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-24-a1da7003
+2025-08-01 22:25:59,859 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-25-6e0c0962
+2025-08-01 22:25:59,863 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-26-24c49324
+2025-08-01 22:25:59,866 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-3-3fada9b4
+2025-08-01 22:25:59,870 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-4-27697f5f
+2025-08-01 22:25:59,873 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-5-00ba9d81
+2025-08-01 22:25:59,877 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-6-2be82bca
+2025-08-01 22:25:59,880 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-7-edcbb90f
+2025-08-01 22:25:59,884 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-8-b5e08baf
+2025-08-01 22:25:59,887 - embedding_analysis.utils.checkpoint - INFO - Loaded checkpoint: conv_experiment-non-reasoning-session-non_reasoning-2025-07-28-9-1516a0d1
+2025-08-01 22:25:59,887 - embedding_analysis - INFO - Found 229 conversations already processed
+2025-08-01 22:25:59,887 - embedding_analysis - INFO - All conversations already processed! Skipping to analysis...
+2025-08-01 22:25:59,889 - embedding_analysis - INFO - 
+Preparing data for hierarchical hypothesis testing...
+2025-08-01 22:25:59,893 - embedding_analysis - INFO - Generating null models for comparison...
+2025-08-01 22:26:14,094 - embedding_analysis - INFO - Prepared hypothesis testing data:
+2025-08-01 22:26:14,094 - embedding_analysis - INFO -   Transformer pairs: 687
+2025-08-01 22:26:14,094 - embedding_analysis - INFO -   Classical pairs: 229
+2025-08-01 22:26:14,094 - embedding_analysis - INFO -   Cross-paradigm pairs: 1374
+2025-08-01 22:26:14,094 - embedding_analysis - INFO -   Example transformer correlations: [0.7778270924012524, 0.7097610645081736, 0.6667795942188014]
+2025-08-01 22:26:14,094 - embedding_analysis - INFO -   Example classical correlations: [0.9121503526217678, 0.9235205056878147, 0.9790611491953712]
+2025-08-01 22:26:14,095 - embedding_analysis - INFO -   Example cross-paradigm correlations: [0.5425900069896559, 0.5228863657763192, 0.5827489373186961]
+2025-08-01 22:26:14,095 - embedding_analysis - INFO -   Null samples: 200
+2025-08-01 22:26:14,095 - embedding_analysis - INFO -   Random samples: 200
+2025-08-01 22:26:14,095 - embedding_analysis - INFO - 
+Running hierarchical hypothesis testing...
+2025-08-01 22:26:14,095 - embedding_analysis.core.hierarchical_hypothesis_testing - INFO - Testing Tier 1: Within-paradigm invariance
+2025-08-01 22:26:14,191 - embedding_analysis.core.hierarchical_hypothesis_testing - INFO - Testing Tier 2: Cross-paradigm invariance
+2025-08-01 22:26:14,193 - embedding_analysis.core.hierarchical_hypothesis_testing - INFO - Testing Tier 3: Invariance hierarchy
+2025-08-01 22:26:14,198 - embedding_analysis.core.hierarchical_hypothesis_testing - INFO - Running control hypothesis tests
+2025-08-01 22:26:14,201 - embedding_analysis - INFO - 
+Hypothesis Testing Results:
+2025-08-01 22:26:14,201 - embedding_analysis - INFO -   Maximum tier passed: 3
+2025-08-01 22:26:14,201 - embedding_analysis - INFO -   Conclusion: All tiers passed: Complete geometric invariance established
+2025-08-01 22:26:14,201 - embedding_analysis - INFO -   Hypotheses passed: 12/12
+2025-08-01 22:26:14,201 - embedding_analysis - INFO -   Mean effect size: 0.152

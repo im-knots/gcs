@@ -322,6 +322,30 @@ class InvarianceAnalyzer:
                 'model_names': model_names,
                 'mean_correlation': np.nanmean(corr_matrix[np.triu_indices_from(corr_matrix, k=1)])
             }
+        
+        # Add pairwise correlations for easy access
+        pairwise_correlations = {}
+        
+        # Extract correlations from signature types (use first numerical signature type)
+        for sig_type, corr_data in correlations.items():
+            if 'correlation_matrix' in corr_data and sig_type != 'global_measures' and sig_type != 'persistence_features':
+                corr_matrix = corr_data['correlation_matrix']
+                model_names = corr_data['model_names']
+                
+                # Extract upper triangle (excluding diagonal)
+                for i in range(len(model_names)):
+                    for j in range(i+1, len(model_names)):
+                        pair_name = f"{model_names[i]}-{model_names[j]}"
+                        if pair_name not in pairwise_correlations and not np.isnan(corr_matrix[i, j]):
+                            pairwise_correlations[pair_name] = corr_matrix[i, j]
+                
+                # Only use first signature type for pairwise correlations
+                break
+        
+        logger.debug(f"Generated {len(pairwise_correlations)} pairwise correlations for {conversation_id}")
+        
+        # Add pairwise correlations to the results
+        correlations['pairwise_correlations'] = pairwise_correlations
             
         self.correlation_results[conversation_id] = correlations
         return correlations

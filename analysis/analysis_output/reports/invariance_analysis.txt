@@ -1,0 +1,14 @@
+GEOMETRIC INVARIANCE ANALYSIS REPORT
+======================================================================
+Analysis Date: 2025-08-01 22:39:39
+
+ANALYSIS OVERVIEW
+----------------------------------------
+Analysis Type: Geometric Invariance
+Total Conversations Analyzed: 229
+
+CONCLUSIONS
+----------------------------------------
+Weak geometric invariance observed across embedding models.
+Different embeddings capture substantially different geometric
+properties of conversations.

@@ -571,3 +571,127 @@ class ReportGenerator:
             logger.info(f"Invariance report saved to {save_path}")
             
         return report_text
+    
+    def generate_hypothesis_test_report(self,
+                                      hypothesis_results: Dict,
+                                      save_path: Optional[str] = None) -> str:
+        """
+        Generate comprehensive report for hierarchical hypothesis test results.
+        
+        Args:
+            hypothesis_results: Results from HierarchicalHypothesisTester
+            save_path: Path to save report
+            
+        Returns:
+            Report text
+        """
+        report = []
+        
+        # Header
+        report.append("HIERARCHICAL HYPOTHESIS TEST RESULTS")
+        report.append("=" * 70)
+        report.append(f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        report.append("")
+        
+        # Summary
+        if 'summary' in hypothesis_results:
+            summary = hypothesis_results['summary']
+            report.append("SUMMARY")
+            report.append("-" * 40)
+            report.append(f"Maximum Tier Passed: {summary.get('max_tier_passed', 0)}/3")
+            report.append(f"Total Hypotheses Tested: {summary.get('total_hypotheses', 0)}")
+            report.append(f"Hypotheses Passed: {summary.get('passed_hypotheses', 0)}")
+            report.append(f"Mean Effect Size: {summary.get('mean_effect_size', 0):.3f}")
+            report.append(f"Minimum p-value: {summary.get('min_p_value', 1.0):.4e}")
+            report.append("")
+            report.append(f"Conclusion: {summary.get('conclusion', 'No conclusion available')}")
+            report.append("")
+        
+        # Tier Results
+        report.append("TIER RESULTS")
+        report.append("-" * 40)
+        
+        for tier_result in hypothesis_results.get('tiers', []):
+            report.append(f"\nTier {tier_result['tier_number']}: {tier_result['tier_name']}")
+            report.append(f"Status: {'PASSED' if tier_result['passed'] else 'FAILED'}")
+            report.append(f"Correction Method: {tier_result['correction_method']}")
+            report.append(f"Adjusted Alpha: {tier_result['adjusted_alpha']:.3f}")
+            
+            # Individual hypotheses
+            report.append("\nHypotheses:")
+            for hyp in tier_result['hypotheses']:
+                status = "✓" if hyp['passed'] else "✗"
+                report.append(f"  {status} {hyp['name']}: {hyp['description']}")
+                report.append(f"     p-value: {hyp['p_value']:.4e}")
+                report.append(f"     Effect size: {hyp['effect_size']:.3f}")
+                report.append(f"     Power: {hyp['power']:.3f}" if not np.isnan(hyp['power']) else "     Power: N/A")
+                
+                # Confidence interval if available
+                ci = hyp.get('confidence_interval', (np.nan, np.nan))
+                if not np.isnan(ci[0]):
+                    report.append(f"     95% CI: [{ci[0]:.3f}, {ci[1]:.3f}]")
+            
+            # Stop reporting tiers if one failed
+            if not tier_result['passed']:
+                report.append(f"\n*** Testing stopped at Tier {tier_result['tier_number']} ***")
+                break
+        
+        # Control Hypotheses
+        if 'controls' in hypothesis_results and hypothesis_results['controls']:
+            report.append("\n\nCONTROL HYPOTHESES")
+            report.append("-" * 40)
+            
+            for control in hypothesis_results['controls']:
+                status = "✓" if control['passed'] else "✗"
+                report.append(f"\n{status} {control['name']}: {control['description']}")
+                report.append(f"   p-value: {control['p_value']:.4e}")
+                report.append(f"   Effect size: {control['effect_size']:.3f}")
+        
+        # Results Summary
+        report.append("\n\nRESULTS SUMMARY")
+        report.append("-" * 40)
+        
+        max_tier = hypothesis_results.get('summary', {}).get('max_tier_passed', 0)
+        
+        if max_tier >= 3:
+            report.append("All three tiers of hypotheses passed:")
+            report.append("- Tier 1: Within-paradigm invariance established")
+            report.append("- Tier 2: Cross-paradigm invariance established") 
+            report.append("- Tier 3: Hierarchical relationship confirmed")
+            
+        elif max_tier == 2:
+            report.append("Tiers 1 and 2 passed:")
+            report.append("- Tier 1: Within-paradigm invariance established")
+            report.append("- Tier 2: Cross-paradigm invariance established")
+            report.append("- Tier 3: Hierarchical relationship not confirmed")
+            
+        elif max_tier == 1:
+            report.append("Only Tier 1 passed:")
+            report.append("- Tier 1: Within-paradigm invariance established")
+            report.append("- Tier 2: Cross-paradigm invariance not established")
+            
+        else:
+            report.append("No tiers passed:")
+            report.append("- Tier 1: Within-paradigm invariance not established")
+        
+        # Control results interpretation
+        controls_passed = sum(1 for c in hypothesis_results.get('controls', []) if c['passed'])
+        total_controls = len(hypothesis_results.get('controls', []))
+        
+        if total_controls > 0:
+            report.append(f"\n\nControl Checks: {controls_passed}/{total_controls} passed")
+            if controls_passed < total_controls:
+                report.append("⚠ Some control checks failed - results should be interpreted with caution")
+        
+        report.append("")
+        report_text = "\n".join(report)
+        
+        # Save report
+        if save_path:
+            save_path = Path(save_path)
+            save_path.parent.mkdir(exist_ok=True)
+            with open(save_path, 'w') as f:
+                f.write(report_text)
+            logger.info(f"Hypothesis test report saved to {save_path}")
+            
+        return report_text
