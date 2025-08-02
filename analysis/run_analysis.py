@@ -27,6 +27,9 @@ from embedding_analysis.core.geometric_invariance import (
     HypothesisTester,
     NullModelComparator
 )
+from embedding_analysis.core.multiscale_analysis import MultiScaleAnalyzer
+from embedding_analysis.core.transport_metrics import TransportMetrics, GeometricInvarianceAnalyzer
+from embedding_analysis.utils.statistical_analysis import EnhancedStatisticalAnalyzer
 from embedding_analysis.core.hierarchical_hypothesis_testing import HierarchicalHypothesisTester
 from embedding_analysis.core.paradigm_null_models import ParadigmSpecificNullModels
 from embedding_analysis.core.control_analyses import ControlAnalyses
@@ -109,6 +112,11 @@ class ConversationAnalysisPipeline:
         self.invariance_analyzer = InvarianceAnalyzer()
         self.hypothesis_tester_new = HypothesisTester()  # Keep for backward compatibility
         self.null_comparator = NullModelComparator()
+        
+        # Initialize new analysis components
+        self.multiscale_analyzer = MultiScaleAnalyzer()
+        self.transport_analyzer = GeometricInvarianceAnalyzer()
+        self.statistical_analyzer = EnhancedStatisticalAnalyzer()
         
         # Results storage
         self.all_conversations = []
@@ -361,6 +369,16 @@ class ConversationAnalysisPipeline:
                     signatures_by_model, session_id
                 )
                 
+                # NEW: Perform multi-scale analysis
+                multiscale_results = self.multiscale_analyzer.analyze_all_scales(
+                    embeddings, conv.get('metadata', {})
+                )
+                
+                # NEW: Compute transport-based invariance
+                transport_invariance = self.transport_analyzer.compute_transport_invariance_score(
+                    embeddings
+                )
+                
                 # Store results
                 conv_results = {
                     'session_id': session_id,
@@ -370,7 +388,9 @@ class ConversationAnalysisPipeline:
                     'phase_comparison': phase_comparison,
                     'phase_statistics': phase_statistics,
                     'geometric_signatures': signatures_by_model,
-                    'invariance_metrics': invariance_metrics
+                    'invariance_metrics': invariance_metrics,
+                    'multiscale_results': multiscale_results,
+                    'transport_invariance': transport_invariance
                 }
                 
                 invariance_results['conversation_results'].append(conv_results)
@@ -1158,6 +1178,145 @@ class ConversationAnalysisPipeline:
         
         self.logger.info("Invariance visualizations complete")
     
+    def generate_multiscale_visualizations(self, invariance_results: Dict):
+        """Generate multi-scale analysis visualizations."""
+        from embedding_analysis.visualization.multiscale_plots import MultiScaleVisualizer
+        
+        viz_dir = self.output_dir / "figures" / "multiscale"
+        viz_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.logger.info("\nGenerating multi-scale visualizations...")
+        
+        multiscale_viz = MultiScaleVisualizer()
+        
+        # 1. Create multi-scale figure for a representative conversation
+        if invariance_results.get('conversation_results'):
+            # Find a conversation with good cross-model agreement
+            best_conv = None
+            best_score = 0
+            
+            for conv_result in invariance_results['conversation_results'][:20]:  # Check first 20
+                if 'invariance_metrics' in conv_result:
+                    # Get average correlation
+                    avg_corr = 0
+                    count = 0
+                    for metric_type, metric_data in conv_result['invariance_metrics'].items():
+                        if 'mean_correlation' in metric_data and not np.isnan(metric_data['mean_correlation']):
+                            avg_corr += metric_data['mean_correlation']
+                            count += 1
+                    
+                    if count > 0:
+                        avg_corr /= count
+                        if avg_corr > best_score:
+                            best_score = avg_corr
+                            best_conv = conv_result
+            
+            if best_conv and 'multiscale_results' in best_conv:
+                self.logger.info(f"Creating multi-scale figure for conversation {best_conv['session_id']}")
+                
+                # Prepare conversation data
+                conv_data = {
+                    'ensemble_embeddings': best_conv['embeddings'],
+                    'metadata': {'session_id': best_conv['session_id']}
+                }
+                
+                # Create figure
+                if self.figure_format in ['png', 'both']:
+                    save_path = viz_dir / f"{best_conv['session_id']}_multiscale.png"
+                else:
+                    save_path = viz_dir / f"{best_conv['session_id']}_multiscale.pdf"
+                
+                try:
+                    multiscale_viz.create_multiscale_figure(
+                        conv_data,
+                        best_conv['multiscale_results'],
+                        save_path=save_path
+                    )
+                    plt.close('all')
+                    self.logger.info(f"  ✓ Generated multi-scale analysis figure")
+                except Exception as e:
+                    self.logger.error(f"Error creating multi-scale figure: {e}")
+        
+        # 2. Create scale comparison figure
+        # Collect all multiscale results
+        all_multiscale = {}
+        for conv_result in invariance_results.get('conversation_results', []):
+            if 'multiscale_results' in conv_result:
+                all_multiscale[conv_result['session_id']] = conv_result['multiscale_results']
+        
+        if all_multiscale:
+            try:
+                from embedding_analysis.visualization.multiscale_plots import create_scale_comparison_figure
+                
+                if self.figure_format in ['png', 'both']:
+                    save_path = viz_dir / 'scale_comparison.png'
+                else:
+                    save_path = viz_dir / 'scale_comparison.pdf'
+                
+                create_scale_comparison_figure(all_multiscale, save_path=save_path)
+                plt.close('all')
+                self.logger.info("  ✓ Generated scale comparison figure")
+            except Exception as e:
+                self.logger.error(f"Error creating scale comparison: {e}")
+        
+        # 3. Create transport distance visualization
+        if any('transport_invariance' in r for r in invariance_results.get('conversation_results', [])):
+            self.logger.info("Creating transport distance visualizations...")
+            
+            # Collect transport distances
+            wasserstein_scores = []
+            sinkhorn_scores = []
+            gromov_scores = []
+            
+            for conv_result in invariance_results['conversation_results']:
+                if 'transport_invariance' in conv_result:
+                    ti = conv_result['transport_invariance']
+                    if 'wasserstein_invariance' in ti:
+                        wasserstein_scores.append(ti['wasserstein_invariance'])
+                    if 'sinkhorn_invariance' in ti:
+                        sinkhorn_scores.append(ti['sinkhorn_invariance'])
+                    if 'gromov_invariance' in ti:
+                        gromov_scores.append(ti['gromov_invariance'])
+            
+            if wasserstein_scores or sinkhorn_scores or gromov_scores:
+                plt.figure(figsize=(10, 6))
+                
+                data_to_plot = []
+                labels = []
+                
+                if wasserstein_scores:
+                    data_to_plot.append(wasserstein_scores)
+                    labels.append(f'Wasserstein\n(n={len(wasserstein_scores)})')
+                if sinkhorn_scores:
+                    data_to_plot.append(sinkhorn_scores)
+                    labels.append(f'Sinkhorn\n(n={len(sinkhorn_scores)})')
+                if gromov_scores:
+                    data_to_plot.append(gromov_scores)
+                    labels.append(f'Gromov-Wasserstein\n(n={len(gromov_scores)})')
+                
+                bp = plt.boxplot(data_to_plot, labels=labels, patch_artist=True)
+                
+                # Color boxes
+                colors = ['lightblue', 'lightgreen', 'lightcoral']
+                for patch, color in zip(bp['boxes'], colors[:len(bp['boxes'])]):
+                    patch.set_facecolor(color)
+                
+                plt.ylabel('Invariance Score')
+                plt.title('Transport-Based Invariance Metrics')
+                plt.grid(True, alpha=0.3, axis='y')
+                plt.ylim(0, 1)
+                
+                # Save
+                if self.figure_format in ['png', 'both']:
+                    plt.savefig(viz_dir / 'transport_invariance.png', dpi=150, bbox_inches='tight')
+                if self.figure_format in ['pdf', 'both']:
+                    plt.savefig(viz_dir / 'transport_invariance.pdf', bbox_inches='tight')
+                plt.close()
+                
+                self.logger.info("  ✓ Generated transport invariance visualization")
+        
+        self.logger.info("Multi-scale visualizations complete")
+    
     def generate_invariance_reports(self, invariance_results: Dict, hypothesis_results: Dict):
         """Generate comprehensive reports for invariance and hypothesis test results."""
         report_dir = self.output_dir / "reports"
@@ -1244,6 +1403,9 @@ class ConversationAnalysisPipeline:
         
         # Generate invariance-specific visualizations
         self.generate_invariance_visualizations(invariance_results)
+        
+        # NEW: Generate multi-scale visualizations
+        self.generate_multiscale_visualizations(invariance_results)
         
         # Generate reports
         self.generate_invariance_reports(invariance_results, hypothesis_results)
