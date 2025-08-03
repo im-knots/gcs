@@ -89,7 +89,7 @@ marco@erulabs.ai
 \maketitle
 
 \begin{abstract}
-We present empirical evidence that conversations exhibit consistent geometric signatures when projected into different embedding spaces, alongside surprising variability in local feature detection. Analyzing \totalConversations{} multi-agent AI dialogues from our prior study on social dynamics \citep{garcia2025peer}, we examine whether geometric properties of conversational trajectories remain consistent across \numEmbeddingModels{} fundamentally different embedding models. Our analysis reveals a striking dichotomy: while global geometric patterns (distance matrices, trajectory shapes) show remarkable consistency across both transformer-based and classical embeddings (correlations ranging from \minPairwiseCorr{} to \maxPairwiseCorr{}), local phase detection exhibits extreme variability (F1 scores from 0.08 to 0.36, agreement correlations from -0.14 to 0.76). This pattern—high global consistency with low local agreement—suggests that different embedding models may capture distinct projections of conversations existing in a higher-dimensional semantic space. Transport-based analysis confirms this interpretation, showing threefold increases in cross-paradigm distances compared to within-paradigm distances. These findings establish that while geometric analysis of conversation captures genuine structural properties, the global-local dichotomy implies fundamental limits on fine-grained analysis and raises intriguing questions about the true dimensionality of conversational dynamics.
+We present empirical evidence that conversations exhibit consistent geometric signatures when projected into different embedding spaces, alongside surprising variability in local feature detection. Analyzing \totalConversations{} multi-agent AI dialogues from our prior study on social dynamics \citep{garcia2025peer}, we examine whether geometric properties of conversational trajectories remain consistent across \numEmbeddingModels{} fundamentally different embedding models. Our analysis reveals a striking dichotomy: while global geometric patterns (distance matrices, trajectory shapes) show remarkable consistency across both transformer-based and classical embeddings (correlations ranging from \minPairwiseCorr{} to \maxPairwiseCorr{}), local phase detection exhibits extreme variability (F1 scores from 0.08 to 0.36, agreement correlations from -0.14 to 0.76). This pattern—high global consistency with low local agreement—suggests that different embedding models may capture distinct projections of conversations existing in a higher-dimensional semantic space. Transport-based analysis supports this interpretation, showing threefold increases in cross-paradigm distances compared to within-paradigm distances. These findings establish that while geometric analysis of conversation captures genuine structural properties, the global-local dichotomy implies fundamental limits on fine-grained analysis and raises intriguing questions about the true dimensionality of conversational dynamics.
 \end{abstract}
 
 \section{Introduction}
@@ -234,11 +234,11 @@ We employ a hierarchical hypothesis testing framework with multiple comparison c
    \item False Discovery Rate (FDR) correction using Benjamini-Hochberg method ($\alpha = 0.05$)
    \end{itemize}
 
-\item \textbf{Tier 3 - Invariance hierarchy}: Tests whether within > cross > random ordering holds
+\item \textbf{Tier 3 - Invariance hierarchy}: Tests whether $within > cross > random$ ordering holds
    \begin{itemize}
    \item H3a: Ordering confirmed via Kruskal-Wallis test
-   \item H3b: Effect size between levels is meaningful (Cohen's q > 0.3)
-   \item H3c: Hierarchy persists across geometric metrics (> 80\% consistency)
+   \item H3b: Effect size between levels is meaningful (Cohen's $q > 0.3$)
+   \item H3c: Hierarchy persists across geometric metrics ($> 80\%$ consistency)
    \item No correction applied (effect size criteria)
    \end{itemize}
 \end{enumerate}
@@ -265,17 +265,9 @@ To ensure robustness, we implement three control hypotheses tested independently
 \item \textbf{H6 - Dimension normalization}: Tests whether patterns persist after normalizing for embedding dimensionality differences
 \end{itemize}
 
-Additional robustness checks include:
-\begin{itemize}
-\item \textbf{Bootstrap confidence intervals}: \bootstrapIterations{} iterations with stratified sampling
-\item \textbf{Outlier robustness}: Winsorization at 5th and 95th percentiles
-\item \textbf{Temporal stability}: Split-half reliability testing
-\item \textbf{Power analysis}: Statistical power calculated for all parametric tests using effect size and sample size
-\end{itemize}
-
 \subsection{Implementation Details}
 
-The analysis pipeline is implemented in Python 3.8+ with GPU acceleration via PyTorch. Key specifications:
+The analysis pipeline is implemented in Python 3.12+ with GPU acceleration via PyTorch. Key specifications:
 \begin{itemize}
 \item \textbf{Batch processing}: Conversations processed in batches of 25 for memory efficiency
 \item \textbf{Checkpointing}: Analysis state saved periodically for resumption
@@ -293,7 +285,7 @@ Our analysis reveals a striking pattern: geometric signatures of conversation ex
 
 \subsubsection{Global Geometric Consistency}
 
-Visual inspection of distance matrices, trajectories, and density evolution reveals remarkable similarities across models. Quantitative analysis confirms these observations:
+Visual inspection of distance matrices, trajectories, and density evolution reveals remarkable similarities across models. Quantitative analysis supports these observations:
 
 \begin{table}[h]
 \centering
@@ -316,7 +308,7 @@ Overall range & \distanceCorrRange{} & (0.163, 0.946) \\
 \label{tab:correlations}
 \end{table}
 
-These correlations far exceed null model baselines (mean $\rho$ = \nullBaselineCorr{}, p < \nullModelPValue{}), indicating genuine structural consistency rather than chance agreement.
+These correlations far exceed null model baselines (mean $\rho$ = \nullBaselineCorr{}, p $<$ \nullModelPValue{}), indicating genuine structural consistency rather than chance agreement.
 
 \subsubsection{Local Feature Variability as Evidence for Projection Effects}
 
@@ -333,31 +325,30 @@ Gradual evolution & (0.08, 0.19) & (-0.14, 0.24) & 23\% \\
 Complex dynamics & (0.09, 0.24) & (-0.08, 0.50) & 41\% \\
 \bottomrule
 \end{tabular}
-\caption{Phase detection performance varies dramatically based on conversation characteristics. Success rate indicates percentage of conversations with F1 > 0.15.}
+\caption{Phase detection performance varies dramatically based on conversation characteristics. Success rate indicates percentage of conversations with F1 $>$ 0.15.}
 \label{tab:phase_performance}
 \end{table}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{\figuresPath multiscale/scale_comparison.png}
-\caption{The global-local dichotomy in conversational geometry. Left: Cross-model correlations decrease monotonically with scale from global (0.87) to meso (0.65) to local (0.45). Right: Scale-dependent invariance shows significant differences between global and local agreement (** p < 0.01), while meso-scale shows intermediate, non-significant differences. This pattern strongly supports the projection hypothesis.}
+\caption{The global-local dichotomy in conversational geometry. Left: Cross-model correlations decrease monotonically with scale from global (0.87) to meso (0.65) to local (0.45). Right: Scale-dependent invariance shows significant differences between global and local agreement ( p $<$ 0.01), while meso-scale shows intermediate, non-significant differences. This pattern strongly supports the projection hypothesis.}
 \label{fig:dichotomy}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{\figuresPath invariance/paradigm_comparison_boxplot.png}
-\caption{Geometric invariance by model paradigm. Within-transformer (0.827) and within-classical (0.934) correlations significantly exceed cross-paradigm (0.616), validating the plausability of the projection hypothesis. The clear hierarchy (within-classical > within-transformer > cross-paradigm) supports our interpretation that different embedding paradigms capture distinct projections of conversational structure. All comparisons significant at p < 0.001.}
+\caption{Geometric invariance by model paradigm. Within-transformer (0.827) and within-classical (0.934) correlations significantly exceed cross-paradigm (0.616), validating the plausability of the projection hypothesis. The clear hierarchy ($within-classical > within-transformer > cross-paradigm$) supports our interpretation that different embedding paradigms capture distinct projections of conversational structure. All comparisons significant at p $<$ 0.001.}
 \label{fig:paradigm}
 \end{figure}
 
-Individual conversation analysis reveals the pattern clearly: conversations like "Consciousness\_Exploration\_2025-06-12\_7-Y" show excellent phase agreement across models (mean correlation 0.71), while others like "experiment-consciousness-exploration-2025-07-29-2" show complete disagreement (correlations near 0).
 
 \subsection{Cross-Paradigm Invariance}
 
 The most surprising finding is that the global-local dichotomy persists even across fundamentally different embedding paradigms:
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{\figuresPath invariance/model_correlation_heatmap.png}
 \caption{Average pairwise correlations between embedding models. Note the clear paradigm clustering: within-transformer correlations (MiniLM-L6/MPNet: 0.855, MiniLM-L6/MiniLM-L12: 0.805, MPNet/MiniLM-L12: 0.784) and within-classical correlations (Word2Vec/GloVe: 0.931) are substantially higher than cross-paradigm correlations (ranging from 0.521 to 0.659).}
@@ -382,7 +373,7 @@ To confirm that different embeddings capture different projections of the same u
 
 \textbf{Gromov-Wasserstein distance} compares only the internal structure of distributions, ignoring their absolute positions. This is like comparing the shape of two constellations without caring where they appear in the sky—perfect for testing whether embeddings preserve conversational structure despite living in different spaces.
 
-Transport analysis reveals a clear paradigm separation. Within-paradigm transport distances average 1.1, while cross-paradigm distances average 3.3 (a threefold increase). This quantitatively confirms that transformer and classical embeddings occupy distinct regions of the representation space.
+Transport analysis reveals a clear paradigm separation. Within-paradigm transport distances average 1.1, while cross-paradigm distances average 3.3 (a threefold increase). This quantitatively supports that transformer and classical embeddings occupy distinct regions of the representation space.
 
 The progression of transport invariance scores tells an important story. These scores are calculated as $1 - \frac{d_{\text{cross}}}{d_{\text{cross}} + d_{\text{within}}}$, where $d_{\text{cross}}$ is the average cross-paradigm distance and $d_{\text{within}}$ is the average within-paradigm distance. A score of 1.0 indicates perfect invariance (no difference between paradigms), while 0 indicates complete separation.
 
@@ -407,7 +398,7 @@ Importantly, this interpretation directly connects to our prior findings on peer
 
 \subsection{Formalizing the Projection Framework}
 
-While a complete mathematical treatment awaits future work, we can sketch a formal framework for thinking about our findings. Consider conversations as trajectories $\gamma(t)$ through a high-dimensional semantic manifold $\mathcal{M}$. Each embedding model provides a projection $\pi_i: \mathcal{M} \to \mathbb{R}^{d_i}$, where $d_i$ is the embedding dimension.
+While a complete mathematical treatment awaits future work, we can sketch an informal framework for thinking about our findings. Consider conversations as trajectories $\gamma(t)$ through a high-dimensional semantic manifold $\mathcal{M}$. Each embedding model provides a projection $\pi_i: \mathcal{M} \to \mathbb{R}^{d_i}$, where $d_i$ is the embedding dimension.
 
 Our global-local dichotomy suggests these projections preserve different geometric properties:
 \begin{itemize}
@@ -492,7 +483,7 @@ The high peer pressure rates and breakdown cascades in our prior work demonstrat
 
 \subsection{Toward Reconstructing the True Semantic Space}
 
-Our findings suggest a research program aimed at reconstructing the true high-dimensional conversational space through ensemble methods. By combining multiple embedding "views," we might approximate the actual structure—analogous to tomographic reconstruction in medical imaging.
+Our findings suggest a research program aimed at reconstructing the true high-dimensional conversational space through ensemble methods. By combining multiple embedding "views," we might approximate the actual structure.
 
 Key steps toward this goal:
 \begin{enumerate}
@@ -568,7 +559,7 @@ Our analysis employs standard geometric and statistical methods widely used in t
 
 In the interest of scientific reproducibility and open science, we make all materials publicly available:
 \begin{itemize}
-\item Complete conversation datasets (228 AI-to-AI dialogues)
+\item Complete conversation datasets (\totalConversations AI-to-AI dialogues)
 \item Analysis code including embedding generation, geometric calculations, and statistical tests
 \item Supplementary materials including additional visualizations and detailed results
 \item Documentation and tutorials for reproducing our analyses
@@ -605,10 +596,6 @@ Despite overall consistency, models show characteristic differences:
 
 \section{Statistical Methods}
 
-\subsection{Bootstrap Procedure}
-
-Confidence intervals computed using stratified bootstrap with \bootstrapIterations{} iterations, ensuring balanced representation across conversation types.
-
 \subsection{Multiple Comparison Corrections}
 
 Hierarchical hypothesis testing used Bonferroni correction for Tier 1, FDR correction for Tier 2, and effect size criteria for Tier 3.
@@ -622,7 +609,7 @@ Three null models tested:
 \item Random walks in embedding space
 \end{enumerate}
 
-All showed significantly lower correlations than observed data (p < \nullModelPValue{}).
+All showed significantly lower correlations than observed data (p $<$ \nullModelPValue{}).
 
 \section{Topological Analysis Details}
 
