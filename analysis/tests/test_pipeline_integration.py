@@ -419,7 +419,6 @@ class TestEndToEndScenarios:
         if hypothesis_results and 'summary' in hypothesis_results:
             assert hypothesis_results['summary']['max_tier_passed'] == 0
             assert "Tier 1" in hypothesis_results['summary']['conclusion']
-
-
+    
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

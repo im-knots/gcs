@@ -1,6 +1,6 @@
 HIERARCHICAL HYPOTHESIS TEST RESULTS
 ======================================================================
-Analysis Date: 2025-08-02 00:31:23
+Analysis Date: 2025-08-03 14:17:58
 
 SUMMARY
 ----------------------------------------
@@ -35,7 +35,7 @@ Hypotheses:
      p-value: 1.6656e-75
      Effect size: -0.827
      Power: N/A
-     95% CI: [0.789, 0.865]
+     95% CI: [0.789, 0.864]
 
 Tier 2: Cross-Paradigm Invariance
 Status: PASSED

@@ -36,6 +36,7 @@ class EnsembleVisualizer:
                                          conversation: Dict,
                                          ensemble_embeddings: Dict[str, np.ndarray],
                                          phase_info: Optional[Dict] = None,
+                                         transport_invariance: Optional[Dict] = None,
                                          save_path: Optional[str] = None,
                                          save_pdf: Optional[str] = None) -> plt.Figure:
         """
@@ -63,13 +64,13 @@ class EnsembleVisualizer:
             
         # Calculate optimal figure size - increased width to prevent compression
         fig_width = 7 * n_models  # 7 per model
-        fig_height = 38  # Increased to ensure all content fits properly
+        fig_height = 42  # Increased to accommodate transport metrics row
         logger.info(f"Creating figure ({fig_width}x{fig_height})...")
         fig = plt.figure(figsize=(fig_width, fig_height))
         
         # Create GridSpec for flexible layout
-        # Total rows: 4 (section 1) + 1 (density) + 1 (correlation tables) + 2 (phase diagram) + 1 (stats) = 9
-        total_rows = 9
+        # Total rows: 4 (section 1) + 1 (density) + 1 (correlation tables) + 2 (phase diagram) + 1 (stats) + 1 (transport) = 10
+        total_rows = 10
         gs = gridspec.GridSpec(total_rows, n_models, figure=fig, hspace=0.4, wspace=0.25)
         
         # Process phase information - get model-specific and ensemble results
@@ -656,6 +657,68 @@ class EnsembleVisualizer:
                            ax=ax_timing, mask=mask,
                            annot=True, fmt='.1f', annot_kws={'size': 8})
                 ax_timing.set_title('Phase Timing Differences', fontsize=12)
+        
+        # Section 5: Transport Metrics (Row 9)
+        if transport_invariance:
+            # Extract distance matrices
+            distance_matrices_transport = transport_invariance.get('distance_matrices', {})
+            
+            # 1. Wasserstein distance matrix
+            if 'wasserstein' in distance_matrices_transport:
+                ax_wasserstein = fig.add_subplot(gs[9, :n_models//3])
+                wasserstein_mat = distance_matrices_transport['wasserstein']
+                
+                # Ensure we have model names for labels
+                transport_model_names = [m.replace('all-', '').replace('-v2', '') for m in model_names[:wasserstein_mat.shape[0]]]
+                
+                sns.heatmap(wasserstein_mat,
+                           xticklabels=transport_model_names,
+                           yticklabels=transport_model_names,
+                           cmap='viridis', 
+                           cbar_kws={'label': 'Wasserstein Distance'},
+                           ax=ax_wasserstein,
+                           annot=True, fmt='.3f', annot_kws={'size': 8})
+                ax_wasserstein.set_title('Wasserstein Transport Distances', fontsize=12)
+            
+            # 2. Sinkhorn divergence matrix  
+            if 'sinkhorn' in distance_matrices_transport:
+                ax_sinkhorn = fig.add_subplot(gs[9, n_models//3 + 1:2*n_models//3 + 1])
+                sinkhorn_mat = distance_matrices_transport['sinkhorn']
+                
+                sns.heatmap(sinkhorn_mat,
+                           xticklabels=transport_model_names,
+                           yticklabels=transport_model_names,
+                           cmap='plasma',
+                           cbar_kws={'label': 'Sinkhorn Divergence'},
+                           ax=ax_sinkhorn,
+                           annot=True, fmt='.3f', annot_kws={'size': 8})
+                ax_sinkhorn.set_title('Sinkhorn Transport Divergences', fontsize=12)
+            
+            # 3. Transport invariance scores
+            ax_invariance = fig.add_subplot(gs[9, 2*n_models//3 + 1:])
+            
+            # Create bar plot of invariance scores
+            invariance_scores = {
+                'Wasserstein': transport_invariance.get('wasserstein_invariance', 0),
+                'Sinkhorn': transport_invariance.get('sinkhorn_invariance', 0),
+                'Gromov-W': transport_invariance.get('gromov_invariance', 0)
+            }
+            
+            scores = list(invariance_scores.values())
+            labels = list(invariance_scores.keys())
+            colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
+            
+            bars = ax_invariance.bar(labels, scores, color=colors, alpha=0.7)
+            ax_invariance.set_ylim(0, 1)
+            ax_invariance.set_ylabel('Invariance Score', fontsize=10)
+            ax_invariance.set_title('Transport Invariance Scores', fontsize=12)
+            ax_invariance.grid(axis='y', alpha=0.3)
+            
+            # Add value labels on bars
+            for bar, score in zip(bars, scores):
+                height = bar.get_height()
+                ax_invariance.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                                 f'{score:.3f}', ha='center', va='bottom', fontsize=9)
         
         # Overall title
         session_id = conversation.get('metadata', {}).get('session_id', 'Unknown')

@@ -14,10 +14,26 @@ except ImportError:
     HAS_OT = False
     import warnings
     warnings.warn("POT (Python Optimal Transport) not installed. Transport metrics will use fallback implementations.")
+
+# Configure GPU backend if available
+USE_GPU = False
+DEVICE = None
+if HAS_OT:
+    try:
+        import torch
+        if torch.cuda.is_available():
+            # Configure POT to use PyTorch backend for GPU acceleration
+            DEVICE = torch.device('cuda')
+            USE_GPU = True
+            # Note: backend setting will be done when needed to avoid conflicts
+    except ImportError:
+        pass
+
 from scipy.special import logsumexp
 from scipy.stats import entropy
 from scipy.spatial.distance import cdist
 import logging
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +55,10 @@ class TransportMetrics:
         """
         self.regularization = regularization
         
+        # Log GPU availability
+        if USE_GPU and HAS_OT:
+            logger.info("✓ GPU backend available for optimal transport computations")
+        
     def compute_wasserstein_distance(self, 
                                    traj1: np.ndarray, 
                                    traj2: np.ndarray,
@@ -54,20 +74,42 @@ class TransportMetrics:
         Returns:
             Wasserstein distance
         """
+        # Handle dimension mismatch by projecting to common subspace
+        if traj1.shape[1] != traj2.shape[1]:
+            # Use minimum dimension
+            min_dim = min(traj1.shape[1], traj2.shape[1])
+            traj1 = traj1[:, :min_dim]
+            traj2 = traj2[:, :min_dim]
+            
         if not HAS_OT:
             # Fallback: Use average pairwise distance as approximation
             distances = cdist(traj1, traj2, metric=metric)
             return np.mean(distances)
         
-        # Uniform weights for simplicity (can be extended)
-        a = np.ones(len(traj1)) / len(traj1)
-        b = np.ones(len(traj2)) / len(traj2)
+        # Convert to GPU tensors if available and not already converted
+        if USE_GPU:
+            # Check if already a tensor
+            if not (hasattr(traj1, 'device') and traj1.device.type == 'cuda'):
+                traj1 = torch.from_numpy(traj1.copy()).float().to(DEVICE)
+            if not (hasattr(traj2, 'device') and traj2.device.type == 'cuda'):
+                traj2 = torch.from_numpy(traj2.copy()).float().to(DEVICE)
+            a = torch.ones(len(traj1), device=DEVICE) / len(traj1)
+            b = torch.ones(len(traj2), device=DEVICE) / len(traj2)
+        else:
+            # Uniform weights for simplicity (can be extended)
+            a = np.ones(len(traj1)) / len(traj1)
+            b = np.ones(len(traj2)) / len(traj2)
         
         # Cost matrix
         M = ot.dist(traj1, traj2, metric=metric)
         
         # Compute transport distance
-        return ot.emd2(a, b, M)
+        result = ot.emd2(a, b, M)
+        
+        # Convert back to float if needed
+        if USE_GPU:
+            return float(result.cpu().numpy())
+        return result
     
     def compute_sinkhorn_divergence(self,
                                    traj1: np.ndarray,
@@ -77,14 +119,31 @@ class TransportMetrics:
         
         More robust than Wasserstein for high dimensions.
         """
+        # Handle dimension mismatch by projecting to common subspace
+        if traj1.shape[1] != traj2.shape[1]:
+            # Use minimum dimension
+            min_dim = min(traj1.shape[1], traj2.shape[1])
+            traj1 = traj1[:, :min_dim]
+            traj2 = traj2[:, :min_dim]
+            
         if not HAS_OT:
             # Fallback: Use regularized distance
             distances = cdist(traj1, traj2)
             # Simple entropy-regularized approximation
             return np.mean(np.exp(-distances / self.regularization))
         
-        a = np.ones(len(traj1)) / len(traj1)
-        b = np.ones(len(traj2)) / len(traj2)
+        # Convert to GPU tensors if available and not already converted
+        if USE_GPU:
+            # Check if already a tensor
+            if not (hasattr(traj1, 'device') and traj1.device.type == 'cuda'):
+                traj1 = torch.from_numpy(traj1.copy()).float().to(DEVICE)
+            if not (hasattr(traj2, 'device') and traj2.device.type == 'cuda'):
+                traj2 = torch.from_numpy(traj2.copy()).float().to(DEVICE)
+            a = torch.ones(len(traj1), device=DEVICE) / len(traj1)
+            b = torch.ones(len(traj2), device=DEVICE) / len(traj2)
+        else:
+            a = np.ones(len(traj1)) / len(traj1)
+            b = np.ones(len(traj2)) / len(traj2)
         
         M = ot.dist(traj1, traj2)
         
@@ -99,7 +158,12 @@ class TransportMetrics:
         sinkhorn_bb = ot.sinkhorn2(b, b, M_bb, self.regularization)
         
         # Sinkhorn divergence
-        return sinkhorn_ab - 0.5 * (sinkhorn_aa + sinkhorn_bb)
+        result = sinkhorn_ab - 0.5 * (sinkhorn_aa + sinkhorn_bb)
+        
+        # Convert back to float if needed
+        if USE_GPU:
+            return float(result.cpu().numpy())
+        return result
     
     def compute_trajectory_coupling(self,
                                   traj1: np.ndarray,
@@ -110,6 +174,13 @@ class TransportMetrics:
         Returns:
             Coupling matrix showing correspondence between points
         """
+        # Handle dimension mismatch by projecting to common subspace
+        if traj1.shape[1] != traj2.shape[1]:
+            # Use minimum dimension
+            min_dim = min(traj1.shape[1], traj2.shape[1])
+            traj1 = traj1[:, :min_dim]
+            traj2 = traj2[:, :min_dim]
+            
         if not HAS_OT:
             # Fallback: Simple nearest neighbor coupling
             n1, n2 = len(traj1), len(traj2)
@@ -120,13 +191,28 @@ class TransportMetrics:
                 coupling[i, j] = 1 / n1
             return coupling
         
-        a = np.ones(len(traj1)) / len(traj1)
-        b = np.ones(len(traj2)) / len(traj2)
+        # Convert to GPU tensors if available and not already converted
+        if USE_GPU:
+            # Check if already a tensor
+            if not (hasattr(traj1, 'device') and traj1.device.type == 'cuda'):
+                traj1 = torch.from_numpy(traj1.copy()).float().to(DEVICE)
+            if not (hasattr(traj2, 'device') and traj2.device.type == 'cuda'):
+                traj2 = torch.from_numpy(traj2.copy()).float().to(DEVICE)
+            a = torch.ones(len(traj1), device=DEVICE) / len(traj1)
+            b = torch.ones(len(traj2), device=DEVICE) / len(traj2)
+        else:
+            a = np.ones(len(traj1)) / len(traj1)
+            b = np.ones(len(traj2)) / len(traj2)
         
         M = ot.dist(traj1, traj2)
         
         # Compute optimal transport plan
-        return ot.emd(a, b, M)
+        result = ot.emd(a, b, M)
+        
+        # Convert back to numpy if needed
+        if USE_GPU:
+            return result.cpu().numpy()
+        return result
     
     def compute_gromov_wasserstein(self,
                                   traj1: np.ndarray,
@@ -144,16 +230,31 @@ class TransportMetrics:
             # Simple approximation using Frobenius norm
             return np.linalg.norm(C1.flatten() - C2.flatten()) / (len(traj1) * len(traj2))
         
+        # Convert to GPU tensors if available and not already converted
+        if USE_GPU:
+            # Check if already a tensor
+            if not (hasattr(traj1, 'device') and traj1.device.type == 'cuda'):
+                traj1 = torch.from_numpy(traj1.copy()).float().to(DEVICE)
+            if not (hasattr(traj2, 'device') and traj2.device.type == 'cuda'):
+                traj2 = torch.from_numpy(traj2.copy()).float().to(DEVICE)
+            p = torch.ones(len(traj1), device=DEVICE) / len(traj1)
+            q = torch.ones(len(traj2), device=DEVICE) / len(traj2)
+        else:
+            # Uniform distributions
+            p = np.ones(len(traj1)) / len(traj1)
+            q = np.ones(len(traj2)) / len(traj2)
+        
         # Internal distance matrices
         C1 = ot.dist(traj1, traj1)
         C2 = ot.dist(traj2, traj2)
         
-        # Uniform distributions
-        p = np.ones(len(traj1)) / len(traj1)
-        q = np.ones(len(traj2)) / len(traj2)
-        
         # Gromov-Wasserstein distance
-        return ot.gromov_wasserstein2(C1, C2, p, q)
+        result = ot.gromov_wasserstein2(C1, C2, p, q)
+        
+        # Convert back to float if needed
+        if USE_GPU:
+            return float(result.cpu().numpy())
+        return result
 
 
 class InformationGeometry:
@@ -308,12 +409,14 @@ class GeometricInvarianceAnalyzer:
         self.info_geom = InformationGeometry()
         
     def compute_transport_invariance_score(self,
-                                         trajectories: Dict[str, np.ndarray]) -> Dict[str, float]:
+                                         trajectories: Dict[str, np.ndarray],
+                                         show_progress: bool = False) -> Dict[str, float]:
         """
         Compute invariance score based on optimal transport distances.
         
         Args:
             trajectories: Dict mapping model names to trajectory embeddings
+            show_progress: Whether to show progress bar
             
         Returns:
             Invariance scores based on different metrics
@@ -326,25 +429,47 @@ class GeometricInvarianceAnalyzer:
         sinkhorn_distances = np.zeros((n_models, n_models))
         gromov_distances = np.zeros((n_models, n_models))
         
-        for i in range(n_models):
-            for j in range(i+1, n_models):
+        # Pre-load all trajectories to GPU if available for better memory management
+        if USE_GPU and HAS_OT:
+            gpu_trajectories = {}
+            for name, traj in trajectories.items():
+                gpu_trajectories[name] = torch.from_numpy(traj.copy()).float().to(DEVICE)
+        
+        # Calculate total number of pairs
+        n_pairs = (n_models * (n_models - 1)) // 2
+        
+        # Create progress bar if requested
+        pairs = [(i, j) for i in range(n_models) for j in range(i+1, n_models)]
+        if show_progress:
+            pairs = tqdm(pairs, desc="Computing transport distances", unit="pairs")
+        
+        for i, j in pairs:
+            if USE_GPU and HAS_OT:
+                # Use pre-loaded GPU tensors
+                traj_i = gpu_trajectories[model_names[i]]
+                traj_j = gpu_trajectories[model_names[j]]
+            else:
                 traj_i = trajectories[model_names[i]]
                 traj_j = trajectories[model_names[j]]
-                
-                # Wasserstein distance
+            
+            # Pass the appropriate tensors based on whether we're using GPU
+            if USE_GPU and HAS_OT:
+                # Pass GPU tensors directly
                 w_dist = self.transport.compute_wasserstein_distance(traj_i, traj_j)
-                wasserstein_distances[i, j] = w_dist
-                wasserstein_distances[j, i] = w_dist
-                
-                # Sinkhorn divergence
                 s_dist = self.transport.compute_sinkhorn_divergence(traj_i, traj_j)
-                sinkhorn_distances[i, j] = s_dist
-                sinkhorn_distances[j, i] = s_dist
-                
-                # Gromov-Wasserstein (invariant to isometries)
                 g_dist = self.transport.compute_gromov_wasserstein(traj_i, traj_j)
-                gromov_distances[i, j] = g_dist
-                gromov_distances[j, i] = g_dist
+            else:
+                # Pass numpy arrays
+                w_dist = self.transport.compute_wasserstein_distance(traj_i, traj_j)
+                s_dist = self.transport.compute_sinkhorn_divergence(traj_i, traj_j)
+                g_dist = self.transport.compute_gromov_wasserstein(traj_i, traj_j)
+            
+            wasserstein_distances[i, j] = w_dist
+            wasserstein_distances[j, i] = w_dist
+            sinkhorn_distances[i, j] = s_dist
+            sinkhorn_distances[j, i] = s_dist
+            gromov_distances[i, j] = g_dist
+            gromov_distances[j, i] = g_dist
         
         # Compute invariance scores (lower distances = higher invariance)
         # Normalize by average distance
@@ -362,6 +487,33 @@ class GeometricInvarianceAnalyzer:
                 'gromov': gromov_distances
             }
         }
+    
+    def compute_transport_invariance_batch(self,
+                                         batch_trajectories: List[Dict[str, np.ndarray]]) -> List[Dict[str, float]]:
+        """
+        Compute invariance scores for a batch of conversations.
+        
+        Args:
+            batch_trajectories: List of dicts, each mapping model names to trajectory embeddings
+            
+        Returns:
+            List of invariance scores for each conversation
+        """
+        results = []
+        n_conversations = len(batch_trajectories)
+        
+        # Process with progress bar
+        desc = "Computing transport invariance (GPU)" if USE_GPU else "Computing transport invariance (CPU)"
+        
+        for conv_idx, trajectories in enumerate(tqdm(batch_trajectories, 
+                                                     desc=desc,
+                                                     unit="conv")):
+            # Show sub-progress for the first conversation to give an idea of speed
+            show_sub_progress = (conv_idx == 0 and n_conversations > 1)
+            results.append(self.compute_transport_invariance_score(trajectories, 
+                                                                 show_progress=show_sub_progress))
+                
+        return results
     
     def compute_information_geometric_invariance(self,
                                                trajectories: Dict[str, np.ndarray]) -> Dict[str, float]:

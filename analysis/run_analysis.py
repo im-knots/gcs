@@ -207,7 +207,15 @@ class ConversationAnalysisPipeline:
                     checkpoint_data = self.checkpoint_manager.load(checkpoint['name'])
                     if checkpoint_data:
                         # Add to results
-                        invariance_results['conversation_results'].append(checkpoint_data['conv_results'])
+                        conv_results = checkpoint_data['conv_results']
+                        
+                        # Add multiscale and transport results if not already present
+                        if 'multiscale_results' not in conv_results and 'multiscale_results' in checkpoint_data:
+                            conv_results['multiscale_results'] = checkpoint_data['multiscale_results']
+                        if 'transport_invariance' not in conv_results and 'transport_invariance' in checkpoint_data:
+                            conv_results['transport_invariance'] = checkpoint_data['transport_invariance']
+                            
+                        invariance_results['conversation_results'].append(conv_results)
                         invariance_results['geometric_signatures'][session_id] = checkpoint_data['geometric_signatures']
                         invariance_results['invariance_scores'][session_id] = checkpoint_data['invariance_metrics']
                         
@@ -266,6 +274,20 @@ class ConversationAnalysisPipeline:
             self.logger.info(f"  Batch {batch_idx+1}/{n_batches}: Embedding {len(all_texts)} messages from {len(batch_conversations)} conversations")
             batch_embeddings = self.embedder.embed_texts(all_texts, show_progress=True)
             
+            # First, extract embeddings for all conversations in the batch
+            batch_conv_embeddings = []
+            for conv_idx in range(len(batch_conversations)):
+                start = message_boundaries[conv_idx]
+                end = message_boundaries[conv_idx + 1]
+                
+                conv_embeddings = {}
+                for model_name, all_emb in batch_embeddings.items():
+                    conv_embeddings[model_name] = all_emb[start:end]
+                batch_conv_embeddings.append(conv_embeddings)
+            
+            # Compute transport invariance for the entire batch at once
+            batch_transport_invariance = self.transport_analyzer.compute_transport_invariance_batch(batch_conv_embeddings)
+            
             # Process each conversation in the batch
             for conv_idx, conv in enumerate(tqdm(batch_conversations, 
                                                 desc=f"Processing batch {batch_idx+1}/{n_batches}", 
@@ -273,13 +295,8 @@ class ConversationAnalysisPipeline:
                 
                 session_id = conv['metadata']['session_id']
                 
-                # Extract embeddings for this conversation
-                start = message_boundaries[conv_idx]
-                end = message_boundaries[conv_idx + 1]
-                
-                embeddings = {}
-                for model_name, all_emb in batch_embeddings.items():
-                    embeddings[model_name] = all_emb[start:end]
+                # Use pre-extracted embeddings for this conversation
+                embeddings = batch_conv_embeddings[conv_idx]
                 
                 # Get number of messages in this conversation
                 n_messages = len(conv['messages'])
@@ -374,10 +391,8 @@ class ConversationAnalysisPipeline:
                     embeddings, conv.get('metadata', {})
                 )
                 
-                # NEW: Compute transport-based invariance
-                transport_invariance = self.transport_analyzer.compute_transport_invariance_score(
-                    embeddings
-                )
+                # Use pre-computed transport invariance from batch
+                transport_invariance = batch_transport_invariance[conv_idx]
                 
                 # Store results
                 conv_results = {
@@ -425,6 +440,7 @@ class ConversationAnalysisPipeline:
                     conv,
                     embeddings,
                     phase_results,  # This contains detected phases
+                    transport_invariance,  # Add transport metrics
                     save_path=png_path,
                     save_pdf=pdf_path
                 )
@@ -444,6 +460,8 @@ class ConversationAnalysisPipeline:
                         'phase_statistics': phase_statistics,
                         'geometric_signatures': signatures_by_model,
                         'invariance_metrics': invariance_metrics,
+                        'multiscale_results': multiscale_results,  # Add multiscale results
+                        'transport_invariance': transport_invariance,  # Add transport invariance
                         'conv_results': conv_results  # Complete results for this conversation
                     }
                     
@@ -1236,6 +1254,8 @@ class ConversationAnalysisPipeline:
                     self.logger.info(f"  ✓ Generated multi-scale analysis figure")
                 except Exception as e:
                     self.logger.error(f"Error creating multi-scale figure: {e}")
+                    import traceback
+                    self.logger.error(f"Traceback: {traceback.format_exc()}")
         
         # 2. Create scale comparison figure
         # Collect all multiscale results
@@ -1258,6 +1278,8 @@ class ConversationAnalysisPipeline:
                 self.logger.info("  ✓ Generated scale comparison figure")
             except Exception as e:
                 self.logger.error(f"Error creating scale comparison: {e}")
+                import traceback
+                self.logger.error(f"Traceback: {traceback.format_exc()}")
         
         # 3. Create transport distance visualization
         if any('transport_invariance' in r for r in invariance_results.get('conversation_results', [])):
