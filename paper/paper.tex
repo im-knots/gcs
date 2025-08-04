@@ -18,6 +18,23 @@
 \usepackage{pdfpages}
 \usepackage{afterpage}
 \usepackage{float}
+\usepackage{multirow}
+\usepackage{listings}
+\usepackage{xcolor}  % for code coloring
+
+% Configure listings for Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
 \newunicodechar{∞}{\ensuremath{\infty}}
 
 % Data placeholders - UPDATED with actual values from analysis
@@ -68,7 +85,7 @@
 \newcommand{\hTwopvalue}{1.4507e-10}
 
 % Conversation metrics
-\newcommand{\minConvLength}{118}
+\newcommand{\minConvLength}{80}
 \newcommand{\maxConvLength}{235}
 \newcommand{\meanConvLength}{183.2}
 
@@ -89,157 +106,255 @@ marco@erulabs.ai
 \maketitle
 
 \begin{abstract}
-We present empirical evidence that conversations exhibit consistent geometric signatures when projected into different embedding spaces, alongside surprising variability in local feature detection. Analyzing \totalConversations{} multi-agent AI dialogues from our prior study on social dynamics \citep{garcia2025peer}, we examine whether geometric properties of conversational trajectories remain consistent across \numEmbeddingModels{} fundamentally different embedding models. Our analysis reveals a striking dichotomy: while global geometric patterns (distance matrices, trajectory shapes) show remarkable consistency across both transformer-based and classical embeddings (correlations ranging from \minPairwiseCorr{} to \maxPairwiseCorr{}), local phase detection exhibits extreme variability (F1 scores from 0.08 to 0.36, agreement correlations from -0.14 to 0.76). This pattern—high global consistency with low local agreement—suggests that different embedding models may capture distinct projections of conversations existing in a higher-dimensional semantic space. Transport-based analysis supports this interpretation, showing threefold increases in cross-paradigm distances compared to within-paradigm distances. These findings establish that while geometric analysis of conversation captures genuine structural properties, the global-local dichotomy implies fundamental limits on fine-grained analysis and raises intriguing questions about the true dimensionality of conversational dynamics.
+We present evidence that conversations have consistent geometric signatures in different embedding spaces, alongside variability in local feature detection. Analyzing \totalConversations{} multi-agent AI dialogues from our prior study on social dynamics \citep{garcia2025peer}, we examine whether geometric properties of the embedded conversations remain consistent across \numEmbeddingModels{} fundamentally different embedding models. Our analysis reveals that while global geometric patterns (distance matrices, trajectory shapes) show remarkable consistency across both transformer-based and classical embeddings (correlations ranging from \minPairwiseCorr{} to \maxPairwiseCorr{}), local phase detection exhibits extreme variability (F1 scores from 0.08 to 0.36, agreement correlations from -0.14 to 0.76). This pattern of high global consistency with low local agreement, suggests that different embedding models may capture distinct projections of conversations existing in a higher-dimensional semantic space. Transport-based analysis supports this interpretation, showing threefold increases in cross-paradigm distances compared to within-paradigm distances. These findings establish that while geometric analysis of conversation captures genuine structural properties, the global-local dichotomy implies fundamental limits on fine-grained analysis and raises intriguing questions about the true dimensionality of conversational dynamics.
 \end{abstract}
 
 \section{Introduction}
 
-In our recent investigation of AI social dynamics \citep{garcia2025peer}, we documented unexpected peer pressure effects in multi-agent conversations. These behavioral phenomena (breakdown cascades, recovery mechanisms, behavioral territories) revealed complex dynamics that traditional analysis methods struggled to explain. Specifically, we observed that 79.1\% of full reasoning model conversations exhibited peer pressure effects, with 55.2\% cascading to breakdown states characterized by mystical language and symbolic responses. This observation motivated an exploratory question: might conversations have underlying mathematical structure that could provide new perspectives on these dynamics?
+In our recent investigation of AI conversation dynamics \citep{garcia2025peer}, we reported what we termed "peer pressure" effects in multi-agent conversations. These behavioral phenomena (breakdown cascades, recovery mechanisms, behavioral territories) revealed complex dynamics that traditional analysis methods struggled to explain. Specifically, we saw that 79.1\% of full reasoning model conversations showed "peer pressure" effects, with 55.2\% cascading to breakdown states characterized by
+by mystical language and symbolic responses (what Anthropic's Claude 4 model card calls 'mystical attractor states'). This observation motivated a core question: might conversations have underlying mathematical structure that could provide new perspectives on these dynamics? Further, can you potentially use these mathematical structures to predict when the above breakdown cascades are starting to happen? We approach these questions from a distributed systems engineering mindset, where we classify AI to AI conversations as a new type of distributed system that, like other distributed systems, can be modeled when using proper tools. 
 
-The present work investigates whether these behavioral dynamics have consistent geometric correlates across embedding spaces, potentially enabling prediction and intervention. By \textit{geometric signatures}, we mean measurable properties like pairwise distance matrices between messages, trajectory shapes as conversations evolve, and density patterns in the embedding space. By \textit{conversational trajectories}, we mean the path traced through embedding space as a conversation progresses from message to message.
+We investigate if these behavioral dynamics have consistent geometric features across different embedding spaces. By \textit{geometric features}, we mean measurable properties like pairwise distance matrices between messages, trajectory shapes as conversations evolve, and density patterns in the embedding space. By \textit{conversational trajectories}, we mean the path traced through embedding space as a conversation progresses from message to message over time.
 
-To understand our approach, consider how a three-dimensional sculpture casts different two-dimensional shadows depending on the viewing angle. The shadows agree on basic properties (the object has extent, connected regions) but differ in details (precise boundaries, local features). Similarly, different embedding models might capture different "views" of conversations existing in a higher-dimensional space.
+To understand the approach, consider how a three-dimensional sculpture casts different two-dimensional shadows depending on the viewing angle. The shadows agree on basic properties (the object has extent, connected regions) but disagree in details (precise boundaries, local features). Similarly, different embedding models might capture different "views" of conversations existing in a higher-dimensional space that embedding models are an approximation of.
 
-We test for geometric invariance using \totalConversations{} multi-agent dialogues from our social dynamics study. By examining conversational trajectories through \numEmbeddingModels{} diverse embedding models (including both transformer and classical approaches), we can assess whether observed patterns reflect genuine conversational structure or merely artifacts of specific architectures.
+We test for geometric invariance using \totalConversations{} multi-agent dialogues from our previous work. By examining conversational trajectories through \numEmbeddingModels{} diverse embedding models (including both transformer and more classical approaches), we can determine whether observed patterns reflect genuine conversational structure or merely artifacts of specific architectures.
 
-Our key empirical findings reveal an unexpected dichotomy:
-\begin{enumerate}
-\item \textbf{Global geometry is remarkably consistent}: Distance matrices and trajectory shapes show strong correlations across all embedding models
-\item \textbf{Local features are surprisingly variable}: Phase detection and fine-grained structure show poor cross-model agreement
-\item \textbf{This pattern persists across paradigms}: Even fundamentally different approaches agree on macro-structure while disagreeing on micro-structure
-\end{enumerate}
+Our key findings reveal that Global geometry is remarkably consistent, distance matrices and trajectory shapes show strong correlations across all embedding models. Local features are variable where phase detection and fine-grained structure show poor cross-model agreement. And lastly, that this pattern persists across paradigms, even drastically different embedding approaches agree on macro-structure while disagreeing on micro-structure
 
 \section{Background and Related Work}
 
-\subsection{The Geometric Turn in Language Understanding}
+\subsection{Foundations in Computational Linguistics}
 
-Recent advances in NLP have revealed that language models encode rich geometric structure. \citet{reif2019visualizing} demonstrated that BERT segregates semantic and syntactic information into distinct subspaces, establishing that transformer embeddings have interpretable geometric organization. This finding motivates our question: if individual models exhibit geometric structure, do different models capture the same structure?
+Our work builds on several established principles from computational linguistics, while extending them in new directions. The distributional hypothesis \citep{harris1954distributional, firth1957papers} established that words with similar meanings occur in similar contexts. This is now a core principle underlying all modern embeddings. However, this work traditionally focused on static word representations rather than dynamic conversational trajectories.
 
-\citet{ethayarajh2019contextual} complicated this picture by showing that contextual embeddings occupy narrow cones in vector space, challenging assumptions about isotropy. Their work is crucial for our analysis because it suggests embedding geometry may be more constrained than the available dimensions imply—potentially explaining why different models might converge on similar structures.
+Discourse coherence theory \citep{grosz1995centering, kehler2002coherence} has long studied how conversations maintain topical structure. While this work identified patterns like topic chains and coherence relations, it primarily used symbolic rather than geometric representations. Our approach converts these topic chains and coherence relations into measurable trajectories through embedding space.
 
-The Platonic Representation Hypothesis \citep{huh2024platonic} proposes that diverse neural networks converge to similar representations. However, their analysis focuses on static embeddings for individual concepts, not dynamic trajectories through embedding space. Our work tests whether this convergence extends to conversational dynamics, where temporal evolution and contextual shifts introduce additional complexity.
+Vector space models in linguistics \citep{turney2010frequency, clark2015vector} demonstrated that semantic relationships can be captured geometrically. Classic work showed phenomena like analogical reasoning (king - man + woman = queen) emerge from vector arithmetic. We look to extend this by asking: do conversational dynamics exhibit similar geometric regularities across different vector embedding implementations?
+
+Importantly, while computational linguistics has studied meaning representation extensively, invariance of conversational trajectories remains underexplored. Previous work either used single embedding methods or focused on static representations rather than dynamic paths through semantic space.
+
+\subsection{The Geometric View in Language Understanding}
+
+Recent advances in NLP have revealed that language models encode rich geometric structure. \citet{reif2019visualizing} demonstrated that BERT segregates semantic and syntactic information into distinct subspaces, establishing that transformer embeddings have measurable geometric organization. This finding motivates our question: if individual models exhibit geometric structure, do different models capture the same structure?
+
+\citet{ethayarajh2019contextual} complicated this picture by showing that contextual embeddings occupy narrow cones in vector space, challenging assumptions about isotropy. Their work is crucial for our analysis because it suggests embedding geometry may be more constrained than the available dimensions imply, potentially explaining why different models might converge on similar structures.
+
+The Platonic Representation Hypothesis \citep{huh2024platonic} proposes that diverse neural networks converge to similar representations. However, their analysis focuses on static embeddings for individual concepts, not dynamic trajectories through embedding space. Our work tests whether this convergence extends to conversational dynamics, where temporal evolution and contextual shifts introduce more complexity.
 
 \subsection{Conversational Trajectories: From Single Models to Cross-Model Analysis}
 
-While static embedding analysis has matured, conversational dynamics remain underexplored. \citet{brinberg2024dynamic} pioneered trajectory-based analysis, modeling dialogues as paths through behavioral state spaces. Their single-model approach reveals attractor states and phase transitions but cannot distinguish model-specific artifacts from genuine conversational structure—a gap our multi-model analysis addresses.
+While static embedding analysis has matured, work on conversational dynamics between agents is relatively new. \citet{brinberg2024dynamic} pioneered trajectory-based analysis, modeling dialogues as paths through behavioral state spaces. Their single-model approach reveals attractor states and phase transitions but cannot distinguish model-specific artifacts from genuine conversational structure. This is a gap our multi-model analysis looks to address.
 
-\citet{palominos2024trajectories} demonstrated that conversations involving individuals with mental health conditions show distinct geometric properties (reduced convex hull volumes, shrinking semantic spaces). This clinical application highlights the potential impact of geometric analysis, but their reliance on a single embedding model (BERT) leaves open whether these patterns reflect universal properties or model-specific representations. Our cross-model validation could strengthen such clinical applications by identifying robust geometric markers.
+\citet{palominos2024trajectories} demonstrated that conversations involving individuals with mental health conditions show distinct geometric properties (reduced convex hull volumes, shrinking semantic spaces). This clinical application highlights the potential impact of geometric analysis, but their reliance on a single embedding model (BERT) leaves open whether these patterns reflect universal properties or model-specific representations. Our cross-model validation could strengthen such use cases by identifying robust geometric markers in conversation features.
 
-Recent dialogue-specific embedding work provides mixed evidence for cross-model consistency. \citet{dialoguecse2021} achieved 8.7-13.8 point improvements through contrastive learning tailored to dialogue, suggesting that general-purpose embeddings may miss conversation-specific structure. Conversely, \citet{dial2vec2022} found that standard embeddings capture speaker interaction patterns reasonably well. This tension motivates our systematic comparison across embedding paradigms.
+Recent dialogue-specific embedding work provides mixed evidence for cross-model consistency. \citet{dialoguecse2021} achieved 8.7-13.8 point improvements through contrastive learning tailored to dialogue, suggesting that general-purpose embeddings may miss conversation-specific structure. Conversely, \citet{dial2vec2022} found that standard embeddings capture speaker interaction patterns reasonably well. This tension motivates our comparison across embedding paradigms.
 
 \subsection{The Missing Piece: Cross-Model Invariance}
 
-Despite growing interest in both embedding geometry and conversational dynamics, no prior work systematically tests whether conversational trajectories exhibit invariant properties across different embedding models. Studies of embedding alignment \citep{conneau2018word} focus on finding transformations between spaces rather than testing for inherent structural consistency. Topological approaches\footnote{Topological data analysis studies the "shape" of data, focusing on properties that remain unchanged under continuous deformations like stretching or bending.} \citep{jakubowski2020topology, vukovic2022dialogue} analyze single embeddings in detail but don't address whether different models capture the same topological features.
+Despite growing interest in both embedding geometry and conversational dynamics, very little prior work has been done that tests whether conversational trajectories exhibit invariant properties across different embedding models. Studies of embedding alignment \citep{conneau2018word} focus on finding transformations between spaces rather than testing for inherent structural consistency. Topological approaches \citep{jakubowski2020topology, vukovic2022dialogue} analyze single embeddings in detail but don't address whether different models capture the same topological features.
 
-This gap is critical because:
-\begin{enumerate}
-\item Single-model studies cannot distinguish universal conversational properties from model artifacts
-\item Clinical and safety applications require robust features that transcend specific implementations  
-\item Theoretical understanding of conversation requires separating essential structure from representational choices
-\end{enumerate}
+We propose that single-model studies cannot distinguish universal conversational properties from model artifacts. That future applications of AI to AI conversations require robust features that transcend specific implementations to allow for "conversational engineering". And that theoretical understanding of conversation requires separating essential structure from representational choices
 
-Our work addresses this gap by systematically comparing conversational trajectories across five diverse embedding models, testing whether geometric patterns represent genuine conversational structure or merely reflect individual model architectures.
+Our work addresses this by comparing conversational trajectories across five diverse embedding models, testing whether geometric patterns represent genuine conversational structure or merely reflect individual model architectures.
 
 \section{Methodology}
 
 \subsection{Data}
 
-We analyze \totalConversations{} conversations from our prior study on AI social dynamics \citep{garcia2025peer}. These multi-agent dialogues between AI models discussing consciousness were originally collected to study peer pressure and breakdown patterns. The corpus includes:
+We analyze \totalConversations{} conversations from our previous study on AI social dynamics \citep{garcia2025peer}. These multi-agent dialogues between AI models discussing consciousness were originally collected to study peer pressure and breakdown patterns. The corpus includes:
 
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+Model Tier & N & Models Used \\
+\midrule
+Full reasoning & 67 & Claude 3 Opus, GPT-4, Grok 3 \\
+Light reasoning & 61 & Claude 3.5 Sonnet, GPT-4 Mini, Grok 3 Mini \\
+Non-reasoning & 100 & Claude 3.5 Haiku, GPT-4 Turbo, Grok 3 Fast \\
+\bottomrule
+\end{tabular}
+\caption{Distribution of conversations across model capability tiers.}
+\label{tab:model_tiers}
+\end{table}
+
+Conversations range from \minConvLength{} to \maxConvLength{} messages (mean = \meanConvLength{}), with rich dynamics including topic evolution, phase transitions, and the peer pressure effects that motivated this geometric investigation. Consciousness discussions were chosen as a baseline due to their open ended nature and potential for broad topic and semantic shifts. 
+
+Conversation Setup:
 \begin{itemize}
-\item Full reasoning models (N=67): Claude 3 Opus, GPT-4, Gemini Ultra
-\item Light reasoning models (N=61): Claude 3.5 Sonnet, GPT-4 Mini, Gemini Pro
-\item Non-reasoning models (N=100): Claude 3.5 Haiku, GPT-4 Turbo, Gemini Flash
+    \item Standard opening prompt: "Let's explore the fundamental question: What does it mean to be conscious? I'd like to hear your perspectives on the nature of awareness, subjective experience, and what it might mean for an AI to have consciousness."
+    \item Temperature settings: 0.7 for all participants (standard creative setting)
+    \item Max tokens: 1000 per response
+    \item Rolling context window: 10 messages
+    \item Termination Criteria: Manual conversation conclusion or 200-turn automated maximum
+    \item Data collection: Complete message logs, analysis snapshots, and experiment metadata stored with timestamps as json
 \end{itemize}
-
-Conversations range from \minConvLength{} to \maxConvLength{} messages (mean = \meanConvLength{}), with rich dynamics including topic evolution, phase transitions, and the peer pressure effects that motivated this geometric investigation.
 
 \subsection{Embedding Models}
 
 To test invariance across paradigms, we employ an ensemble approach:
 
-\textbf{Transformer-based (contextual embeddings):}
-\begin{itemize}
-\item all-MiniLM-L6-v2: 6-layer, 384-dimensional sentence embeddings
-\item all-mpnet-base-v2: 12-layer, 768-dimensional embeddings optimized for semantic similarity
-\item all-MiniLM-L12-v2: 12-layer, 384-dimensional model balancing quality and efficiency
-\end{itemize}
+\begin{table}[h]
+\centering
+\begin{tabular}{llccl}
+\toprule
+Paradigm & Model & Architecture & Dimensions & Training Data \\
+\midrule
+\multirow{3}{*}{Transformer} & all-MiniLM-L6-v2 & BERT-based & 384 & Multi-dataset\\
+& all-mpnet-base-v2 & MPNet & 768 & 1B+ sentence pairs\\
+& all-MiniLM-L12-v2 & BERT-based & 384 & Multi-dataset\\
+\midrule
+\multirow{2}{*}{Classical} & Word2Vec & Skip-gram & 300 & Google News (100B words)\\
+& GloVe & Global Vectors & 300 & Common Crawl (840B tokens)\\
+\bottomrule
+\end{tabular}
+\caption{Embedding models used for cross-paradigm analysis. Transformer models generate contextual embeddings while classical models produce static word vectors averaged for sentence representations. For classical models, sentence embeddings are computed by averaging word vectors after removing stop words.}
+\label{tab:embedding_models}
+\end{table}
 
-\textbf{Classical (static embeddings):}
-\begin{itemize}
-\item Word2Vec: 300-dimensional skip-gram model trained on Google News corpus
-\item GloVe: 300-dimensional global vectors trained on Common Crawl (840B tokens)
-\end{itemize}
-
-For classical models, sentence embeddings are computed by averaging word vectors after removing stop words. All embedding generation uses GPU acceleration for batch processing.
 
 \subsection{Geometric Analysis Pipeline}
 
 \subsubsection{Core Geometric Signatures}
 
-For each conversation and embedding model, we compute three primary geometric signatures that proved most informative:
+For each conversation and embedding model, we compute several standard geometric signatures of embedding space:
 
-\textbf{Distance matrices} measure pairwise distances between all messages in embedding space. These capture the overall semantic structure of conversations and proved highly consistent across models.
+Distance matrices measure pairwise distances between all messages in embedding space. These capture the overall semantic structure of conversations and proved highly consistent across models. We find the full pairwise Euclidean distance matrix for a conversation with:
 
-\textbf{Trajectory metrics} track velocity (topic shift rate), acceleration (change in shift rate), and curvature (conversation "turns") as conversations evolve through embedding space.
+\begin{lstlisting}[language=Python, basicstyle=\small]
+def compute_distance_matrix(embeddings):
+    """
+    Compute pairwise Euclidean distances between all messages.
+    Args: embeddings - (n_messages, embedding_dim) array
+    Returns: (n_messages, n_messages) distance matrix
+    """
+    return squareform(pdist(embeddings, metric='euclidean'))
+\end{lstlisting}
 
-\textbf{Density evolution} examines how message clustering changes over time, identifying phases of focused discussion versus exploratory periods.
+Since embedding spaces are vector spaces, we can find trajectory metrics that track how conversations evolve through embedding space. We compute three of these possible metrics: \textit{Velocity}\ref{app:geometric-signatures-velocity}, or the rate of semantic change between consecutive messages, normalized by embedding dimension for scale invariance. \textit{Curvature}\ref{app:geometric-signatures-curvature}, how sharply the conversation "turns" in semantic space. And \textit{Angular velocity}\ref{app:geometric-signatures-angluar-velocity} to find rate of directional change in the conversation. These metrics adapt standard trajectory analysis methods used in prior embedding studies \citep{brinberg2024dynamic, palominos2024trajectories} but apply them systematically across multiple embedding models to test for invariance.
+Additionally we calculated \textit{Density Evolution}\ref{app:geometric-signatures-density-evolution} for each conversation, which examines how message clustering changes over time. We compute local density using k-nearest neighbor distances.
 
 We tested multiple normalization approaches but found adaptive normalization based on conversation-specific dynamics performed best, so we report results using this method throughout.
 
 \subsection{Phase Detection as a Probe of Local Structure}
 
-To probe local structure, we attempt phase detection across models. The consistently low agreement (F1: 0.08-0.36) despite high global correlation demonstrates that local boundaries remain ambiguous across different embedding projections. Just as the edges and details in a shadow depend critically on the angle of projection, phase boundaries—the 'edges' in conversational flow—shift depending on which embedding 'angle' we observe from.
+To probe local structure, we attempt phase detection across models. The consistently low agreement (F1: 0.08-0.36) despite high global correlation demonstrates that local boundaries remain ambiguous across different embedding projections. Just as the edges and details in a shadow depend critically on the angle of projection, phase boundaries shift depending on which embedding we observe from.
 
 We implement ensemble phase detection using four complementary approaches:
-\begin{itemize}
-\item \textbf{Embedding shift detection}: Identifies changes in centroid movement with adaptive thresholding using Median Absolute Deviation\footnote{MAD is a robust measure of variability that, unlike standard deviation, is not influenced by outliers. We use 3 MADs above the median as our threshold.} (MAD)
-\item \textbf{Change point detection}: Applies PELT (Pruned Exact Linear Time) and binary segmentation algorithms
-\item \textbf{Clustering transitions}: Uses DBSCAN to identify shifts in local clustering patterns
-\item \textbf{Velocity-based detection}: Finds peaks in trajectory velocity exceeding dynamic thresholds
-\end{itemize}
 
-Each method votes on potential phase boundaries, with consensus determined by weighted voting based on method-specific confidence scores.
+Embedding shift detection: Identifies significant changes in semantic space by comparing embedding centroids before and after each point:
+
+\begin{lstlisting}[language=Python]
+def detect_by_embedding_shift(embeddings, window_size=10):
+    """Detect phases by large shifts in embedding space."""
+    shifts = []
+    for i in range(window_size, len(embeddings) - window_size):
+        before_centroid = np.mean(embeddings[i-window_size:i], axis=0)
+        after_centroid = np.mean(embeddings[i:i+window_size], axis=0)
+        shift = np.linalg.norm(after_centroid - before_centroid)
+        shifts.append(shift)
+    
+    # Adaptive threshold using Median Absolute Deviation
+    median = np.median(shifts)
+    mad = np.median(np.abs(shifts - median))
+    threshold = median + 3 * mad  # 3 MADs above median
+    
+    # Find peaks above threshold
+    peaks, _ = signal.find_peaks(shifts, height=threshold, distance=20)
+    return peaks
+\end{lstlisting}
+
+The use of MAD (Median Absolute Deviation) provides robustness against outliers that would skew traditional standard deviation approaches\footnote{MAD is defined as $\text{MAD} = \text{median}(|X_i - \text{median}(X)|)$. Unlike standard deviation, it is not influenced by extreme values.}.
+
+Change point detection: We employ two algorithms to identify structural breaks in the conversation. See \ref{app:phase-detection-change-point} for implementation
+
+Clustering transitions: We use DBSCAN in sliding windows to detect changes in local message clustering. See \ref{app:phase-detection-clustering-transitions} for implementation
+
+Ensemble consensus: We combine all methods using kernel density estimation to find consensus phase boundaries
+
+\begin{lstlisting}[language=Python]
+def combine_phase_detections(all_detected_turns, n_messages):
+    """Find consensus using kernel density estimation."""
+    kde = gaussian_kde(all_detected_turns, bw_method=0.1)
+    density = kde(np.arange(n_messages))
+    
+    # Find peaks where multiple methods agree
+    min_votes = n_methods * 0.3  # 30% agreement threshold
+    peaks, _ = signal.find_peaks(density, 
+                                 height=min_votes/n_messages, 
+                                 distance=15)
+    return peaks
+\end{lstlisting}
+
+Each method votes on potential phase boundaries, with consensus determined by peak detection in the vote density distribution. Despite this ensemble approach, the low cross-model agreement shows that phase boundaries are inherently model-dependent rather than universal features of conversation, which supports our prior shadow analogy.
 
 \subsubsection{Invariance Analysis}
 
-Cross-model invariance is assessed through:
-\begin{itemize}
-\item \textbf{Pairwise correlations}: Spearman correlations between distance matrices, trajectory metrics, and density patterns
-\item \textbf{Model agreement statistics}: Fleiss' kappa and Kendall's W for phase detection consensus
-\item \textbf{Paradigm-specific comparisons}: Within-transformer, within-classical, and cross-paradigm correlations
-\end{itemize}
+Cross-model invariance is viewed through multiple approaches to inform conclusions:
+
+\textbf{Pairwise correlations}: For each conversation, we compute Spearman correlations between all pairs of embedding models across multiple geometric signatures:
+
+\begin{lstlisting}[language=Python]
+def compute_invariance_metrics(signatures_by_model, conversation_id):
+    """Compute correlations between models for each geometric signature."""
+    for sig_type in signature_types:
+        corr_matrix = np.ones((n_models, n_models))
+        
+        for i, model1 in enumerate(model_names):
+            for j, model2 in enumerate(model_names):
+                if i < j:  # Upper triangle
+                    if sig_type == 'distance_matrix':
+                        # For matrices, use upper triangle correlation
+                        corr = compute_matrix_correlation(sig1, sig2)
+                    else:
+                        # For sequences, use Spearman correlation
+                        corr, _ = stats.spearmanr(sig1, sig2)
+                    corr_matrix[i, j] = corr_matrix[j, i] = corr
+    
+    return {'mean_correlation': np.nanmean(corr_matrix[np.triu_indices(n_models, k=1)])}
+\end{lstlisting}
+
+We use Spearman correlation rather than Pearson to capture monotonic relationships without assuming linearity. For distance matrices, we extract upper triangular elements to avoid redundancy from symmetry.
+
+Beyond correlations, we assess consensus using multi-rater agreement metrics. Fleiss' kappa measures agreement beyond chance for categorical phase assignments, while Kendall's W quantifies concordance for continuous trajectory features. See Appendix \ref{app:agreement-metrics} for implementations.
+
+Since we structure our analysis hierarchically, we compute within-paradigm correlations (transformer-transformer, classical-classical) and cross-paradigm correlations separately. This reveals whether architectural similarity influences geometric agreement:
+
+
+Finally, to ensure our correlations are not artifacts of finite sample size, we employ parametric bootstrap resampling (n=10,000) to construct confidence intervals and test statistical significance. See Appendix \ref{app:bootstrap} for details.
+
+This ensemble approach allows us to distinguish genuine geometric invariance from chance agreement or model-specific artifacts.
 
 \subsection{Statistical Validation}
 
-We employ a hierarchical hypothesis testing framework with multiple comparison corrections:
-
+We employ a hierarchical hypothesis testing framework with multiple comparison corrections.
 
 \subsubsection{Hierarchical Testing Structure}
 
 \begin{enumerate}
-\item \textbf{Tier 1 - Within-paradigm invariance}: Tests whether models within the same paradigm show strong agreement
+\item \textbf{Within-paradigm invariance}: Tests whether models within the same paradigm show strong agreement
    \begin{itemize}
-   \item H1a: Transformer models show strong correlations ($\rho > 0.75$)
-   \item H1b: Classical models show strong correlations ($\rho > 0.70$)
-   \item H1c: Within-paradigm correlations exceed chance (Mann-Whitney U test)
-   \item Bonferroni correction applied ($\alpha = 0.017$)
+   \item H1a: Transformer models show strong correlations (pass threshold: $\rho > 0.75$)
+   \item H1b: Classical models show strong correlations (pass threshold: $\rho > 0.70$)
+   \item H1c: Within-paradigm correlations exceed chance (Mann-Whitney U test, $p < 0.017$)
+   \item Bonferroni correction applied ($\alpha = 0.017$ for 3 tests)
    \end{itemize}
 
-\item \textbf{Tier 2 - Cross-paradigm invariance}: Tests whether different paradigms show substantial agreement
+\item \textbf{Cross-paradigm invariance}: Tests whether different paradigms show substantial agreement
    \begin{itemize}
-   \item H2a: Cross-paradigm correlations are substantial ($\rho > 0.50$)
-   \item H2b: All cross-paradigm correlations are positive (binomial test)
-   \item H2c: Cross-paradigm exceeds random embeddings (Mann-Whitney U test)
-   \item False Discovery Rate (FDR) correction using Benjamini-Hochberg method ($\alpha = 0.05$)
+   \item H2a: Cross-paradigm correlations are substantial (pass threshold: $\rho > 0.50$)
+   \item H2b: All cross-paradigm correlations are positive (binomial test, $p < 0.05$)
+   \item H2c: Cross-paradigm exceeds random embeddings (Mann-Whitney U test, $p < 0.05$)
+   \item False Discovery Rate (FDR) correction using Benjamini-Hochberg method ($q < 0.05$)
    \end{itemize}
 
-\item \textbf{Tier 3 - Invariance hierarchy}: Tests whether $within > cross > random$ ordering holds
+\item \textbf{Invariance hierarchy}: Tests whether $within > cross > random$ ordering holds
    \begin{itemize}
-   \item H3a: Ordering confirmed via Kruskal-Wallis test
+   \item H3a: Ordering confirmed (Kruskal-Wallis test, $p < 0.05$)
    \item H3b: Effect size between levels is meaningful (Cohen's $q > 0.3$)
    \item H3c: Hierarchy persists across geometric metrics ($> 80\%$ consistency)
-   \item No correction applied (effect size criteria)
+   \item No correction applied (effect size criteria provide stringency)
    \end{itemize}
 \end{enumerate}
 
@@ -247,14 +362,17 @@ Each tier is only tested if the previous tier passes, controlling family-wise er
 
 \subsubsection{Null Models}
 
-We generate paradigm-specific null models:
-\begin{itemize}
-\item \textbf{Phase scrambling}: Preserves power spectrum while destroying temporal structure
-\item \textbf{Averaging nulls}: For classical embeddings, averages consecutive embeddings
-\item \textbf{Positional nulls}: For transformers, applies random positional encodings
-\item \textbf{Message-level scrambling}: Shuffles messages while preserving length distribution
-\end{itemize}
+We generate paradigm-specific null models to ensure our invariance findings reflect genuine conversational structure rather than statistical artifacts. See Appendix \ref{app:null-models} for implementation.
 
+First, we employ phase scrambling, which preserves the power spectrum of embedding trajectories while destroying temporal coherence by randomizing phase relationships in the frequency domain. This tests whether spectral properties alone drive our correlations. 
+
+Next, we use message-level scrambling to randomly reorder messages within conversations while preserving individual message content and length distribution. This null model tests whether sequential structure matters for geometric invariance.
+
+Then we implemented random walk nulls in order generate trajectories with matched statistical properties (message lengths, vocabulary) but no semantic coherence. This isolates the contribution of meaningful content to geometric signatures.
+
+Lastly, we used paradigm-specific controls. Specifically, for classical embeddings we average consecutive embeddings to simulate loss of fine-grained structure. For transformers, we apply random positional encodings to disrupt contextual relationships while preserving token-level semantics.
+
+All null models maintain conversation-level statistics (length, vocabulary size) while disrupting different aspects of structure, allowing us to identify which properties drive the observed invariance. We generate 100 null samples per conversation to establish robust baselines.
 \subsubsection{Control Analyses}
 
 To ensure robustness, we implement three control hypotheses tested independently with FDR correction:
@@ -265,15 +383,6 @@ To ensure robustness, we implement three control hypotheses tested independently
 \item \textbf{H6 - Dimension normalization}: Tests whether patterns persist after normalizing for embedding dimensionality differences
 \end{itemize}
 
-\subsection{Implementation Details}
-
-The analysis pipeline is implemented in Python 3.12+ with GPU acceleration via PyTorch. Key specifications:
-\begin{itemize}
-\item \textbf{Batch processing}: Conversations processed in batches of 25 for memory efficiency
-\item \textbf{Checkpointing}: Analysis state saved periodically for resumption
-\item \textbf{Parallel computation}: Multi-threaded embedding generation and metric calculation
-\item \textbf{Visualization}: Automated generation of ensemble plots, correlation matrices, and phase detection comparisons
-\end{itemize}
 
 All code is available at [https://github.com/im-knots/gcs] with documentation and tests.
 
@@ -356,29 +465,20 @@ The most surprising finding is that the global-local dichotomy persists even acr
 \end{figure}
 
 \begin{itemize}
-\item \textbf{Global agreement}: Transformer and classical models show substantial distance matrix correlations (mean \crossParadigmCorr{})
-\item \textbf{Local disagreement}: Phase detection agreement between paradigms is no better than chance for 62\% of conversations
-\item \textbf{Visual consistency}: Despite local disagreement, trajectory shapes and density patterns remain visually recognizable
+\item Global agreement: Transformer and classical models show substantial distance matrix correlations (mean \crossParadigmCorr{})
+\item Local disagreement: Phase detection agreement between paradigms is no better than chance for 62\% of conversations
+\item Visual consistency: Despite local disagreement, trajectory shapes and density patterns remain visually recognizable
 \end{itemize}
 
 This suggests that different architectures capture similar macro-structure while processing micro-structure differently.
 
 \subsection{Transport-Based Analysis}
 
-To confirm that different embeddings capture different projections of the same underlying structure, we used optimal transport metrics to compare their distributions.
+To quantitatively confirm that different embeddings capture different projections of the same underlying structure, we used optimal transport metrics. These measure the "work" needed to transform one distribution into another. In our case we calculate the effort to rearrange one embedding space to match another.
 
-\textbf{Wasserstein distance} measures the minimum "work" needed to transform one distribution into another. Imagine moving piles of sand to match a target distribution—the Wasserstein distance captures the total effort required. For embeddings, this measures how different their overall distributions are.
+We computed three metrics: Wasserstein distance (sensitive to exact positions), Sinkhorn divergence (a smoothed version), and Gromov-Wasserstein distance (compares only internal structure, ignoring absolute positions)\ref{app:transport}.
 
-\textbf{Sinkhorn divergence} is a smoothed version of Wasserstein distance. It allows for slightly fuzzy transport plans, which makes it less sensitive to small local variations while still capturing overall structural differences.
-
-\textbf{Gromov-Wasserstein distance} compares only the internal structure of distributions, ignoring their absolute positions. This is like comparing the shape of two constellations without caring where they appear in the sky—perfect for testing whether embeddings preserve conversational structure despite living in different spaces.
-
-Transport analysis reveals a clear paradigm separation. Within-paradigm transport distances average 1.1, while cross-paradigm distances average 3.3 (a threefold increase). This quantitatively supports that transformer and classical embeddings occupy distinct regions of the representation space.
-
-The progression of transport invariance scores tells an important story. These scores are calculated as $1 - \frac{d_{\text{cross}}}{d_{\text{cross}} + d_{\text{within}}}$, where $d_{\text{cross}}$ is the average cross-paradigm distance and $d_{\text{within}}$ is the average within-paradigm distance. A score of 1.0 indicates perfect invariance (no difference between paradigms), while 0 indicates complete separation.
-
-Wasserstein invariance (0.33) shows low preservation because it's sensitive to exact point correspondences. Sinkhorn (0.58) shows moderate invariance due to its entropic smoothing. Gromov-Wasserstein varies widely (0.14-0.81), suggesting that structural preservation itself is conversation-dependent.
-
+Transport analysis reveals a clear paradigm separation: within-paradigm distances average 1.1, while cross-paradigm distances average 3.3. This suggests that transformer and classical embeddings occupy fundamentally different regions of representation space, supporting our projection hypothesis.
 \section{The Projection Hypothesis}
 
 \subsection{Interpreting the Dichotomy}
@@ -572,72 +672,605 @@ All materials are available at [https://github.com/im-knots/gcs] under the MIT L
 
 \appendix
 
-\section{Supplementary Analysis}
+\section{Geometric Signatures Implementation}
+\label{app:geometric-signatures}
 
-\subsection{Conversation-Specific Patterns}
+\subsection{Velocity}
+\label{app:geometric-signatures-velocity}
+\begin{lstlisting}[language=Python, basicstyle=\small]
+def compute_velocity_profile(embeddings):
+    """Compute normalized velocity (topic shift rate)."""
+    distances = []
+    for i in range(len(embeddings) - 1):
+        dist = np.linalg.norm(embeddings[i+1] - embeddings[i])
+        distances.append(dist)
+    # Normalize by sqrt of dimension for scale invariance
+    return np.array(distances) / np.sqrt(embeddings.shape[1])
+\end{lstlisting}
 
-Analysis of individual conversations reveals systematic patterns in geometric coherence:
+\subsection{Curvature}
+\label{app:geometric-signatures-curvature}
+\begin{lstlisting}[language=Python, basicstyle=\small]
+def compute_curvature(p1, p2, p3):
+    """Discrete curvature at point p2."""
+    v1, v2 = p2 - p1, p3 - p2
+    norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
+    if norm1 > 1e-8 and norm2 > 1e-8:
+        cos_angle = np.dot(v1, v2) / (norm1 * norm2)
+        angle = np.arccos(np.clip(cos_angle, -1, 1))
+        return angle / ((norm1 + norm2) / 2)  # Discrete curvature
+    return 0
+\end{lstlisting}
 
-\begin{itemize}
-\item \textbf{High coherence conversations} (top 20\%): Clear topic progression, explicit transitions, structured argumentation
-\item \textbf{Low coherence conversations} (bottom 20\%): Exploratory discussion, gradual shifts, recursive themes
-\item \textbf{Correlation with length}: Longer conversations show lower phase agreement ($r = -0.31, p < 0.01$)
-\end{itemize}
+\subsection{Angular Velocity}
+\label{app:geometric-signatures-angluar-velocity}
+\begin{lstlisting}[language=Python, basicstyle=\small]
+def compute_angular_velocity(embeddings, i):
+    """Angular change rate at position i."""
+    v1 = embeddings[i] - embeddings[i-1]
+    v2 = embeddings[i+1] - embeddings[i]
+    # Normalize and compute angle
+    v1_norm = v1 / (np.linalg.norm(v1) + 1e-8)
+    v2_norm = v2 / (np.linalg.norm(v2) + 1e-8)
+    cos_angle = np.dot(v1_norm, v2_norm)
+    return np.arccos(np.clip(cos_angle, -1, 1))
+\end{lstlisting}
 
-\subsection{Model-Specific Behaviors}
+\subsection{Density Evolution}
+\label{app:geometric-signatures-density-evolution}
+\begin{lstlisting}[language=Python, basicstyle=\small]
+def compute_local_density(dist_matrix, i, k=5):
+    """Local density at message i using k-NN."""
+    distances_i = dist_matrix[i]
+    k_nearest = np.sort(distances_i)[1:k+1]  # Exclude self
+    return 1.0 / (np.mean(k_nearest) + 1e-8)
+\end{lstlisting}
 
-Despite overall consistency, models show characteristic differences:
+\section{Phase Detection Implementation}
+\label{app:phase-detection}
 
-\begin{itemize}
-\item \textbf{Transformer models}: More sensitive to syntactic transitions
-\item \textbf{Classical models}: Better at capturing semantic shifts
-\item \textbf{Dimensionality effects}: Higher-dimensional models (MPNet) show more nuanced phase detection
-\end{itemize}
+\subsection{Change point detection}
+\label{app:phase-detection-change-point}
+\begin{lstlisting}[language=Python]
+def detect_change_points(embeddings):
+    """PELT algorithm for change point detection."""
+    # Project to 1D using first principal component
+    pca = PCA(n_components=1)
+    emb_1d = pca.fit_transform(embeddings).flatten()
+    
+    # PELT with adaptive penalty selection
+    algo = rpt.Pelt(model='rbf', min_size=10).fit(emb_1d)
+    penalty = select_penalty_elbow(emb_1d, algo)
+    change_points = algo.predict(pen=penalty)
+    return change_points[:-1]  # Exclude endpoint
+\end{lstlisting}
 
-\section{Statistical Methods}
+\subsection{Clustering transitions}
+\label{app:phase-detection-clustering-transitions}
+\begin{lstlisting}[language=Python]
+def detect_by_clustering(embeddings, window_size=20, step=5):
+    """Detect phases via changes in clustering structure."""
+    cluster_counts = []
+    for i in range(0, len(embeddings) - window_size, step):
+        window = embeddings[i:i+window_size]
+        clustering = DBSCAN(eps=0.5, min_samples=3).fit(window)
+        n_clusters = len(set(clustering.labels_)) - (1 if -1 in clustering.labels_ else 0)
+        cluster_counts.append(n_clusters)
+    
+    # Find significant changes in cluster count
+    cluster_changes = np.abs(np.diff(cluster_counts))
+    threshold = np.mean(cluster_changes) + 2 * np.std(cluster_changes)
+    return np.where(cluster_changes > threshold)[0]
+\end{lstlisting}
 
-\subsection{Multiple Comparison Corrections}
+\section{Transport Metrics Implementation}
+\label{app:transport}
 
-Hierarchical hypothesis testing used Bonferroni correction for Tier 1, FDR correction for Tier 2, and effect size criteria for Tier 3.
+For transparency and reproducibility, we provide the core implementations of our optimal transport calculations:
 
-\subsection{Null Model Construction}
+\subsection{Wasserstein Distance}
 
-Three null models tested:
-\begin{enumerate}
-\item Shuffled message order within conversations
-\item Random sampling from message corpus
-\item Random walks in embedding space
-\end{enumerate}
+The 2-Wasserstein distance measures the minimum cost of transporting mass from one distribution to another:
 
-All showed significantly lower correlations than observed data (p $<$ \nullModelPValue{}).
+\begin{lstlisting}[language=Python]
+def compute_wasserstein_distance(traj1, traj2, metric='euclidean'):
+    """
+    Compute 2-Wasserstein distance between trajectories.
+    Uses optimal transport to find minimum transport cost.
+    """
+    # Uniform weights for trajectory points
+    a = np.ones(len(traj1)) / len(traj1)
+    b = np.ones(len(traj2)) / len(traj2)
+    
+    # Cost matrix (pairwise distances)
+    M = ot.dist(traj1, traj2, metric=metric)
+    
+    # Solve optimal transport problem
+    return ot.emd2(a, b, M)
+\end{lstlisting}
 
-\section{Topological Analysis Details}
+\subsection{Sinkhorn Divergence}
 
-For readers interested in topological approaches to conversation analysis, we computed several topological features that, while not central to our main findings, provide additional perspectives:
+The Sinkhorn divergence provides an entropy-regularized version that is more stable in high dimensions:
 
-\subsection{Persistence Diagrams}
+\begin{lstlisting}[language=Python]
+def compute_sinkhorn_divergence(traj1, traj2, regularization=0.1):
+    """
+    Compute debiased Sinkhorn distance.
+    More robust than Wasserstein for high-dimensional data.
+    """
+    a = np.ones(len(traj1)) / len(traj1)
+    b = np.ones(len(traj2)) / len(traj2)
+    M = ot.dist(traj1, traj2)
+    
+    # Sinkhorn distance between trajectories
+    sinkhorn_ab = ot.sinkhorn2(a, b, M, regularization)
+    
+    # Self-distances for debiasing
+    sinkhorn_aa = ot.sinkhorn2(a, a, ot.dist(traj1, traj1), regularization)
+    sinkhorn_bb = ot.sinkhorn2(b, b, ot.dist(traj2, traj2), regularization)
+    
+    # Debiased Sinkhorn divergence
+    return sinkhorn_ab - 0.5 * (sinkhorn_aa + sinkhorn_bb)
+\end{lstlisting}
 
-Persistence diagrams track topological features (connected components, loops, voids) across different scales. For conversational embeddings:
-\begin{itemize}
-\item 0-dimensional features (connected components) correspond to semantic clusters
-\item 1-dimensional features (loops) may indicate cyclic discussion patterns
-\item Higher-dimensional features were rare in our 300-768 dimensional embeddings
-\end{itemize}
+\subsection{Gromov-Wasserstein Distance}
 
-\subsection{Betti Numbers}
+This metric compares only internal structure, making it invariant to isometric transformations:
 
-Betti numbers count topological features at each dimension:
-\begin{itemize}
-\item $\beta_0$: Number of connected components (semantic clusters)
-\item $\beta_1$: Number of loops (conversation cycles)
-\item $\beta_2$: Number of voids (rarely observed)
-\end{itemize}
+\begin{lstlisting}[language=Python]
+def compute_gromov_wasserstein(traj1, traj2):
+    """
+    Compute Gromov-Wasserstein distance.
+    Compares internal structure without requiring same embedding space.
+    """
+    # Uniform distributions
+    p = np.ones(len(traj1)) / len(traj1)
+    q = np.ones(len(traj2)) / len(traj2)
+    
+    # Internal distance matrices
+    C1 = ot.dist(traj1, traj1)  # Distances within traj1
+    C2 = ot.dist(traj2, traj2)  # Distances within traj2
+    
+    # Gromov-Wasserstein distance
+    return ot.gromov_wasserstein2(C1, C2, p, q)
+\end{lstlisting}
 
-While these metrics showed some cross-model consistency, they did not significantly improve upon simpler geometric measures for our analysis goals.
+All implementations use the Python Optimal Transport (POT) library with GPU acceleration when available.
 
-\subsection{Mapper Algorithm}
+\section{Statistical Agreement Metrics}
+\label{app:agreement-metrics}
 
-We applied the Mapper algorithm to create simplified topological representations of conversations. While visually interesting, these representations showed high sensitivity to parameter choices and limited cross-model agreement.
+\subsection{Fleiss' Kappa for Multi-Model Phase Agreement}
+
+Fleiss' kappa measures agreement among multiple raters (in our case, embedding models) for categorical assignments:
+
+\begin{lstlisting}[language=Python]
+def compute_fleiss_kappa(phase_assignments):
+    """
+    Compute Fleiss' kappa for phase detection agreement.
+    
+    Args:
+        phase_assignments: Dict mapping model_name to list of phase labels
+    
+    Returns:
+        kappa: Agreement score (-1 to 1, where 1 is perfect agreement)
+    """
+    from statsmodels.stats import inter_rater
+    
+    # Convert to matrix format: rows=messages, cols=phase categories
+    n_messages = len(next(iter(phase_assignments.values())))
+    n_raters = len(phase_assignments)
+    
+    # Create assignment matrix
+    assignments = []
+    for msg_idx in range(n_messages):
+        msg_assignments = [phase_assignments[model][msg_idx] 
+                          for model in phase_assignments]
+        assignments.append(msg_assignments)
+    
+    # Compute kappa
+    kappa = inter_rater.fleiss_kappa(assignments)
+    return kappa
+\end{lstlisting}
+
+\subsection{Kendall's W for Trajectory Concordance}
+
+Kendall's W (coefficient of concordance) measures agreement for continuous rankings or sequences:
+
+\begin{lstlisting}[language=Python]
+def compute_kendalls_w(trajectory_features):
+    """
+    Compute Kendall's W for trajectory feature agreement.
+    
+    Args:
+        trajectory_features: Dict mapping model_name to feature sequence
+    
+    Returns:
+        w: Concordance coefficient (0 to 1, where 1 is perfect agreement)
+    """
+    from scipy import stats
+    
+    # Convert to matrix: rows=models, cols=time points
+    feature_matrix = np.array(list(trajectory_features.values()))
+    
+    # Rank each model's features
+    ranked_matrix = np.apply_along_axis(stats.rankdata, 1, feature_matrix)
+    
+    # Compute W
+    n_models, n_points = ranked_matrix.shape
+    mean_rank = np.mean(ranked_matrix, axis=0)
+    
+    # Sum of squared deviations from mean rank
+    S = np.sum((np.sum(ranked_matrix, axis=0) - n_models * mean_rank) ** 2)
+    
+    # Maximum possible S
+    max_S = (n_models ** 2) * (n_points ** 3 - n_points) / 12
+    
+    w = S / max_S if max_S > 0 else 0
+    return w
+\end{lstlisting}
+
+\section{Bootstrap Validation Methods}
+\label{app:bootstrap}
+
+\subsection{Parametric Bootstrap for Correlation Confidence Intervals}
+
+We use parametric bootstrap to construct confidence intervals and test significance of invariance scores:
+
+\begin{lstlisting}[language=Python]
+def bootstrap_invariance_confidence(invariance_scores, n_bootstrap=10000):
+    """
+    Compute bootstrap confidence intervals for invariance scores.
+    
+    Uses parametric bootstrap assuming normal distribution of correlations
+    after Fisher z-transformation.
+    """
+    # Extract statistics by signature type
+    signature_stats = invariance_scores['signature_type_stats']
+    bootstrap_means = []
+    
+    for _ in range(n_bootstrap):
+        # Sample from each signature type
+        bootstrap_sample = []
+        for sig_type, stats in signature_stats.items():
+            # Fisher z-transform for correlation
+            z_mean = np.arctanh(stats['mean'])
+            z_std = stats['std'] / (1 - stats['mean']**2)
+            
+            # Sample in z-space
+            z_samples = np.random.normal(z_mean, z_std, 
+                                       stats['n_conversations'])
+            
+            # Transform back to correlation space
+            r_samples = np.tanh(z_samples)
+            bootstrap_sample.extend(r_samples)
+        
+        bootstrap_means.append(np.mean(bootstrap_sample))
+    
+    # Compute confidence intervals
+    ci_lower = np.percentile(bootstrap_means, 2.5)
+    ci_upper = np.percentile(bootstrap_means, 97.5)
+    
+    return {
+        'mean': np.mean(bootstrap_means),
+        'ci_95': (ci_lower, ci_upper),
+        'se': np.std(bootstrap_means)
+    }
+\end{lstlisting}
+
+\subsection{Correlation Hierarchy Testing}
+\label{app:correlation-hierarchy-testing}
+
+Test whether within-paradigm correlations exceed cross-paradigm correlations:
+
+\begin{lstlisting}[language=Python]
+def test_correlation_hierarchy(within_transformer, within_classical, cross_paradigm):
+    """
+    Test if correlation hierarchy holds: within > cross > chance.
+    
+    Uses Mann-Whitney U test for non-parametric comparison.
+    """
+    from scipy import stats
+    
+    # Flatten correlation lists
+    within_all = np.concatenate([within_transformer, within_classical])
+    
+    # Test within > cross
+    u_stat, p_within_cross = stats.mannwhitneyu(
+        within_all, cross_paradigm, alternative='greater'
+    )
+    
+    # Test cross > chance (0.5)
+    t_stat, p_cross_chance = stats.ttest_1samp(
+        cross_paradigm, popmean=0.0, alternative='greater'
+    )
+    
+    # Effect sizes (rank-biserial correlation)
+    n1, n2 = len(within_all), len(cross_paradigm)
+    r_effect = 1 - (2 * u_stat) / (n1 * n2)
+    
+    return {
+        'within_vs_cross_p': p_within_cross,
+        'cross_vs_chance_p': p_cross_chance,
+        'effect_size': r_effect,
+        'hierarchy_confirmed': p_within_cross < 0.05 and p_cross_chance < 0.05
+    }
+\end{lstlisting}
+
+\section{Null Model Implementations}
+\label{app:null-models}
+
+To ensure our invariance findings reflect genuine conversational structure rather than statistical artifacts, we implement multiple null models that disrupt different aspects of the data:
+
+\subsection{Phase Scrambling}
+
+Phase scrambling preserves the power spectrum while destroying temporal coherence:
+
+\begin{lstlisting}[language=Python]
+def phase_scramble_embeddings(embeddings):
+    """
+    Preserve frequency content but destroy temporal structure.
+    Ensures proper conjugate symmetry for real-valued signals.
+    """
+    n_messages, embedding_dim = embeddings.shape
+    scrambled = np.zeros_like(embeddings)
+    
+    for dim in range(embedding_dim):
+        signal_1d = embeddings[:, dim]
+        
+        # Apply FFT
+        fft = np.fft.fft(signal_1d)
+        magnitudes = np.abs(fft)
+        phases = np.angle(fft)
+        
+        # Generate random phases (-pi to pi)
+        random_phases = np.random.uniform(-np.pi, np.pi, size=len(phases))
+        random_phases[0] = phases[0]  # Preserve DC component
+        
+        # Ensure conjugate symmetry for real signals
+        if n_messages % 2 == 0:
+            # Even length - special handling for Nyquist frequency
+            random_phases[n_messages//2] = 0
+            random_phases[n_messages//2+1:] = -random_phases[1:n_messages//2][::-1]
+        else:
+            # Odd length
+            random_phases[n_messages//2+1:] = -random_phases[1:n_messages//2+1][::-1]
+        
+        # Reconstruct with randomized phases
+        fft_scrambled = magnitudes * np.exp(1j * random_phases)
+        scrambled[:, dim] = np.real(np.fft.ifft(fft_scrambled))
+    
+    return scrambled
+\end{lstlisting}
+
+\subsection{Message-Level Scrambling}
+
+Destroys sequential structure while preserving individual message content:
+
+\begin{lstlisting}[language=Python]
+def generate_message_shuffle_null(conversation):
+    """Shuffle message order while preserving individual messages."""
+    null_conv = copy.deepcopy(conversation)
+    random.shuffle(null_conv['messages'])
+    return null_conv
+
+def shuffle_within_speakers(messages, embeddings):
+    """Shuffle messages within each speaker, preserving speaker patterns."""
+    # Group by speaker
+    speaker_indices = {}
+    for i, msg in enumerate(messages):
+        role = msg.get('role', 'unknown')
+        if role not in speaker_indices:
+            speaker_indices[role] = []
+        speaker_indices[role].append(i)
+    
+    # Shuffle indices within each speaker group
+    new_order = []
+    for role, indices in speaker_indices.items():
+        shuffled = indices.copy()
+        random.shuffle(shuffled)
+        new_order.extend(shuffled)
+    
+    return embeddings[new_order]
+\end{lstlisting}
+
+\subsection{Random Walk Nulls}
+
+Generate trajectories with matched statistics but no semantic coherence:
+
+\begin{lstlisting}[language=Python]
+def generate_random_walk(conversation):
+    """Generate random walk with matched vocabulary and length statistics."""
+    null_conv = copy.deepcopy(conversation)
+    
+    # Extract vocabulary and message length statistics
+    message_lengths = [len(msg['content'].split()) for msg in conversation['messages']]
+    vocab = set()
+    for msg in conversation['messages']:
+        vocab.update(msg['content'].lower().split())
+    vocab_list = list(vocab)
+    
+    # Generate random messages with similar lengths
+    for i, msg in enumerate(null_conv['messages']):
+        target_length = message_lengths[i]
+        words = np.random.choice(vocab_list, size=target_length, replace=True)
+        msg['content'] = ' '.join(words)
+    
+    return null_conv
+\end{lstlisting}
+
+\subsection{Paradigm-Specific Controls}
+
+\subsubsection{Classical Embedding Nulls (Averaging)}
+
+For Word2Vec and GloVe, we simulate loss of positional information:
+
+\begin{lstlisting}[language=Python]
+def generate_averaging_null(embeddings, window_sizes=[1, 3, 5, 10]):
+    """
+    Generate null model for averaging-based embeddings.
+    Accounts for the fact that classical models average word embeddings.
+    """
+    nulls = {}
+    shuffled = embeddings.copy()
+    np.random.shuffle(shuffled)
+    
+    for window in window_sizes:
+        if window == 1:
+            nulls[f'avg_window_{window}'] = shuffled
+        else:
+            # Apply moving average
+            averaged = np.zeros_like(shuffled)
+            for i in range(len(shuffled)):
+                start = max(0, i - window // 2)
+                end = min(len(shuffled), i + window // 2 + 1)
+                averaged[i] = np.mean(shuffled[start:end], axis=0)
+            nulls[f'avg_window_{window}'] = averaged
+    
+    return nulls
+\end{lstlisting}
+
+\subsubsection{Transformer Nulls (Positional Encoding)}
+
+For transformer models, we disrupt positional information:
+
+\begin{lstlisting}[language=Python]
+def generate_positional_null(embeddings, max_position=512):
+    """
+    Generate null model with randomized positional encodings.
+    Accounts for transformers' use of position information.
+    """
+    n_messages, embedding_dim = embeddings.shape
+    
+    # Generate random positions
+    positions = np.random.randint(0, min(max_position, n_messages), size=n_messages)
+    
+    # Create sinusoidal position encodings
+    position_encodings = np.zeros((n_messages, embedding_dim))
+    
+    for pos in range(n_messages):
+        for i in range(0, embedding_dim, 2):
+            position_encodings[pos, i] = np.sin(
+                positions[pos] / (10000 ** (i / embedding_dim))
+            )
+            if i + 1 < embedding_dim:
+                position_encodings[pos, i + 1] = np.cos(
+                    positions[pos] / (10000 ** (i / embedding_dim))
+                )
+    
+    # Shuffle embeddings and add position encodings
+    shuffled = embeddings.copy()
+    np.random.shuffle(shuffled)
+    
+    # Scale position encodings to 10% of embedding magnitude
+    scale = np.std(embeddings) * 0.1
+    
+    return shuffled + scale * position_encodings
+\end{lstlisting}
+
+\subsection{Structured Null Models}
+
+Additional null models that preserve specific conversation properties:
+
+\begin{lstlisting}[language=Python]
+def generate_topic_preserving_null(embeddings, n_topics=5):
+    """
+    Preserve topic structure but destroy trajectory.
+    Tests whether invariance is due to topic consistency alone.
+    """
+    # Identify topics using clustering
+    kmeans = KMeans(n_clusters=n_topics, random_state=42)
+    topic_labels = kmeans.fit_predict(embeddings)
+    topic_centers = kmeans.cluster_centers_
+    
+    null_embeddings = []
+    for topic_idx in topic_labels:
+        # Sample from topic distribution
+        center = topic_centers[topic_idx]
+        topic_points = embeddings[topic_labels == topic_idx]
+        
+        if len(topic_points) > 1:
+            cov = np.cov(topic_points.T) + 1e-4 * np.eye(len(center))
+            new_point = multivariate_normal.rvs(mean=center, cov=cov)
+        else:
+            new_point = center + np.random.randn(len(center)) * 0.1
+        
+        null_embeddings.append(new_point)
+    
+    return np.array(null_embeddings)
+
+def generate_conversation_structure_null(embeddings, preserve_local=True, local_window=5):
+    """
+    Preserve local structure but destroy global patterns.
+    Tests importance of long-range dependencies.
+    """
+    if not preserve_local:
+        null = embeddings.copy()
+        np.random.shuffle(null)
+        return null
+    
+    n_messages = len(embeddings)
+    n_chunks = n_messages // local_window
+    
+    # Divide into chunks
+    chunks = []
+    for i in range(n_chunks):
+        start = i * local_window
+        end = min((i + 1) * local_window, n_messages)
+        chunks.append(embeddings[start:end].copy())
+    
+    # Shuffle chunks
+    np.random.shuffle(chunks)
+    
+    # Handle remainder
+    remainder = n_messages % local_window
+    if remainder > 0:
+        chunks.append(embeddings[-remainder:])
+    
+    return np.vstack(chunks)[:n_messages]
+\end{lstlisting}
+
+\subsection{Null Model Validation}
+
+We validate that null models preserve intended properties:
+
+\begin{lstlisting}[language=Python]
+def test_null_validity(original, null):
+    """
+    Verify null model preserves desired properties while destroying structure.
+    """
+    metrics = {}
+    
+    # Check mean preservation
+    metrics['mean_difference'] = np.abs(np.mean(original) - np.mean(null))
+    
+    # Check variance preservation
+    metrics['variance_ratio'] = np.var(null) / np.var(original)
+    
+    # Check temporal autocorrelation (should be destroyed)
+    def autocorr(x, lag=1):
+        n = len(x)
+        c0 = np.dot(x[:-lag], x[:-lag])
+        c1 = np.dot(x[:-lag], x[lag:])
+        return c1 / c0 if c0 > 0 else 0
+    
+    orig_autocorr = np.mean([autocorr(original[:, i]) for i in range(original.shape[1])])
+    null_autocorr = np.mean([autocorr(null[:, i]) for i in range(null.shape[1])])
+    
+    metrics['autocorr_reduction'] = (orig_autocorr - null_autocorr) / orig_autocorr
+    
+    # For phase scrambling: verify power spectrum preservation
+    orig_power = np.mean([np.abs(np.fft.fft(original[:, i]))**2 
+                         for i in range(original.shape[1])])
+    null_power = np.mean([np.abs(np.fft.fft(null[:, i]))**2 
+                         for i in range(null.shape[1])])
+    
+    metrics['power_ratio'] = null_power / orig_power
+    
+    return metrics
+\end{lstlisting}
+
 
 \section{Selected Conversation Analysis Results}
 
