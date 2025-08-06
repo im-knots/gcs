@@ -1,6 +1,6 @@
 # Geometry of Conversation Space (GCS)
 
-A research framework for analyzing the geometric properties of AI conversations through embedding trajectory analysis, phase detection, and statistical invariance testing.
+A research tool for analyzing the geometric properties of AI conversations through embedding trajectory analysis, phase detection, and statistical invariance testing.
 
 ## Overview
 
